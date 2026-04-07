@@ -133,10 +133,10 @@ export default function Calendar() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Tournament Calendar</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-6">Tournament Calendar</h1>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
         <style>{`
           .react-calendar {
             width: 100%;
@@ -171,9 +171,9 @@ export default function Calendar() {
             padding: 0.5rem 0.25rem;
             font-size: 0.875rem;
             border-radius: 0.5rem;
-            margin: 0.25rem;
+            margin: 0.125rem;
             height: auto;
-            min-height: 100px;
+            min-height: 80px;
             display: flex;
             flex-direction: column;
             align-items: stretch;
@@ -183,6 +183,12 @@ export default function Calendar() {
             cursor: pointer;
             transition: all 0.2s;
             overflow: hidden;
+          }
+          @media (min-width: 768px) {
+            .react-calendar__month-view__days__day {
+              min-height: 100px;
+              margin: 0.25rem;
+            }
           }
           .react-calendar__month-view__days__day:hover {
             background-color: #f0fdf4;
@@ -213,13 +219,19 @@ export default function Calendar() {
             background-color: rgba(255, 255, 255, 0.7);
             border-left: 2px solid #16a34a;
             padding: 0.25rem 0.5rem;
-            margin: 0.25rem 0;
+            margin: 0.15rem 0;
             border-radius: 0.25rem;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 0.25rem;
+          }
+          @media (min-width: 768px) {
+            .calendar-tournament-item {
+              font-size: 0.875rem;
+              margin: 0.25rem 0;
+            }
           }
           .calendar-tournament-name {
             flex: 1;
@@ -258,12 +270,12 @@ export default function Calendar() {
 
       {/* Tournament Details Modal */}
       {selectedTournament && !isEditing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-lg max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-lg max-w-full sm:max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-gray-900">{selectedTournament.name}</h2>
+            <div className="flex items-start justify-between mb-4 gap-3">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 break-words">{selectedTournament.name}</h2>
                 {getTournamentsOnSameDate().length > 1 && (
                   <p className="text-xs text-gray-500 mt-1">
                     {getTournamentsOnSameDate().findIndex(t => t._id === selectedTournament._id) + 1} of {getTournamentsOnSameDate().length}
@@ -272,7 +284,7 @@ export default function Calendar() {
               </div>
               <button
                 onClick={() => setSelectedTournament(null)}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold ml-4"
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold flex-shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
               >
                 ✕
               </button>
@@ -287,7 +299,7 @@ export default function Calendar() {
                     <button
                       key={t._id}
                       onClick={() => setSelectedTournament(t)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition ${
+                      className={`w-full text-left px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition min-h-[40px] flex items-center ${
                         t._id === selectedTournament._id
                           ? 'bg-blue-100 text-blue-900 border border-blue-300'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -301,7 +313,7 @@ export default function Calendar() {
             )}
 
             {/* Date */}
-            <p className="text-sm text-gray-600 mb-6">
+            <p className="text-xs sm:text-sm text-gray-600 mb-6">
               {new Date(selectedTournament.date + 'T00:00:00').toLocaleDateString('en-IN', {
                 weekday: 'long',
                 year: 'numeric',
@@ -312,11 +324,11 @@ export default function Calendar() {
 
             {/* Categories */}
             <div className="space-y-3 mb-6">
-              <h3 className="font-semibold text-gray-900">Categories</h3>
+              <h3 className="text-sm sm:text-base font-semibold text-gray-900">Categories</h3>
               {selectedTournament.categories.map((cat, idx) => (
-                <div key={idx} className="bg-gray-50 rounded-lg p-4">
-                  <div className="font-semibold text-gray-900">{cat.categoryName}</div>
-                  <div className="text-sm text-gray-600 mt-2 grid grid-cols-2 gap-2">
+                <div key={idx} className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                  <div className="text-sm sm:text-base font-semibold text-gray-900">{cat.categoryName}</div>
+                  <div className="text-xs sm:text-sm text-gray-600 mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                     <div>
                       <p className="text-xs text-gray-500">Medal</p>
                       <p className="font-medium">{cat.medal}</p>
@@ -341,8 +353,8 @@ export default function Calendar() {
             </div>
 
             {/* Summary */}
-            <div className="bg-blue-50 rounded-lg p-4 mb-6">
-              <div className="text-sm text-gray-600 space-y-2">
+            <div className="bg-blue-50 rounded-lg p-3 sm:p-4 mb-6">
+              <div className="text-xs sm:text-sm text-gray-600 space-y-2">
                 <div className="flex justify-between">
                   <span>Total Earnings:</span>
                   <span className="font-semibold text-gray-900">{formatINR(selectedTournament.totalEarnings || 0)}</span>
@@ -353,7 +365,7 @@ export default function Calendar() {
                 </div>
                 <div className="border-t pt-2 flex justify-between">
                   <span>Total Profit:</span>
-                  <span className={`text-lg font-bold ${(selectedTournament.totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`text-base sm:text-lg font-bold ${(selectedTournament.totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {formatINR(selectedTournament.totalProfit || 0)}
                   </span>
                 </div>
@@ -361,16 +373,16 @@ export default function Calendar() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base font-semibold py-2 sm:py-2.5 min-h-[40px] rounded-lg transition"
               >
                 Edit Tournament
               </button>
               <button
                 onClick={() => setSelectedTournament(null)}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 rounded-lg transition"
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 text-sm sm:text-base font-semibold py-2 sm:py-2.5 min-h-[40px] rounded-lg transition"
               >
                 Close
               </button>
@@ -381,13 +393,13 @@ export default function Calendar() {
 
       {/* Edit Modal */}
       {selectedTournament && isEditing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-lg max-w-2xl w-full max-h-[85vh] overflow-y-auto p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Edit Tournament</h2>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-lg max-w-full sm:max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4 gap-3">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Edit Tournament</h2>
               <button
                 onClick={() => setIsEditing(false)}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold flex-shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
               >
                 ✕
               </button>

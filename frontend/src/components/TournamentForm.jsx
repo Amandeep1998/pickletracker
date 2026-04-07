@@ -117,16 +117,16 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
   );
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
       {/* Name */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Tournament Name</label>
+        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Tournament Name</label>
         <input
           type="text"
           name="name"
           value={form.name}
           onChange={handleChange}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="w-full border border-gray-300 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
           placeholder="e.g. City Open 2024"
         />
         {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
@@ -134,33 +134,33 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
 
       {/* Date */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Date</label>
         <input
           type="date"
           name="date"
           value={form.date}
           onChange={handleChange}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          className="w-full border border-gray-300 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
         />
         {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
       </div>
 
 
       {/* Categories */}
-      <div className="border-t pt-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-700">Categories</h3>
+      <div className="border-t pt-3 sm:pt-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-3">
+          <h3 className="text-xs sm:text-sm font-semibold text-gray-700">Categories</h3>
           <button
             type="button"
             onClick={addCategory}
-            className="text-xs text-green-600 hover:text-green-700 font-medium"
+            className="text-xs text-green-600 hover:text-green-700 font-medium w-fit"
           >
             + Add Category
           </button>
         </div>
 
         {form.categories.map((cat, idx) => (
-          <div key={idx} className="bg-gray-50 rounded-lg p-4 mb-3 space-y-3">
+          <div key={idx} className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-3 space-y-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-gray-500">Category {idx + 1}</span>
               {form.categories.length > 1 && (
@@ -199,9 +199,9 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
             {/* Medal */}
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-2">Medal</label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 sm:gap-3">
                 {MEDALS.map((m) => (
-                  <label key={m} className="flex items-center gap-1 cursor-pointer">
+                  <label key={m} className="flex items-center gap-1 cursor-pointer min-h-[32px]">
                     <input
                       type="radio"
                       checked={cat.medal === m}
@@ -209,17 +209,17 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
                       value={m}
                       className="accent-green-600"
                     />
-                    <span className="text-xs">{m}</span>
+                    <span className="text-xs sm:text-sm">{m}</span>
                   </label>
                 ))}
               </div>
             </div>
 
             {/* Financials */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Entry Fees Paid (per person) (₹)
+                  Entry Fees (₹)
                 </label>
                 <input
                   type="number"
@@ -227,7 +227,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
                   onChange={(e) => handleCategoryChange(idx, 'entryFee', e.target.value)}
                   min="0"
                   step="0.01"
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   placeholder="0"
                 />
                 {errors[`cat_${idx}_entryFee`] && (
@@ -237,7 +237,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
 
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Winning Prize Received (₹)
+                  Winning Prize (₹)
                 </label>
                 <input
                   type="number"
@@ -246,7 +246,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
                   min="0"
                   step="0.01"
                   disabled={cat.medal === 'None'}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-200 disabled:cursor-not-allowed"
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-200 disabled:cursor-not-allowed"
                   placeholder="0"
                 />
                 {errors[`cat_${idx}_prizeAmount`] && (
@@ -269,7 +269,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
       </div>
 
       {/* Total profit preview */}
-      <div className={`rounded-lg px-4 py-3 text-sm font-medium ${totalProfit >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+      <div className={`rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium ${totalProfit >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
         Total Profit:{' '}
         <span className="font-bold">
           {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(
@@ -279,11 +279,11 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
       </div>
 
       {/* Actions */}
-      <div className="flex gap-3 pt-2">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2">
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
+          className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-2 sm:py-2.5 min-h-[40px] rounded-lg text-xs sm:text-sm transition-colors"
         >
           {loading ? 'Saving...' : initial ? 'Update Tournament' : 'Add Tournament'}
         </button>
@@ -291,7 +291,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold py-2.5 rounded-lg text-sm transition-colors"
+            className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold py-2 sm:py-2.5 min-h-[40px] rounded-lg text-xs sm:text-sm transition-colors"
           >
             Cancel
           </button>
