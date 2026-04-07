@@ -314,12 +314,17 @@ export default function Calendar() {
 
             {/* Date */}
             <p className="text-xs sm:text-sm text-gray-600 mb-6">
-              {new Date(selectedTournament.date + 'T00:00:00').toLocaleDateString('en-IN', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
+              {(() => {
+                const dateStr = selectedTournament.date.split('T')[0]; // Get YYYY-MM-DD
+                const [year, month, day] = dateStr.split('-');
+                const date = new Date(year, month - 1, day);
+                return date.toLocaleDateString('en-IN', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                });
+              })()}
             </p>
 
             {/* Categories */}
