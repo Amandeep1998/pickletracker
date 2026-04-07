@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import MobileMenu from './MobileMenu';
 
 export default function Navbar() {
   const { user, handleLogout } = useAuth();
@@ -17,7 +18,7 @@ export default function Navbar() {
     }`;
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-10">
+    <nav className="bg-white border-b border-gray-200 sticky top-0 z-20">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Brand with Logo */}
         <NavLink to="/dashboard" className="flex items-center gap-3 flex-shrink-0">
@@ -26,14 +27,14 @@ export default function Navbar() {
             alt="PickleTracker"
             className="h-10 w-10 object-contain"
           />
-          <div className="flex items-baseline gap-0.5">
+          <div className="hidden sm:flex items-baseline gap-0.5">
             <span className="text-lg font-bold text-green-600">Pickle</span>
             <span className="text-lg font-bold text-orange-500">Tracker</span>
           </div>
         </NavLink>
 
-        {/* Links */}
-        <div className="flex items-center gap-8">
+        {/* Desktop Links - Hidden on Mobile */}
+        <div className="hidden md:flex items-center gap-8">
           <NavLink to="/dashboard" className={linkClass}>
             Dashboard
           </NavLink>
@@ -45,9 +46,9 @@ export default function Navbar() {
           </NavLink>
         </div>
 
-        {/* User + Logout */}
-        <div className="flex items-center gap-4 flex-shrink-0">
-          <span className="text-sm text-gray-600 hidden sm:block">
+        {/* Desktop User + Logout - Hidden on Mobile */}
+        <div className="hidden md:flex items-center gap-4 flex-shrink-0">
+          <span className="text-sm text-gray-600">
             {user?.username}
           </span>
           <button
@@ -57,6 +58,9 @@ export default function Navbar() {
             Logout
           </button>
         </div>
+
+        {/* Mobile Menu */}
+        <MobileMenu />
       </div>
     </nav>
   );

@@ -70,13 +70,13 @@ export default function Tournaments() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Tournaments</h1>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Tournaments</h1>
         {!showAdd && !editingItem && (
           <button
             onClick={() => setShowAdd(true)}
-            className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm font-semibold px-4 py-2 min-h-[40px] rounded-lg transition-colors"
           >
             + Add Tournament
           </button>
@@ -91,8 +91,8 @@ export default function Tournaments() {
 
       {/* Add Form */}
       {showAdd && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">New Tournament</h2>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 mb-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">New Tournament</h2>
           <TournamentForm
             onSubmit={handleAdd}
             onCancel={() => {
@@ -106,8 +106,8 @@ export default function Tournaments() {
 
       {/* Edit Form */}
       {editingItem && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Edit Tournament</h2>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 mb-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Edit Tournament</h2>
           <TournamentForm
             initial={editingItem}
             onSubmit={handleEdit}
@@ -122,31 +122,31 @@ export default function Tournaments() {
 
       {/* List */}
       {loadingList ? (
-        <div className="text-center py-16 text-gray-400">Loading...</div>
+        <div className="text-center py-12 sm:py-16 text-gray-400 text-sm sm:text-base">Loading...</div>
       ) : tournaments.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg">No tournaments yet.</p>
-          <p className="text-sm mt-1">Add your first tournament to get started.</p>
+        <div className="text-center py-12 sm:py-16 text-gray-400">
+          <p className="text-base sm:text-lg">No tournaments yet.</p>
+          <p className="text-xs sm:text-sm mt-1">Add your first tournament to get started.</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {tournaments.map((t) => (
             <div
               key={t._id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"
+              className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5"
             >
               {/* Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="font-semibold text-gray-900">{t.name}</h3>
-                  <p className="text-sm text-gray-500 mt-0.5">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{t.name}</h3>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
                     {new Date(t.date).toLocaleDateString('en-IN')}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-gray-400">Total Profit</p>
                   <p
-                    className={`text-lg font-bold ${t.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                    className={`text-base sm:text-lg font-bold ${t.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}
                   >
                     {formatINR(t.totalProfit)}
                   </p>
@@ -156,27 +156,29 @@ export default function Tournaments() {
               {/* Categories */}
               <div className="space-y-2 mb-4 pb-4 border-b border-gray-200">
                 {t.categories.map((cat, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-sm bg-gray-50 rounded px-3 py-2">
-                    <div className="flex-1">
-                      <span className="font-medium text-gray-700">{cat.categoryName}</span>
+                  <div key={idx} className="bg-gray-50 rounded px-3 py-2">
+                    {/* Category Name & Medal */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                      <span className="font-medium text-gray-700 text-sm">{cat.categoryName}</span>
                       <span
-                        className={`ml-2 text-xs font-medium px-1.5 py-0.5 rounded ${MEDAL_COLORS[cat.medal]}`}
+                        className={`w-fit text-xs font-medium px-1.5 py-0.5 rounded ${MEDAL_COLORS[cat.medal]}`}
                       >
                         {cat.medal}
                       </span>
                     </div>
-                    <div className="flex gap-4 text-right">
+                    {/* Values Grid - Stack on mobile, row on sm+ */}
+                    <div className="grid grid-cols-3 sm:flex sm:gap-4 text-right sm:text-right gap-2">
                       <div>
                         <p className="text-xs text-gray-400">Entry Fees</p>
-                        <p className="font-medium text-gray-700">{formatINR(cat.entryFee)}</p>
+                        <p className="text-xs sm:text-sm font-medium text-gray-700">{formatINR(cat.entryFee)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-400">Winning Prize</p>
-                        <p className="font-medium text-gray-700">{formatINR(cat.prizeAmount)}</p>
+                        <p className="text-xs sm:text-sm font-medium text-gray-700">{formatINR(cat.prizeAmount)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-400">Profit</p>
-                        <p className={`font-semibold ${(cat.prizeAmount - cat.entryFee) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <p className={`text-xs sm:text-sm font-semibold ${(cat.prizeAmount - cat.entryFee) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {formatINR(cat.prizeAmount - cat.entryFee)}
                         </p>
                       </div>
@@ -194,21 +196,21 @@ export default function Tournaments() {
                     setShowAdd(false);
                     setApiError('');
                   }}
-                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 font-medium min-h-[40px] px-2 sm:px-3 py-1 rounded hover:bg-blue-50 transition"
                 >
                   Edit
                 </button>
                 {deleteId === t._id ? (
-                  <span className="flex gap-2 items-center text-sm">
+                  <span className="flex gap-2 items-center">
                     <button
                       onClick={() => handleDelete(t._id)}
-                      className="text-red-600 hover:text-red-800 font-medium"
+                      className="text-xs sm:text-sm text-red-600 hover:text-red-800 font-medium min-h-[40px] px-2 sm:px-3 py-1 rounded hover:bg-red-50 transition"
                     >
                       Confirm
                     </button>
                     <button
                       onClick={() => setDeleteId(null)}
-                      className="text-gray-400 hover:text-gray-600"
+                      className="text-xs sm:text-sm text-gray-400 hover:text-gray-600 min-h-[40px] px-2 sm:px-3 py-1 rounded transition"
                     >
                       Cancel
                     </button>
@@ -216,7 +218,7 @@ export default function Tournaments() {
                 ) : (
                   <button
                     onClick={() => setDeleteId(t._id)}
-                    className="text-sm text-red-500 hover:text-red-700 font-medium"
+                    className="text-xs sm:text-sm text-red-500 hover:text-red-700 font-medium min-h-[40px] px-2 sm:px-3 py-1 rounded hover:bg-red-50 transition"
                   >
                     Delete
                   </button>
