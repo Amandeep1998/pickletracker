@@ -139,9 +139,6 @@ export default function Tournaments() {
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
                 <div className="flex-1">
                   <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{t.name}</h3>
-                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                    {new Date(t.date).toLocaleDateString('en-IN')}
-                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-gray-400">Total Profit</p>
@@ -157,9 +154,12 @@ export default function Tournaments() {
               <div className="space-y-2 mb-4 pb-4 border-b border-gray-200">
                 {t.categories.map((cat, idx) => (
                   <div key={idx} className="bg-gray-50 rounded px-3 py-2">
-                    {/* Category Name & Medal */}
+                    {/* Category Name, Date & Medal */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                       <span className="font-medium text-gray-700 text-sm">{cat.categoryName}</span>
+                      <span className="text-xs text-gray-500">
+                        {cat.date ? new Date(cat.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-IN') : 'No date'}
+                      </span>
                       <span
                         className={`w-fit text-xs font-medium px-1.5 py-0.5 rounded ${MEDAL_COLORS[cat.medal]}`}
                       >

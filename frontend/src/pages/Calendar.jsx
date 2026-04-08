@@ -11,6 +11,7 @@ export default function Calendar() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedTournament, setSelectedTournament] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const navigate = useNavigate();
@@ -38,76 +39,60 @@ export default function Calendar() {
     return `${year}-${month}-${day}`;
   };
 
-  // Group tournaments by date using the date string directly (YYYY-MM-DD)
-  const tournamentsByDate = {};
+  // Build eventsByDate: { 'YYYY-MM-DD': [{ tournament, category }, ...] }
+  const eventsByDate = {};
   tournaments.forEach((t) => {
-    // t.date is already a string like "2024-06-15" from the API
-    let dateStr = t.date;
-    if (typeof t.date !== 'string') {
-      dateStr = dateToString(new Date(t.date));
-    } else {
-      dateStr = t.date.split('T')[0]; // Remove time if present
-    }
-    if (!tournamentsByDate[dateStr]) {
-      tournamentsByDate[dateStr] = [];
-    }
-    tournamentsByDate[dateStr].push(t);
+    t.categories.forEach((cat) => {
+      const dateStr = cat.date ? cat.date.split('T')[0] : null;
+      if (!dateStr) return; // Skip if no date
+      if (!eventsByDate[dateStr]) {
+        eventsByDate[dateStr] = [];
+      }
+      eventsByDate[dateStr].push({ tournament: t, category: cat });
+    });
   });
 
-  // Custom tile content with tournament names (clickable)
+  // Custom tile content with event names (clickable)
   const tileContent = ({ date }) => {
-    const dateStr = dateToString(date); // Use helper to avoid timezone issues
-    const tournamentsOnDate = tournamentsByDate[dateStr];
+    const dateStr = dateToString(date);
+    const eventsOnDate = eventsByDate[dateStr];
 
-    if (!tournamentsOnDate || tournamentsOnDate.length === 0) return null;
+    if (!eventsOnDate || eventsOnDate.length === 0) return null;
 
     return (
       <div className="w-full h-full flex flex-col justify-start pt-1 text-left">
-        {tournamentsOnDate.slice(0, 1).map((t) => (
+        {eventsOnDate.slice(0, 2).map((event, idx) => (
           <div
-            key={t._id}
+            key={`${event.tournament._id}-${idx}`}
             className="text-xs font-medium text-gray-900 truncate px-1 hover:underline cursor-pointer"
             onClick={(e) => {
               e.stopPropagation();
-              setSelectedTournament(t);
+              setSelectedTournament(event.tournament);
             }}
+            title={`${event.tournament.name} - ${event.category.categoryName}`}
           >
-            {t.name}
+            {event.tournament.name} - {event.category.categoryName}
           </div>
         ))}
-        {tournamentsOnDate.length > 1 && (
+        {eventsOnDate.length > 2 && (
           <div
             className="text-xs text-gray-600 px-1 cursor-pointer hover:text-gray-900"
             onClick={(e) => {
               e.stopPropagation();
-              // Show all tournaments for this date by setting first one
-              // User can see there are more in the popup
-              setSelectedTournament(tournamentsOnDate[0]);
+              setSelectedDate(dateStr);
             }}
           >
-            +{tournamentsOnDate.length - 1} more
+            +{eventsOnDate.length - 2} more
           </div>
         )}
       </div>
     );
   };
 
-  // Custom tile styling for dates with tournaments
+  // Custom tile styling for dates with events
   const tileClassName = ({ date }) => {
     const dateStr = dateToString(date);
-    return tournamentsByDate[dateStr] && tournamentsByDate[dateStr].length > 0 ? 'has-tournaments' : '';
-  };
-
-  // Get all tournaments on the same date as selectedTournament
-  const getTournamentsOnSameDate = () => {
-    if (!selectedTournament) return [];
-    let selectedDateStr = selectedTournament.date;
-    if (typeof selectedTournament.date !== 'string') {
-      selectedDateStr = dateToString(new Date(selectedTournament.date));
-    } else {
-      selectedDateStr = selectedTournament.date.split('T')[0];
-    }
-    return tournamentsByDate[selectedDateStr] || [];
+    return eventsByDate[dateStr] && eventsByDate[dateStr].length > 0 ? 'has-tournaments' : '';
   };
 
   const handleEditTournament = async (data) => {
@@ -122,6 +107,34 @@ export default function Calendar() {
     } finally {
       setFormLoading(false);
     }
+  };
+
+  // Format date for display
+  const formatDate = (dateStr) => {
+    const [year, month, day] = dateStr.split('-');
+    const date = new Date(year, month - 1, day);
+    return date.toLocaleDateString('en-IN', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  // Group events by tournament for date popup
+  const getEventsByTournament = (dateStr) => {
+    const events = eventsByDate[dateStr] || [];
+    const grouped = {};
+    events.forEach((event) => {
+      if (!grouped[event.tournament._id]) {
+        grouped[event.tournament._id] = {
+          tournament: event.tournament,
+          categories: [],
+        };
+      }
+      grouped[event.tournament._id].categories.push(event.category);
+    });
+    return Object.values(grouped);
   };
 
   if (loading) {
@@ -210,51 +223,6 @@ export default function Calendar() {
             background-color: #0ea5e9 !important;
             color: white !important;
           }
-          .calendar-day-number {
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-            display: block;
-          }
-          .calendar-tournament-item {
-            background-color: rgba(255, 255, 255, 0.7);
-            border-left: 2px solid #16a34a;
-            padding: 0.25rem 0.5rem;
-            margin: 0.15rem 0;
-            border-radius: 0.25rem;
-            font-size: 0.75rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 0.25rem;
-          }
-          @media (min-width: 768px) {
-            .calendar-tournament-item {
-              font-size: 0.875rem;
-              margin: 0.25rem 0;
-            }
-          }
-          .calendar-tournament-name {
-            flex: 1;
-            min-width: 0;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-          }
-          .calendar-edit-btn {
-            flex-shrink: 0;
-            background-color: #3b82f6;
-            color: white;
-            border: none;
-            border-radius: 0.25rem;
-            padding: 0.125rem 0.375rem;
-            cursor: pointer;
-            font-size: 0.65rem;
-            font-weight: 600;
-            transition: all 0.2s;
-          }
-          .calendar-edit-btn:hover {
-            background-color: #2563eb;
-          }
         `}</style>
 
         <ReactCalendar
@@ -264,9 +232,52 @@ export default function Calendar() {
         />
 
         <p className="text-sm text-gray-500 mt-4 text-center">
-          Click on a tournament name to view details and edit
+          Click on a tournament or category to view details and edit
         </p>
       </div>
+
+      {/* Date Listing Popup - Shows all events on selected date */}
+      {selectedDate && !selectedTournament && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-lg max-w-full sm:max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+            {/* Header */}
+            <div className="flex items-start justify-between mb-6 gap-3">
+              <div>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Events on {formatDate(selectedDate)}</h2>
+              </div>
+              <button
+                onClick={() => setSelectedDate(null)}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold flex-shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Events grouped by tournament */}
+            <div className="space-y-4">
+              {getEventsByTournament(selectedDate).map((item) => (
+                <div key={item.tournament._id} className="border rounded-lg p-4">
+                  <h3 className="font-semibold text-gray-900 mb-3">{item.tournament.name}</h3>
+                  <div className="space-y-2">
+                    {item.categories.map((cat, idx) => (
+                      <button
+                        key={`${item.tournament._id}-${idx}`}
+                        onClick={() => {
+                          setSelectedTournament(item.tournament);
+                          setSelectedDate(null);
+                        }}
+                        className="w-full text-left px-3 py-2 bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-900 rounded text-sm transition min-h-[40px] flex items-center"
+                      >
+                        • {cat.categoryName}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tournament Details Modal */}
       {selectedTournament && !isEditing && (
@@ -276,11 +287,6 @@ export default function Calendar() {
             <div className="flex items-start justify-between mb-4 gap-3">
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 break-words">{selectedTournament.name}</h2>
-                {getTournamentsOnSameDate().length > 1 && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    {getTournamentsOnSameDate().findIndex(t => t._id === selectedTournament._id) + 1} of {getTournamentsOnSameDate().length}
-                  </p>
-                )}
               </div>
               <button
                 onClick={() => setSelectedTournament(null)}
@@ -290,50 +296,16 @@ export default function Calendar() {
               </button>
             </div>
 
-            {/* Tournament Selector for Multiple on Same Date */}
-            {getTournamentsOnSameDate().length > 1 && (
-              <div className="mb-4 pb-4 border-b">
-                <p className="text-xs font-medium text-gray-600 mb-2">Other tournaments on this date:</p>
-                <div className="space-y-2">
-                  {getTournamentsOnSameDate().map((t) => (
-                    <button
-                      key={t._id}
-                      onClick={() => setSelectedTournament(t)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition min-h-[40px] flex items-center ${
-                        t._id === selectedTournament._id
-                          ? 'bg-blue-100 text-blue-900 border border-blue-300'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {t.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Date */}
-            <p className="text-xs sm:text-sm text-gray-600 mb-6">
-              {(() => {
-                const dateStr = selectedTournament.date.split('T')[0]; // Get YYYY-MM-DD
-                const [year, month, day] = dateStr.split('-');
-                const date = new Date(year, month - 1, day);
-                return date.toLocaleDateString('en-IN', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                });
-              })()}
-            </p>
-
             {/* Categories */}
             <div className="space-y-3 mb-6">
               <h3 className="text-sm sm:text-base font-semibold text-gray-900">Categories</h3>
               {selectedTournament.categories.map((cat, idx) => (
                 <div key={idx} className="bg-gray-50 rounded-lg p-3 sm:p-4">
-                  <div className="text-sm sm:text-base font-semibold text-gray-900">{cat.categoryName}</div>
-                  <div className="text-xs sm:text-sm text-gray-600 mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                  <div className="text-sm sm:text-base font-semibold text-gray-900 mb-2">{cat.categoryName}</div>
+                  <div className="text-xs sm:text-sm text-gray-600 mb-2">
+                    <p>{formatDate(cat.date || '2000-01-01')}</p>
+                  </div>
+                  <div className="text-xs sm:text-sm text-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                     <div>
                       <p className="text-xs text-gray-500">Medal</p>
                       <p className="font-medium">{cat.medal}</p>
