@@ -27,6 +27,21 @@ function getFirebaseAdmin() {
     }
   }
 
+  const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64;
+  if (b64) {
+    try {
+      const raw = Buffer.from(b64.trim(), 'base64').toString('utf8');
+      const cred = JSON.parse(raw);
+      admin.initializeApp({
+        credential: admin.credential.cert(cred),
+      });
+      return admin;
+    } catch (err) {
+      console.warn('[Firebase Admin] FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 invalid:', err.message);
+      return null;
+    }
+  }
+
   const credPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
   if (credPath) {
     try {
