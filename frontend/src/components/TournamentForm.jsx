@@ -135,16 +135,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
 
       {/* Categories */}
       <div className="border-t pt-3 sm:pt-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 mb-3">
-          <h3 className="text-xs sm:text-sm font-semibold text-gray-700">Categories</h3>
-          <button
-            type="button"
-            onClick={addCategory}
-            className="text-xs text-green-600 hover:text-green-700 font-medium w-fit"
-          >
-            + Add Category
-          </button>
-        </div>
+        <h3 className="text-xs sm:text-sm font-semibold text-gray-700 mb-3">Categories</h3>
 
         {form.categories.map((cat, idx) => (
           <div key={idx} className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-3 space-y-3">
@@ -263,6 +254,16 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
             </div>
           </div>
         ))}
+
+        {/* Add Category Button */}
+        <button
+          type="button"
+          onClick={addCategory}
+          className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-5 min-h-[44px] sm:min-h-[48px] rounded-lg text-sm sm:text-base transition-colors flex items-center justify-center gap-2"
+        >
+          <span>+</span>
+          <span>Add Category</span>
+        </button>
       </div>
 
       {/* Total profit preview */}
