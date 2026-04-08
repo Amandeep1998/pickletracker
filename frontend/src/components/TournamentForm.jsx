@@ -256,14 +256,16 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         ))}
 
         {/* Add Category Button */}
-        <button
-          type="button"
-          onClick={addCategory}
-          className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-5 min-h-[44px] sm:min-h-[48px] rounded-lg text-sm sm:text-base transition-colors flex items-center justify-center gap-2"
-        >
-          <span>+</span>
-          <span>Add Category</span>
-        </button>
+        <div className="flex justify-end mt-4">
+          <button
+            type="button"
+            onClick={addCategory}
+            className="w-full sm:w-fit bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 min-h-[40px] rounded-md text-sm transition-colors flex items-center justify-center gap-2"
+          >
+            <span>+</span>
+            <span>Add Category</span>
+          </button>
+        </div>
       </div>
 
       {/* Total profit preview */}
