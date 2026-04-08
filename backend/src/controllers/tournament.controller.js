@@ -2,7 +2,7 @@ const Tournament = require('../models/Tournament');
 
 const getTournaments = async (req, res, next) => {
   try {
-    const tournaments = await Tournament.find({ userId: req.user.id }).sort({ date: -1 });
+    const tournaments = await Tournament.find({ userId: req.user.id }).sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: tournaments });
   } catch (err) {
     next(err);

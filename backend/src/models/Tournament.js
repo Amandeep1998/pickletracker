@@ -27,6 +27,13 @@ const CATEGORIES = [
   "50+ Women's Doubles",
   "50+ Mixed Doubles",
 
+  "Split Age 35+",
+  "Split Age 40+",
+  "Split Age 50+",
+
+  "Men's Singles 60+",
+  "Men's Doubles 60+",
+
   "Team Event",
 ];
 
@@ -37,6 +44,11 @@ const categorySchema = new mongoose.Schema(
       type: String,
       required: [true, 'Category name is required'],
       enum: CATEGORIES,
+    },
+    date: {
+      type: String,
+      required: [true, 'Category date is required'],
+      match: [/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'],
     },
     medal: {
       type: String,
@@ -78,11 +90,6 @@ const tournamentSchema = new mongoose.Schema(
         validator: (v) => Array.isArray(v) && v.length > 0,
         message: 'At least one category is required',
       },
-    },
-    date: {
-      type: Date,
-      required: [true, 'Date is required'],
-      index: true,
     },
   },
   {

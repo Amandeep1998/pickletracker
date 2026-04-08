@@ -1,18 +1,40 @@
 const Joi = require('joi');
 
 const CATEGORIES = [
-  "Men's Singles",
+  "Men's Singles Open",
   "Women's Singles",
-  "Men's Doubles",
+  "Men's Doubles Open",
   "Women's Doubles",
-  'Mixed Doubles',
-  'Beginner Singles',
-  'Beginner Doubles',
-  'Intermediate Singles',
-  'Intermediate Doubles',
-  'Open Category',
-  'Senior (35+, 50+)',
-  'Team Event',
+  "Mixed Doubles",
+
+  "Beginner Singles",
+  "Beginner Doubles",
+  "Intermediate Singles",
+  "Intermediate Doubles",
+
+  "Advanced Men's Singles",
+  "Advanced Men's Doubles",
+
+  "35+ Men's Singles",
+  "35+ Men's Doubles",
+  "35+ Women's Singles",
+  "35+ Women's Doubles",
+  "35+ Mixed Doubles",
+
+  "50+ Men's Singles",
+  "50+ Men's Doubles",
+  "50+ Women's Singles",
+  "50+ Women's Doubles",
+  "50+ Mixed Doubles",
+
+  "Split Age 35+",
+  "Split Age 40+",
+  "Split Age 50+",
+
+  "Men's Singles 60+",
+  "Men's Doubles 60+",
+
+  "Team Event",
 ];
 
 const categorySchema = Joi.object({
@@ -22,6 +44,13 @@ const categorySchema = Joi.object({
     .messages({
       'any.only': 'Invalid category',
       'any.required': 'Category name is required',
+    }),
+  date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .required()
+    .messages({
+      'any.required': 'Category date is required',
+      'string.pattern.base': 'Date must be in YYYY-MM-DD format',
     }),
   medal: Joi.string().valid('None', 'Gold', 'Silver', 'Bronze').required().messages({
     'any.only': 'Medal must be None, Gold, Silver, or Bronze',
@@ -56,10 +85,6 @@ const tournamentSchema = Joi.object({
       'array.min': 'At least one category is required',
       'any.required': 'Categories are required',
     }),
-  date: Joi.date().required().messages({
-    'any.required': 'Date is required',
-    'date.base': 'Please provide a valid date',
-  }),
 });
 
 const validate = (schema) => (req, res, next) => {

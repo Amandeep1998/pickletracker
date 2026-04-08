@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { CATEGORIES, MEDALS } from '../utils/format';
+import SearchableSelect from './SearchableSelect';
 
 const EMPTY_CATEGORY = {
   categoryName: '',
+  date: '',
   medal: 'None',
   prizeAmount: '',
   entryFee: '',
@@ -11,7 +13,6 @@ const EMPTY_CATEGORY = {
 const EMPTY_FORM = {
   name: '',
   categories: [{ ...EMPTY_CATEGORY }],
-  date: '',
 };
 
 export default function TournamentForm({ initial, onSubmit, onCancel, loading }) {
@@ -24,11 +25,11 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         name: initial.name || '',
         categories: (initial.categories || [{ ...EMPTY_CATEGORY }]).map((cat) => ({
           categoryName: cat.categoryName || '',
+          date: cat.date || '',
           medal: cat.medal || 'None',
           prizeAmount: cat.prizeAmount ?? '',
           entryFee: cat.entryFee ?? '',
         })),
-        date: initial.date ? initial.date.slice(0, 10) : '',
       });
     }
   }, [initial]);
@@ -72,11 +73,11 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
   const validate = () => {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Tournament name is required';
-    if (!form.date) errs.date = 'Date is required';
     if (form.categories.length === 0) errs.categories = 'At least one category is required';
 
     form.categories.forEach((cat, idx) => {
       if (!cat.categoryName) errs[`cat_${idx}_categoryName`] = 'Category is required';
+      if (!cat.date) errs[`cat_${idx}_date`] = 'Category date is required';
       if (cat.entryFee === '' || Number(cat.entryFee) < 0) {
         errs[`cat_${idx}_entryFee`] = 'Entry fee must be 0 or more';
       }
@@ -102,11 +103,11 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
       name: form.name.trim(),
       categories: form.categories.map((cat) => ({
         categoryName: cat.categoryName,
+        date: cat.date,
         medal: cat.medal,
         prizeAmount: Number(cat.prizeAmount) || 0,
         entryFee: Number(cat.entryFee),
       })),
-      date: form.date,
     });
   };
 
@@ -131,20 +132,6 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         />
         {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
       </div>
-
-      {/* Date */}
-      <div>
-        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Date</label>
-        <input
-          type="date"
-          name="date"
-          value={form.date}
-          onChange={handleChange}
-          className="w-full border border-gray-300 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-        />
-        {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
-      </div>
-
 
       {/* Categories */}
       <div className="border-t pt-3 sm:pt-4">
@@ -179,20 +166,30 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 Category Name
               </label>
-              <select
+              <SearchableSelect
+                options={CATEGORIES}
                 value={cat.categoryName}
-                onChange={(e) => handleCategoryChange(idx, 'categoryName', e.target.value)}
-                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-              >
-                <option value="">Select category</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => handleCategoryChange(idx, 'categoryName', value)}
+                placeholder="Search category..."
+              />
               {errors[`cat_${idx}_categoryName`] && (
                 <p className="text-red-500 text-xs mt-1">{errors[`cat_${idx}_categoryName`]}</p>
+              )}
+            </div>
+
+            {/* Category Date */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Category Date
+              </label>
+              <input
+                type="date"
+                value={cat.date}
+                onChange={(e) => handleCategoryChange(idx, 'date', e.target.value)}
+                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+              {errors[`cat_${idx}_date`] && (
+                <p className="text-red-500 text-xs mt-1">{errors[`cat_${idx}_date`]}</p>
               )}
             </div>
 
@@ -285,7 +282,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
           disabled={loading}
           className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-2 sm:py-2.5 min-h-[40px] rounded-lg text-xs sm:text-sm transition-colors"
         >
-          {loading ? 'Saving...' : initial ? 'Update Tournament' : 'Add Tournament'}
+          {loading ? 'Saving...' : 'Save'}
         </button>
         {onCancel && (
           <button

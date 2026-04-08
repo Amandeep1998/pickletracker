@@ -31,6 +31,13 @@ export const CATEGORIES = [
   "50+ Women's Doubles",
   "50+ Mixed Doubles",
 
+  "Split Age 35+",
+  "Split Age 40+",
+  "Split Age 50+",
+
+  "Men's Singles 60+",
+  "Men's Doubles 60+",
+
   "Team Event",
 ];
 
