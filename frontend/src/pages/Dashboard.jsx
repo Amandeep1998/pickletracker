@@ -20,6 +20,18 @@ const MONTHS = [
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
+// Helper: Get earliest date from tournament's categories (for sorting/filtering)
+const getTournamentDate = (tournament) => {
+  if (!tournament?.categories || tournament.categories.length === 0) {
+    return null;
+  }
+  const dates = tournament.categories
+    .map((cat) => cat.date)
+    .filter((date) => date); // Filter out undefined/null dates
+  if (dates.length === 0) return null;
+  return dates.sort()[0]; // Return earliest date (lexicographic sort works for YYYY-MM-DD)
+};
+
 export default function Dashboard() {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,8 +49,12 @@ export default function Dashboard() {
 
   const filtered = useMemo(() => {
     return tournaments.filter((t) => {
+      // Get earliest date from categories
+      const dateStr = getTournamentDate(t);
+      if (!dateStr) return false; // Skip tournaments with no valid dates
+
       // Parse date string (YYYY-MM-DD) to avoid timezone issues
-      const [year, month] = t.date.split('-');
+      const [year, month] = dateStr.split('-');
       if (filterYear && year !== filterYear) return false;
       if (filterMonth !== '' && String(Number(month) - 1) !== filterMonth) return false;
       return true;
@@ -59,12 +75,15 @@ export default function Dashboard() {
 
   // Build monthly chart data for the selected year
   const chartData = useMemo(() => {
-    const yearData = tournaments.filter(
-      (t) => t.date.startsWith(filterYear)
-    );
+    const yearData = tournaments.filter((t) => {
+      const dateStr = getTournamentDate(t);
+      return dateStr?.startsWith(filterYear);
+    });
     return MONTHS.map((month, idx) => {
       const monthTournaments = yearData.filter((t) => {
-        const [, m] = t.date.split('-');
+        const dateStr = getTournamentDate(t);
+        if (!dateStr) return false;
+        const [, m] = dateStr.split('-');
         return Number(m) - 1 === idx;
       });
       const expenses = monthTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0);
