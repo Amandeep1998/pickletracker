@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 
 export default function Login() {
-  const { user, handleLogin, loading } = useAuth();
+  const { user, handleLogin, loading, error: contextError, clearError } = useAuth();
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ email: '', password: '' });
@@ -19,11 +20,13 @@ export default function Login() {
   const handleChange = (e) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setError('');
+    clearError();
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    clearError();
     const result = await handleLogin(form);
     if (result.success) {
       navigate('/dashboard');
@@ -56,9 +59,9 @@ export default function Login() {
             <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
           </div>
 
-        {error && (
+        {(error || contextError) && (
           <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-            {error}
+            {error || contextError}
           </div>
         )}
 
@@ -97,6 +100,23 @@ export default function Login() {
             {loading ? 'Signing in...' : 'Log In'}
           </button>
         </form>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-white px-2 text-gray-500">Or</span>
+          </div>
+        </div>
+
+        <GoogleSignInButton
+          onBegin={() => {
+            setError('');
+            clearError();
+          }}
+          onSuccess={() => navigate('/dashboard')}
+        />
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Don't have an account?{' '}

@@ -83,7 +83,7 @@ export default function MobileMenu() {
           {user && (
             <>
               <p className="text-xs text-gray-500 mb-2">Logged in as</p>
-              <p className="text-sm font-medium text-gray-900 mb-4 truncate">{user.username}</p>
+              <p className="text-sm font-medium text-gray-900 mb-4 truncate">{user.name}</p>
             </>
           )}
           <button

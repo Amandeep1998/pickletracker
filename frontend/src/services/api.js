@@ -31,6 +31,7 @@ api.interceptors.response.use(
 // Auth
 export const signup = (data) => api.post('/auth/signup', data);
 export const login = (data) => api.post('/auth/login', data);
+export const loginWithGoogle = (data) => api.post('/auth/google', data);
 
 // Tournaments
 export const getTournaments = () => api.get('/tournaments');

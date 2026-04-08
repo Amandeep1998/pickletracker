@@ -2,13 +2,12 @@ const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema(
   {
-    username: {
+    name: {
       type: String,
-      required: [true, 'Username is required'],
-      unique: true,
+      required: [true, 'Name is required'],
       trim: true,
-      minlength: 3,
-      maxlength: 30,
+      minlength: [1, 'Name cannot be empty'],
+      maxlength: [200, 'Name is too long'],
     },
     email: {
       type: String,
@@ -19,7 +18,18 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      default: null,
+      validate: {
+        validator(v) {
+          if (v === null || v === undefined) return true;
+          return typeof v === 'string' && v.length > 0;
+        },
+        message: 'Invalid password value',
+      },
+    },
+    isGoogleUser: {
+      type: Boolean,
+      default: false,
     },
   },
   {

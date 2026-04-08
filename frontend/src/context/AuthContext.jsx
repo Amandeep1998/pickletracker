@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import * as api from '../services/api';
+import { signInWithGoogleAndGetCredentials } from '../services/firebase';
 
 const AuthContext = createContext(null);
 
@@ -39,7 +40,39 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       return { success: true };
     } catch (err) {
-      const msg = err.response?.data?.message || 'Login failed';
+      const msg =
+        err.response?.data?.errors?.[0] ||
+        err.response?.data?.message ||
+        'Login failed';
+      setError(msg);
+      return { success: false, message: msg };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { idToken, name, email } = await signInWithGoogleAndGetCredentials();
+      const res = await api.loginWithGoogle({ idToken, name, email });
+      const { token, user: userData } = res.data;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
+      return { success: true };
+    } catch (err) {
+      if (err?.code === 'auth/popup-closed-by-user') {
+        const msg = 'Sign-in was cancelled';
+        setError(msg);
+        return { success: false, message: msg };
+      }
+      const msg =
+        err.response?.data?.errors?.[0] ||
+        err.response?.data?.message ||
+        err.message ||
+        'Google sign-in failed';
       setError(msg);
       return { success: false, message: msg };
     } finally {
@@ -55,7 +88,16 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, error, clearError, handleSignup, handleLogin, handleLogout }}
+      value={{
+        user,
+        loading,
+        error,
+        clearError,
+        handleSignup,
+        handleLogin,
+        handleGoogleLogin,
+        handleLogout,
+      }}
     >
       {children}
     </AuthContext.Provider>

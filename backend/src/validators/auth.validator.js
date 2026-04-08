@@ -1,10 +1,10 @@
 const Joi = require('joi');
 
 const signupSchema = Joi.object({
-  username: Joi.string().min(3).max(30).required().messages({
-    'string.min': 'Username must be at least 3 characters',
-    'string.max': 'Username cannot exceed 30 characters',
-    'any.required': 'Username is required',
+  name: Joi.string().min(1).max(200).required().messages({
+    'string.min': 'Name is required',
+    'string.max': 'Name cannot exceed 200 characters',
+    'any.required': 'Name is required',
   }),
   email: Joi.string().email().required().messages({
     'string.email': 'Please provide a valid email',
@@ -26,6 +26,15 @@ const loginSchema = Joi.object({
   }),
 });
 
+const googleAuthSchema = Joi.object({
+  idToken: Joi.string().required().messages({
+    'any.required': 'Google credential is required',
+    'string.empty': 'Google credential is required',
+  }),
+  name: Joi.string().max(200).allow('').optional(),
+  email: Joi.string().email().optional(),
+});
+
 const validate = (schema) => (req, res, next) => {
   const { error } = schema.validate(req.body, { abortEarly: false, stripUnknown: true });
   if (error) {
@@ -35,4 +44,4 @@ const validate = (schema) => (req, res, next) => {
   next();
 };
 
-module.exports = { signupSchema, loginSchema, validate };
+module.exports = { signupSchema, loginSchema, googleAuthSchema, validate };

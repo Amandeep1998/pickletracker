@@ -3,19 +3,19 @@ const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const app = require('../server');
 
-const userPayload = { username: 'player1', email: 'player1@example.com', password: 'password123' };
+const userPayload = { name: 'Player One', email: 'player1@example.com', password: 'password123' };
 
 const validTournament = {
   name: 'City Open 2024',
   categories: [
     {
-      categoryName: "Men's Singles",
+      categoryName: "Men's Singles Open",
+      date: '2024-06-15',
       medal: 'Gold',
       prizeAmount: 5000,
       entryFee: 500,
     },
   ],
-  date: '2024-06-15',
 };
 
 let token;
@@ -49,7 +49,7 @@ describe('Tournament - Auth Guards', () => {
 
   it('should return 401 for expired token', async () => {
     const expiredToken = jwt.sign(
-      { id: 'someId', username: 'test', email: 'test@test.com' },
+      { id: 'someId', name: 'test', email: 'test@test.com', isGoogleUser: false },
       process.env.JWT_SECRET || 'test-secret',
       { expiresIn: '-1s' }
     );
@@ -167,12 +167,16 @@ describe('Tournament - POST /api/tournaments', () => {
     expect(res.status).toBe(400);
   });
 
-  it('should return 400 when date is missing', async () => {
-    const { date, ...noDate } = validTournament;
+  it('should return 400 when category date is missing', async () => {
+    const cat = { ...validTournament.categories[0] };
+    delete cat.date;
     const res = await request(app)
       .post('/api/tournaments')
       .set('Authorization', `Bearer ${token}`)
-      .send(noDate);
+      .send({
+        ...validTournament,
+        categories: [cat],
+      });
     expect(res.status).toBe(400);
   });
 
@@ -184,7 +188,8 @@ describe('Tournament - POST /api/tournaments', () => {
         ...validTournament,
         categories: [
           {
-            categoryName: "Men's Singles",
+            categoryName: "Men's Singles Open",
+            date: '2024-06-15',
             medal: 'Gold',
             prizeAmount: 999999.99,
             entryFee: 1000.50,

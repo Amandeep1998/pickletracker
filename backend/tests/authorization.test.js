@@ -2,20 +2,20 @@ require('./setup');
 const request = require('supertest');
 const app = require('../server');
 
-const userA = { username: 'playerA', email: 'playerA@example.com', password: 'password123' };
-const userB = { username: 'playerB', email: 'playerB@example.com', password: 'password123' };
+const userA = { name: 'Player A', email: 'playerA@example.com', password: 'password123' };
+const userB = { name: 'Player B', email: 'playerB@example.com', password: 'password123' };
 
 const validTournament = {
   name: 'Regional Championship',
   categories: [
     {
       categoryName: "Women's Doubles",
+      date: '2024-07-20',
       medal: 'Silver',
       prizeAmount: 3000,
       entryFee: 400,
     },
   ],
-  date: '2024-07-20',
 };
 
 const getToken = async (user) => {

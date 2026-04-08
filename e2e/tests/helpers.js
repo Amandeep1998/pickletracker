@@ -6,7 +6,7 @@
 export const uniqueUser = () => {
   const id = Date.now();
   return {
-    username: `player${id}`,
+    name: `Player ${id}`,
     email: `player${id}@test.com`,
     password: 'password123',
   };
@@ -30,7 +30,7 @@ export const validTournament = {
  */
 export async function signupUser(page, user) {
   await page.goto('/signup');
-  await page.getByLabel('Username').fill(user.username);
+  await page.getByLabel('Name').fill(user.name);
   await page.getByLabel('Email').fill(user.email);
   await page.getByLabel('Password').fill(user.password);
   await page.getByRole('button', { name: /sign up/i }).click();

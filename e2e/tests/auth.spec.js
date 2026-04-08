@@ -6,7 +6,7 @@ test.describe('Auth — Signup', () => {
     const user = uniqueUser();
     await page.goto('/signup');
 
-    await page.getByLabel('Username').fill(user.username);
+    await page.getByLabel('Name').fill(user.name);
     await page.getByLabel('Email').fill(user.email);
     await page.getByLabel('Password').fill(user.password);
     await page.getByRole('button', { name: /sign up/i }).click();
@@ -20,9 +20,9 @@ test.describe('Auth — Signup', () => {
     const user = uniqueUser();
     await signupUser(page, user);
 
-    // Try signing up again with same email, different username
+    // Try signing up again with same email, different name
     await page.goto('/signup');
-    await page.getByLabel('Username').fill(`other_${user.username}`);
+    await page.getByLabel('Name').fill(`Other ${user.name}`);
     await page.getByLabel('Email').fill(user.email);
     await page.getByLabel('Password').fill(user.password);
     await page.getByRole('button', { name: /sign up/i }).click();
@@ -31,24 +31,11 @@ test.describe('Auth — Signup', () => {
     await expect(page).toHaveURL(/\/signup/);
   });
 
-  test('signup with duplicate username shows error', async ({ page }) => {
-    const user = uniqueUser();
-    await signupUser(page, user);
-
-    await page.goto('/signup');
-    await page.getByLabel('Username').fill(user.username);
-    await page.getByLabel('Email').fill(`other_${user.email}`);
-    await page.getByLabel('Password').fill(user.password);
-    await page.getByRole('button', { name: /sign up/i }).click();
-
-    await expect(page.getByText(/username already taken/i)).toBeVisible();
-  });
-
   test('signup with short password shows validation error', async ({ page }) => {
     const user = uniqueUser();
     await page.goto('/signup');
 
-    await page.getByLabel('Username').fill(user.username);
+    await page.getByLabel('Name').fill(user.name);
     await page.getByLabel('Email').fill(user.email);
     await page.getByLabel('Password').fill('123');
     await page.getByRole('button', { name: /sign up/i }).click();
@@ -140,10 +127,10 @@ test.describe('Auth — Logout', () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test('navbar shows the logged-in username', async ({ page }) => {
+  test('navbar shows the logged-in user name', async ({ page }) => {
     const user = uniqueUser();
     await signupAndLogin(page, user);
 
-    await expect(page.getByText(new RegExp(`hi, ${user.username}`, 'i'))).toBeVisible();
+    await expect(page.getByRole('navigation').getByText(user.name)).toBeVisible();
   });
 });

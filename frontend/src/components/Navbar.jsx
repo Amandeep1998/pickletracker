@@ -49,7 +49,7 @@ export default function Navbar() {
         {/* Desktop User + Logout - Hidden on Mobile */}
         <div className="hidden md:flex items-center gap-4 flex-shrink-0">
           <span className="text-sm text-gray-600">
-            {user?.username}
+            {user?.name}
           </span>
           <button
             onClick={logout}
