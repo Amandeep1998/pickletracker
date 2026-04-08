@@ -315,7 +315,7 @@ export default function Calendar() {
                       <p className="font-medium">{formatINR(cat.entryFee)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Winning Prize</p>
+                      <p className="text-xs text-gray-500">Amount Won</p>
                       <p className="font-medium">{formatINR(cat.prizeAmount)}</p>
                     </div>
                     <div>

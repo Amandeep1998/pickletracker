@@ -173,7 +173,7 @@ export default function Tournaments() {
                         <p className="text-xs sm:text-sm font-medium text-gray-700">{formatINR(cat.entryFee)}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-400">Winning Prize</p>
+                        <p className="text-xs text-gray-400">Amount Won</p>
                         <p className="text-xs sm:text-sm font-medium text-gray-700">{formatINR(cat.prizeAmount)}</p>
                       </div>
                       <div>
