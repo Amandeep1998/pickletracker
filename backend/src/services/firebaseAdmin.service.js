@@ -5,6 +5,7 @@ const admin = require('firebase-admin');
 /**
  * Initializes Firebase Admin once. First match wins:
  * - FIREBASE_SERVICE_ACCOUNT_JSON: full JSON string of a service account key (good for PaaS)
+ * - FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 or FIREBASE_SERVICE_ACCOUNT_BASE64: base64 of that JSON
  * - FIREBASE_SERVICE_ACCOUNT_PATH: path to a service account JSON file (good for local dev)
  * - GOOGLE_APPLICATION_CREDENTIALS: path to a service account JSON file (Google default env)
  */
@@ -27,7 +28,8 @@ function getFirebaseAdmin() {
     }
   }
 
-  const b64 = process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64;
+  const b64 =
+    process.env.FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 || process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
   if (b64) {
     try {
       const raw = Buffer.from(b64.trim(), 'base64').toString('utf8');
@@ -37,7 +39,7 @@ function getFirebaseAdmin() {
       });
       return admin;
     } catch (err) {
-      console.warn('[Firebase Admin] FIREBASE_SERVICE_ACCOUNT_JSON_BASE64 invalid:', err.message);
+      console.warn('[Firebase Admin] Firebase service account base64 env invalid:', err.message);
       return null;
     }
   }
