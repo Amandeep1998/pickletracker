@@ -41,20 +41,20 @@ export default function MobileMenu() {
 
       {/* Sidebar */}
       <div
-        className={`fixed left-0 top-16 h-screen w-64 bg-white shadow-lg z-50 transform transition-transform duration-300 md:hidden ${
+        className={`fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-white shadow-lg z-50 transform transition-transform duration-300 md:hidden flex flex-col ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Close Button */}
         <button
           onClick={() => setIsOpen(false)}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl z-10"
         >
           ✕
         </button>
 
         {/* Navigation Links */}
-        <nav className="pt-8 space-y-1">
+        <nav className="flex-1 pt-8 space-y-1 overflow-y-auto">
           <NavLink
             to="/dashboard"
             className={navLinkClass}
@@ -78,17 +78,17 @@ export default function MobileMenu() {
           </NavLink>
         </nav>
 
-        {/* User Info */}
-        <div className="absolute bottom-0 left-0 right-0 border-t border-gray-200 bg-gray-50 p-4">
+        {/* User Info & Logout - Always at Bottom */}
+        <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50 p-4">
           {user && (
             <>
-              <p className="text-xs text-gray-500 mb-3">Logged in as</p>
+              <p className="text-xs text-gray-500 mb-2">Logged in as</p>
               <p className="text-sm font-medium text-gray-900 mb-4 truncate">{user.username}</p>
             </>
           )}
           <button
             onClick={handleLogoutClick}
-            className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 rounded-lg text-sm transition-colors"
+            className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 min-h-[40px] rounded-lg text-sm transition-colors"
           >
             Logout
           </button>
