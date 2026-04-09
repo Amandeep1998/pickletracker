@@ -6,6 +6,19 @@ import * as api from '../services/api';
 import TournamentForm from '../components/TournamentForm';
 import { formatINR } from '../utils/format';
 import { getMapUrl } from '../utils/mapUrl';
+import { connectGoogleCalendar } from '../services/firebase';
+import { isCalendarConnected, disconnectCalendar } from '../services/googleCalendar';
+
+const CalendarIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" strokeWidth="2" fill="white" />
+    <path d="M3 9h18" stroke="#4285F4" strokeWidth="2" />
+    <path d="M8 2v4M16 2v4" stroke="#4285F4" strokeWidth="2" strokeLinecap="round" />
+    <rect x="7" y="13" width="3" height="3" rx="0.5" fill="#EA4335" />
+    <rect x="11" y="13" width="3" height="3" rx="0.5" fill="#34A853" />
+    <rect x="15" y="13" width="3" height="3" rx="0.5" fill="#FBBC05" />
+  </svg>
+);
 
 export default function Calendar() {
   const [tournaments, setTournaments] = useState([]);
@@ -15,7 +28,28 @@ export default function Calendar() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+  const [calendarConnected, setCalendarConnected] = useState(isCalendarConnected);
+  const [calendarLoading, setCalendarLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handleConnectCalendar = async () => {
+    setCalendarLoading(true);
+    try {
+      await connectGoogleCalendar();
+      setCalendarConnected(true);
+    } catch (err) {
+      if (err?.code !== 'auth/popup-closed-by-user') {
+        alert('Failed to connect Google Calendar. Please try again.');
+      }
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
+
+  const handleDisconnectCalendar = () => {
+    disconnectCalendar();
+    setCalendarConnected(false);
+  };
 
   useEffect(() => {
     fetchTournaments();
@@ -149,6 +183,50 @@ export default function Calendar() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-6">Tournament Calendar</h1>
+
+      {/* Google Calendar Connect */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 mb-6">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <CalendarIcon />
+            <div>
+              <p className="text-sm font-medium text-gray-900">Google Calendar</p>
+              <p className="text-xs text-gray-500">
+                {calendarConnected
+                  ? 'New & edited tournaments sync automatically'
+                  : 'Connect to sync future tournaments to your calendar'}
+              </p>
+            </div>
+          </div>
+          {calendarConnected ? (
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <span className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
+                <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                Connected
+              </span>
+              <button
+                onClick={handleDisconnectCalendar}
+                className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+              >
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleConnectCalendar}
+              disabled={calendarLoading}
+              className="flex-shrink-0 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-md transition-colors flex items-center gap-2 shadow-sm disabled:opacity-60"
+            >
+              {calendarLoading ? 'Connecting...' : 'Connect'}
+            </button>
+          )}
+        </div>
+        {calendarConnected && (
+          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-3">
+            Only tournaments added or edited after connecting will appear in Google Calendar. Existing tournaments are not synced retroactively.
+          </p>
+        )}
+      </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
         <style>{`
