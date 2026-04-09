@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import 'react-calendar/dist/Calendar.css';
 import * as api from '../services/api';
 import TournamentForm from '../components/TournamentForm';
+import AddTournamentButton from '../components/AddTournamentButton';
 import { formatINR } from '../utils/format';
 import { getMapUrl } from '../utils/mapUrl';
 import { connectGoogleCalendar } from '../services/firebase';
@@ -118,29 +119,14 @@ export default function Calendar() {
     setAddError('');
   };
 
-  // Tile content: "+" button (shown on hover) + event chips
+  // Tile content: event chips + always-visible add button (bottom-right)
   const tileContent = ({ date }) => {
     const dateStr = dateToString(date);
     const eventsOnDate = eventsByDate[dateStr] || [];
 
     return (
-      <div className="relative w-full h-full flex flex-col justify-start pt-1 text-left">
-        {/* "+" add button — visible on tile hover via CSS */}
-        <div
-          role="button"
-          tabIndex={0}
-          className="tile-add-btn absolute top-0 right-0 w-5 h-5 rounded-full bg-green-500 text-white text-base leading-none flex items-center justify-center hover:bg-green-600 transition-all z-10 cursor-pointer select-none"
-          title="Add Tournament"
-          aria-label="Add tournament on this date"
-          onClick={(e) => openAddModal(dateStr, e)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') openAddModal(dateStr, e);
-          }}
-        >
-          +
-        </div>
-
-        {/* Event chips */}
+      // pb-8 reserves space so event chips never slide under the add button
+      <div className="relative w-full h-full flex flex-col justify-start pt-1 pb-8 text-left">
         {eventsOnDate.slice(0, 2).map((event, idx) => (
           <div
             key={`${event.tournament._id}-${idx}`}
@@ -165,6 +151,8 @@ export default function Calendar() {
             +{eventsOnDate.length - 2} more
           </div>
         )}
+
+        <AddTournamentButton onClick={(e) => openAddModal(dateStr, e)} />
       </div>
     );
   };
@@ -371,14 +359,6 @@ export default function Calendar() {
           .react-calendar__tile--active {
             background-color: #0ea5e9 !important;
             color: white !important;
-          }
-
-          /* "+" add button: hidden by default, fade in on tile hover */
-          .react-calendar__tile .tile-add-btn {
-            opacity: 0;
-          }
-          .react-calendar__tile:hover .tile-add-btn {
-            opacity: 1;
           }
         `}</style>
 
