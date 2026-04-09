@@ -87,6 +87,12 @@ const tournamentSchema = new mongoose.Schema(
       required: [true, 'Tournament name is required'],
       trim: true,
     },
+    location: {
+      name: { type: String, default: null },
+      address: { type: String, default: null },
+      lat: { type: Number, default: null },
+      lng: { type: Number, default: null },
+    },
     categories: {
       type: [categorySchema],
       required: [true, 'At least one category is required'],

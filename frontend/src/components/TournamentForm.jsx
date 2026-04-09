@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CATEGORIES, MEDALS } from '../utils/format';
 import SearchableSelect from './SearchableSelect';
+import LocationAutocomplete from './LocationAutocomplete';
 
 const EMPTY_CATEGORY = {
   categoryName: '',
@@ -12,6 +13,7 @@ const EMPTY_CATEGORY = {
 
 const EMPTY_FORM = {
   name: '',
+  location: null,
   categories: [{ ...EMPTY_CATEGORY }],
 };
 
@@ -23,6 +25,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
     if (initial) {
       setForm({
         name: initial.name || '',
+        location: initial.location || null,
         categories: (initial.categories || [{ ...EMPTY_CATEGORY }]).map((cat) => ({
           categoryName: cat.categoryName || '',
           date: cat.date || '',
@@ -101,6 +104,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
     }
     onSubmit({
       name: form.name.trim(),
+      location: form.location || undefined,
       categories: form.categories.map((cat) => ({
         categoryName: cat.categoryName,
         date: cat.date,
@@ -131,6 +135,21 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
           placeholder="e.g. City Open 2024"
         />
         {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+      </div>
+
+      {/* Location */}
+      <div>
+        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+          Location <span className="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <LocationAutocomplete
+          value={form.location}
+          onSelect={(place) => setForm((prev) => ({ ...prev, location: place }))}
+          onClear={() => setForm((prev) => ({ ...prev, location: null }))}
+        />
+        {form.location?.address && (
+          <p className="text-xs text-gray-500 mt-1 truncate">{form.location.address}</p>
+        )}
       </div>
 
       {/* Categories */}

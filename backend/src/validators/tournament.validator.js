@@ -78,6 +78,12 @@ const tournamentSchema = Joi.object({
     'any.required': 'Tournament name is required',
     'string.empty': 'Tournament name cannot be empty',
   }),
+  location: Joi.object({
+    name: Joi.string().allow(null, '').optional(),
+    address: Joi.string().allow(null, '').optional(),
+    lat: Joi.number().allow(null).optional(),
+    lng: Joi.number().allow(null).optional(),
+  }).optional(),
   categories: Joi.array()
     .items(categorySchema)
     .min(1)
