@@ -7,6 +7,7 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import Tournaments from './pages/Tournaments';
 import Calendar from './pages/Calendar';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
 
         {/* Protected routes */}
         <Route element={<PrivateRoute />}>
