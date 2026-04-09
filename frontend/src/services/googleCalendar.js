@@ -70,10 +70,15 @@ function buildEvent(tournamentName, cat, location) {
     `Profit: ₹${cat.prizeAmount - cat.entryFee}`,
   ];
 
-  if (location?.lat && location?.lng) {
+  if (location?.name || location?.address) {
     lines.push('');
     lines.push('Tournament Location:');
-    lines.push(`https://www.google.com/maps?q=${location.lat},${location.lng}`);
+    if (location.placeId) {
+      lines.push(`https://www.google.com/maps/place/?q=place_id:${location.placeId}`);
+    } else {
+      const query = [location.name, location.address].filter(Boolean).join(' ');
+      lines.push(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`);
+    }
   }
 
   const event = {

@@ -5,6 +5,7 @@ import 'react-calendar/dist/Calendar.css';
 import * as api from '../services/api';
 import TournamentForm from '../components/TournamentForm';
 import { formatINR } from '../utils/format';
+import { getMapUrl } from '../utils/mapUrl';
 
 export default function Calendar() {
   const [tournaments, setTournaments] = useState([]);
@@ -298,9 +299,9 @@ export default function Calendar() {
                       {selectedTournament.location.address && (
                         <p className="text-xs text-gray-500 truncate">{selectedTournament.location.address}</p>
                       )}
-                      {selectedTournament.location.lat && selectedTournament.location.lng && (
+                      {getMapUrl(selectedTournament.location) && (
                         <a
-                          href={`https://www.google.com/maps?q=${selectedTournament.location.lat},${selectedTournament.location.lng}`}
+                          href={getMapUrl(selectedTournament.location)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-blue-500 hover:text-blue-700 hover:underline"

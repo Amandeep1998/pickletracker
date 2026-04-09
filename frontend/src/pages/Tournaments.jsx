@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import * as api from '../services/api';
 import TournamentForm from '../components/TournamentForm';
 import { formatINR, MEDAL_COLORS } from '../utils/format';
+import { getMapUrl } from '../utils/mapUrl';
 import { syncTournamentToCalendar, deleteTournamentFromCalendar, isCalendarConnected } from '../services/googleCalendar';
 
 export default function Tournaments() {
@@ -200,9 +201,9 @@ export default function Tournaments() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       <span className="text-xs text-gray-500 truncate">{t.location.name}</span>
-                      {t.location.lat && t.location.lng && (
+                      {getMapUrl(t.location) && (
                         <a
-                          href={`https://www.google.com/maps?q=${t.location.lat},${t.location.lng}`}
+                          href={getMapUrl(t.location)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-blue-500 hover:text-blue-700 hover:underline flex-shrink-0"

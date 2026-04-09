@@ -83,6 +83,7 @@ const tournamentSchema = Joi.object({
     address: Joi.string().allow(null, '').optional(),
     lat: Joi.number().allow(null).optional(),
     lng: Joi.number().allow(null).optional(),
+    placeId: Joi.string().allow(null, '').optional(),
   }).optional(),
   categories: Joi.array()
     .items(categorySchema)

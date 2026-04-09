@@ -92,6 +92,7 @@ const tournamentSchema = new mongoose.Schema(
       address: { type: String, default: null },
       lat: { type: Number, default: null },
       lng: { type: Number, default: null },
+      placeId: { type: String, default: null },
     },
     categories: {
       type: [categorySchema],

@@ -27,6 +27,7 @@ export default function LocationAutocomplete({ value, onSelect, onClear }) {
       address: place.formatted_address || '',
       lat: place.geometry.location.lat(),
       lng: place.geometry.location.lng(),
+      placeId: place.place_id || null,
     };
 
     setInputValue(selected.name);
@@ -65,7 +66,7 @@ export default function LocationAutocomplete({ value, onSelect, onClear }) {
         options={{
           componentRestrictions: { country: 'in' },
           types: ['establishment'],
-          fields: ['name', 'formatted_address', 'geometry'],
+          fields: ['name', 'formatted_address', 'geometry', 'place_id'],
         }}
       >
         <input
