@@ -70,6 +70,13 @@ export default function MobileMenu() {
             Tournaments
           </NavLink>
           <NavLink
+            to="/expenses"
+            className={navLinkClass}
+            onClick={() => setIsOpen(false)}
+          >
+            Expenses
+          </NavLink>
+          <NavLink
             to="/calendar"
             className={navLinkClass}
             onClick={() => setIsOpen(false)}

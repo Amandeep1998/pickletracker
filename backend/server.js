@@ -6,6 +6,7 @@ const helmet = require('helmet');
 const connectDB = require('./src/config/db');
 const authRoutes = require('./src/routes/auth.routes');
 const tournamentRoutes = require('./src/routes/tournament.routes');
+const expenseRoutes = require('./src/routes/expense.routes');
 const errorHandler = require('./src/middleware/error.middleware');
 
 const app = express();
@@ -16,6 +17,7 @@ app.use(express.json({ limit: '10kb' }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tournaments', tournamentRoutes);
+app.use('/api/expenses', expenseRoutes);
 
 app.use(errorHandler);
 

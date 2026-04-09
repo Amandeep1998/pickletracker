@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import * as api from '../services/api';
 import TournamentForm from '../components/TournamentForm';
+import Modal from '../components/Modal';
 import { formatINR, MEDAL_COLORS } from '../utils/format';
 import { getMapUrl } from '../utils/mapUrl';
 import { syncTournamentToCalendar, deleteTournamentFromCalendar, isCalendarConnected } from '../services/googleCalendar';
@@ -9,10 +10,13 @@ export default function Tournaments() {
   const [tournaments, setTournaments] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
-  const [showAdd, setShowAdd] = useState(false);
-  const [editingItem, setEditingItem] = useState(null);
   const [apiError, setApiError] = useState('');
   const [deleteId, setDeleteId] = useState(null);
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [mode, setMode] = useState('add'); // 'add' | 'edit'
+  const [selectedTournament, setSelectedTournament] = useState(null);
 
   const fetchTournaments = async () => {
     try {
@@ -29,6 +33,26 @@ export default function Tournaments() {
     fetchTournaments();
   }, []);
 
+  const openAddModal = () => {
+    setMode('add');
+    setSelectedTournament(null);
+    setApiError('');
+    setModalOpen(true);
+  };
+
+  const openEditModal = (tournament) => {
+    setMode('edit');
+    setSelectedTournament(tournament);
+    setApiError('');
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setSelectedTournament(null);
+    setApiError('');
+  };
+
   const handleAdd = async (data) => {
     setFormLoading(true);
     setApiError('');
@@ -36,7 +60,6 @@ export default function Tournaments() {
       const res = await api.createTournament(data);
       const created = res.data.data;
 
-      // Sync to Google Calendar if connected
       if (isCalendarConnected()) {
         try {
           const eventResults = await syncTournamentToCalendar(created);
@@ -48,11 +71,11 @@ export default function Tournaments() {
             await api.updateTournament(created._id, { ...created, categories: updatedCategories });
           }
         } catch {
-          // Calendar sync failure is silent — tournament was saved successfully
+          // Calendar sync failure is silent
         }
       }
 
-      setShowAdd(false);
+      closeModal();
       fetchTournaments();
     } catch (err) {
       const msg =
@@ -67,19 +90,17 @@ export default function Tournaments() {
     setFormLoading(true);
     setApiError('');
     try {
-      // Preserve existing calendarEventIds when submitting edit
       const dataWithCalendarIds = {
         ...data,
         categories: data.categories.map((cat, i) => ({
           ...cat,
-          calendarEventId: editingItem.categories[i]?.calendarEventId || null,
+          calendarEventId: selectedTournament.categories[i]?.calendarEventId || null,
         })),
       };
 
-      const res = await api.updateTournament(editingItem._id, dataWithCalendarIds);
+      const res = await api.updateTournament(selectedTournament._id, dataWithCalendarIds);
       const updated = res.data.data;
 
-      // Sync to Google Calendar if connected
       if (isCalendarConnected()) {
         try {
           const eventResults = await syncTournamentToCalendar(updated);
@@ -95,7 +116,7 @@ export default function Tournaments() {
         }
       }
 
-      setEditingItem(null);
+      closeModal();
       fetchTournaments();
     } catch (err) {
       const msg =
@@ -108,14 +129,12 @@ export default function Tournaments() {
 
   const handleDelete = async (id) => {
     try {
-      // Delete calendar events first if connected
       if (isCalendarConnected()) {
         const tournament = tournaments.find((t) => t._id === id);
         if (tournament) {
           await deleteTournamentFromCalendar(tournament).catch(() => {});
         }
       }
-
       await api.deleteTournament(id);
       setDeleteId(null);
       fetchTournaments();
@@ -126,56 +145,24 @@ export default function Tournaments() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6">
         <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Tournaments</h1>
-        {!showAdd && !editingItem && (
-          <button
-            onClick={() => setShowAdd(true)}
-            className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm font-semibold px-4 py-2 min-h-[40px] rounded-lg transition-colors"
-          >
-            + Add Tournament
-          </button>
-        )}
+        <button
+          onClick={openAddModal}
+          className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm font-semibold px-4 py-2 min-h-[40px] rounded-lg transition-colors"
+        >
+          + Add Tournament
+        </button>
       </div>
 
-      {apiError && (
+      {apiError && !modalOpen && (
         <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
           {apiError}
         </div>
       )}
 
-      {/* Add Form */}
-      {showAdd && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 mb-6">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">New Tournament</h2>
-          <TournamentForm
-            onSubmit={handleAdd}
-            onCancel={() => {
-              setShowAdd(false);
-              setApiError('');
-            }}
-            loading={formLoading}
-          />
-        </div>
-      )}
-
-      {/* Edit Form */}
-      {editingItem && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6 mb-6">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Edit Tournament</h2>
-          <TournamentForm
-            initial={editingItem}
-            onSubmit={handleEdit}
-            onCancel={() => {
-              setEditingItem(null);
-              setApiError('');
-            }}
-            loading={formLoading}
-          />
-        </div>
-      )}
-
-      {/* List */}
+      {/* Tournament list */}
       {loadingList ? (
         <div className="text-center py-12 sm:py-16 text-gray-400 text-sm sm:text-base">Loading...</div>
       ) : tournaments.length === 0 ? (
@@ -216,9 +203,7 @@ export default function Tournaments() {
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-gray-400">Total Profit</p>
-                  <p
-                    className={`text-base sm:text-lg font-bold ${t.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                  >
+                  <p className={`text-base sm:text-lg font-bold ${t.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                     {formatINR(t.totalProfit)}
                   </p>
                 </div>
@@ -228,20 +213,16 @@ export default function Tournaments() {
               <div className="space-y-2 mb-4 pb-4 border-b border-gray-200">
                 {t.categories.map((cat, idx) => (
                   <div key={idx} className="bg-gray-50 rounded px-3 py-2">
-                    {/* Category Name, Date & Medal */}
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                       <span className="font-medium text-gray-700 text-sm">{cat.categoryName}</span>
                       <span className="text-xs text-gray-500">
                         {cat.date ? new Date(cat.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-IN') : 'No date'}
                       </span>
-                      <span
-                        className={`w-fit text-xs font-medium px-1.5 py-0.5 rounded ${MEDAL_COLORS[cat.medal]}`}
-                      >
+                      <span className={`w-fit text-xs font-medium px-1.5 py-0.5 rounded ${MEDAL_COLORS[cat.medal]}`}>
                         {cat.medal}
                       </span>
                     </div>
-                    {/* Values Grid - Stack on mobile, row on sm+ */}
-                    <div className="grid grid-cols-3 sm:flex sm:gap-4 text-right sm:text-right gap-2">
+                    <div className="grid grid-cols-3 sm:flex sm:gap-4 text-right gap-2">
                       <div>
                         <p className="text-xs text-gray-400">Entry Fees</p>
                         <p className="text-xs sm:text-sm font-medium text-gray-700">{formatINR(cat.entryFee)}</p>
@@ -261,15 +242,10 @@ export default function Tournaments() {
                 ))}
               </div>
 
-
               {/* Actions */}
               <div className="flex gap-2 pt-2">
                 <button
-                  onClick={() => {
-                    setEditingItem(t);
-                    setShowAdd(false);
-                    setApiError('');
-                  }}
+                  onClick={() => openEditModal(t)}
                   className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 font-medium min-h-[40px] px-2 sm:px-3 py-1 rounded hover:bg-blue-50 transition"
                 >
                   Edit
@@ -302,6 +278,25 @@ export default function Tournaments() {
           ))}
         </div>
       )}
+
+      {/* Add / Edit Modal */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        title={mode === 'add' ? 'New Tournament' : 'Edit Tournament'}
+      >
+        {apiError && (
+          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+            {apiError}
+          </div>
+        )}
+        <TournamentForm
+          initial={mode === 'edit' ? selectedTournament : undefined}
+          onSubmit={mode === 'add' ? handleAdd : handleEdit}
+          onCancel={closeModal}
+          loading={formLoading}
+        />
+      </Modal>
     </div>
   );
 }

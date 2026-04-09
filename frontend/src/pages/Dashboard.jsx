@@ -22,16 +22,12 @@ const MONTHS = [
 const currentYear = new Date().getFullYear();
 const YEARS = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
-// Helper: Get earliest date from tournament's categories (for sorting/filtering)
+// Helper: earliest category date for sorting/filtering
 const getTournamentDate = (tournament) => {
-  if (!tournament?.categories || tournament.categories.length === 0) {
-    return null;
-  }
-  const dates = tournament.categories
-    .map((cat) => cat.date)
-    .filter((date) => date); // Filter out undefined/null dates
+  if (!tournament?.categories || tournament.categories.length === 0) return null;
+  const dates = tournament.categories.map((cat) => cat.date).filter(Boolean);
   if (dates.length === 0) return null;
-  return dates.sort()[0]; // Return earliest date (lexicographic sort works for YYYY-MM-DD)
+  return dates.sort()[0];
 };
 
 const CalendarIcon = () => (
@@ -47,10 +43,13 @@ const CalendarIcon = () => (
 
 export default function Dashboard() {
   const [tournaments, setTournaments] = useState([]);
+  const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filterYear, setFilterYear] = useState(String(currentYear));
   const [filterMonth, setFilterMonth] = useState('');
+  const [includeCourtBooking, setIncludeCourtBooking] = useState(false);
+  const [includeGear, setIncludeGear] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(isCalendarConnected);
   const [calendarLoading, setCalendarLoading] = useState(false);
 
@@ -74,20 +73,20 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    api
-      .getTournaments()
-      .then((res) => setTournaments(res.data.data))
+    Promise.all([api.getTournaments(), api.getExpenses()])
+      .then(([tRes, eRes]) => {
+        setTournaments(tRes.data.data);
+        setExpenses(eRes.data.data);
+      })
       .catch(() => setError('Failed to load data'))
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = useMemo(() => {
+  // Tournaments in the selected year+month window
+  const filteredTournaments = useMemo(() => {
     return tournaments.filter((t) => {
-      // Get earliest date from categories
       const dateStr = getTournamentDate(t);
-      if (!dateStr) return false; // Skip tournaments with no valid dates
-
-      // Parse date string (YYYY-MM-DD) to avoid timezone issues
+      if (!dateStr) return false;
       const [year, month] = dateStr.split('-');
       if (filterYear && year !== filterYear) return false;
       if (filterMonth !== '' && String(Number(month) - 1) !== filterMonth) return false;
@@ -95,36 +94,73 @@ export default function Dashboard() {
     });
   }, [tournaments, filterYear, filterMonth]);
 
-  const totals = useMemo(() => {
-    return filtered.reduce(
-      (acc, t) => {
-        acc.earnings += t.totalEarnings || 0;
-        acc.expenses += t.totalExpenses || 0;
-        acc.profit += t.totalProfit || 0;
-        return acc;
-      },
-      { earnings: 0, expenses: 0, profit: 0 }
-    );
-  }, [filtered]);
+  // Expenses in the selected year+month window
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((e) => {
+      const [year, month] = e.date.split('-');
+      if (filterYear && year !== filterYear) return false;
+      if (filterMonth !== '' && String(Number(month) - 1) !== filterMonth) return false;
+      return true;
+    });
+  }, [expenses, filterYear, filterMonth]);
 
-  // Build monthly chart data for the selected year
+  // Stat card totals — respects expense filter toggles
+  const totals = useMemo(() => {
+    const earnings = filteredTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0);
+    const tournamentExpenses = filteredTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0);
+    const courtBookingTotal = filteredExpenses
+      .filter((e) => e.type === 'court_booking')
+      .reduce((s, e) => s + e.amount, 0);
+    const gearTotal = filteredExpenses
+      .filter((e) => e.type === 'gear')
+      .reduce((s, e) => s + e.amount, 0);
+
+    const additionalExpenses =
+      (includeCourtBooking ? courtBookingTotal : 0) + (includeGear ? gearTotal : 0);
+    const totalExpenses = tournamentExpenses + additionalExpenses;
+
+    return {
+      earnings,
+      totalExpenses,
+      profit: earnings - totalExpenses,
+      count: filteredTournaments.length,
+    };
+  }, [filteredTournaments, filteredExpenses, includeCourtBooking, includeGear]);
+
+  // Monthly chart data for the selected year — also respects expense filter
   const chartData = useMemo(() => {
-    const yearData = tournaments.filter((t) => {
-      const dateStr = getTournamentDate(t);
-      return dateStr?.startsWith(filterYear);
-    });
+    const yearTournaments = tournaments.filter((t) =>
+      getTournamentDate(t)?.startsWith(filterYear)
+    );
+    const yearExpenses = expenses.filter((e) => e.date?.startsWith(filterYear));
+
     return MONTHS.map((month, idx) => {
-      const monthTournaments = yearData.filter((t) => {
-        const dateStr = getTournamentDate(t);
-        if (!dateStr) return false;
-        const [, m] = dateStr.split('-');
-        return Number(m) - 1 === idx;
+      const monthStr = String(idx + 1).padStart(2, '0');
+
+      const monthTournaments = yearTournaments.filter((t) => {
+        const date = getTournamentDate(t);
+        return date && date.split('-')[1] === monthStr;
       });
-      const expenses = monthTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0);
-      const profit = monthTournaments.reduce((s, t) => s + (t.totalProfit || 0), 0);
-      return { month, Expenses: +expenses.toFixed(2), Profit: +profit.toFixed(2) };
+      const monthExpenses = yearExpenses.filter((e) => e.date.split('-')[1] === monthStr);
+
+      const tournamentExp = monthTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0);
+      const courtBooking = includeCourtBooking
+        ? monthExpenses.filter((e) => e.type === 'court_booking').reduce((s, e) => s + e.amount, 0)
+        : 0;
+      const gear = includeGear
+        ? monthExpenses.filter((e) => e.type === 'gear').reduce((s, e) => s + e.amount, 0)
+        : 0;
+
+      const totalExp = tournamentExp + courtBooking + gear;
+      const earnings = monthTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0);
+
+      return {
+        month,
+        Expenses: +totalExp.toFixed(2),
+        Profit: +(earnings - totalExp).toFixed(2),
+      };
     });
-  }, [tournaments, filterYear]);
+  }, [tournaments, expenses, filterYear, includeCourtBooking, includeGear]);
 
   const statCards = [
     {
@@ -136,7 +172,7 @@ export default function Dashboard() {
     },
     {
       label: 'Total Expenses',
-      value: formatINR(totals.expenses),
+      value: formatINR(totals.totalExpenses),
       color: 'text-red-500',
       bg: 'bg-red-50',
       icon: '💸',
@@ -150,7 +186,7 @@ export default function Dashboard() {
     },
     {
       label: 'Tournaments',
-      value: filtered.length,
+      value: totals.count,
       color: 'text-purple-600',
       bg: 'bg-purple-50',
       icon: '🎾',
@@ -162,9 +198,7 @@ export default function Dashboard() {
   }
 
   if (error) {
-    return (
-      <div className="text-center py-24 text-red-500">{error}</div>
-    );
+    return <div className="text-center py-24 text-red-500">{error}</div>;
   }
 
   return (
@@ -206,8 +240,8 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-6">
+      {/* Time filters */}
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
         <select
           value={filterYear}
           onChange={(e) => setFilterYear(e.target.value)}
@@ -239,6 +273,37 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* Expense filter toggles */}
+      <div className="flex items-center gap-2 flex-wrap mb-6">
+        <span className="text-xs text-gray-500 font-medium">Include in expenses:</span>
+        <div className="flex gap-2 flex-wrap">
+          {/* Tournament is always on — shown as a static pill */}
+          <span className="text-xs px-3 py-1.5 rounded-full font-medium bg-green-600 text-white border border-green-600">
+            Tournament
+          </span>
+          <button
+            onClick={() => setIncludeCourtBooking((v) => !v)}
+            className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors border ${
+              includeCourtBooking
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+            }`}
+          >
+            {includeCourtBooking ? '✓' : '+'} Court Booking
+          </button>
+          <button
+            onClick={() => setIncludeGear((v) => !v)}
+            className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors border ${
+              includeGear
+                ? 'bg-orange-500 text-white border-orange-500'
+                : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+            }`}
+          >
+            {includeGear ? '✓' : '+'} Gear
+          </button>
+        </div>
+      </div>
+
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
         {statCards.map((card) => (
@@ -265,7 +330,10 @@ export default function Dashboard() {
             <BarChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`} />
+              <YAxis
+                tick={{ fontSize: 12 }}
+                tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+              />
               <Tooltip
                 formatter={(value, name) => [
                   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value),
@@ -280,8 +348,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Empty filter state */}
-      {tournaments.length > 0 && filtered.length === 0 && (
+      {tournaments.length > 0 && filteredTournaments.length === 0 && (
         <div className="mt-6 text-center text-gray-400 text-sm">
           No tournaments found for the selected period.
         </div>

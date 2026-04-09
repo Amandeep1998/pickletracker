@@ -1,42 +1,113 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useLoadScript } from '@react-google-maps/api';
+import { useDebounce } from '../hooks/useDebounce';
 
 const LIBRARIES = ['places'];
 
 export default function LocationAutocomplete({ value, onSelect, onClear }) {
-  const inputRef = useRef(null);
-  const autocompleteRef = useRef(null);
   const [inputValue, setInputValue] = useState(value?.name || '');
+  const [predictions, setPredictions] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const autocompleteService = useRef(null);
+  const placesService = useRef(null);
+  const placesDiv = useRef(null);
+  const containerRef = useRef(null);
+  // Only true after the user has actually typed — prevents predictions firing on pre-fill
+  const isUserTyping = useRef(false);
+
+  const debouncedQuery = useDebounce(inputValue, 300);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
     libraries: LIBRARIES,
   });
 
-  // Sync display value when parent clears selection
+  // Initialize services once Maps is loaded
   useEffect(() => {
+    if (!isLoaded) return;
+    autocompleteService.current = new window.google.maps.places.AutocompleteService();
+    placesDiv.current = document.createElement('div');
+    placesService.current = new window.google.maps.places.PlacesService(placesDiv.current);
+  }, [isLoaded]);
+
+  // Sync display value when parent resets/pre-fills (modal open, clear, etc.)
+  // Reset isUserTyping so pre-fill never triggers the autocomplete API
+  useEffect(() => {
+    isUserTyping.current = false;
     setInputValue(value?.name || '');
+    setPredictions([]);
+    setShowDropdown(false);
   }, [value]);
 
-  const handlePlaceChanged = () => {
-    const place = autocompleteRef.current?.getPlace();
-    if (!place || !place.geometry) return;
+  // Fire API call only when the user has typed (not on pre-fill or mount)
+  useEffect(() => {
+    if (!isLoaded || !autocompleteService.current) return;
+    if (!isUserTyping.current || !debouncedQuery || debouncedQuery.length < 2) {
+      setPredictions([]);
+      setShowDropdown(false);
+      return;
+    }
 
-    const selected = {
-      name: place.name || '',
-      address: place.formatted_address || '',
-      lat: place.geometry.location.lat(),
-      lng: place.geometry.location.lng(),
-      placeId: place.place_id || null,
+    autocompleteService.current.getPlacePredictions(
+      {
+        input: debouncedQuery,
+        componentRestrictions: { country: 'in' },
+        types: ['establishment'],
+      },
+      (results, status) => {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
+          setPredictions(results);
+          setShowDropdown(true);
+        } else {
+          setPredictions([]);
+          setShowDropdown(false);
+        }
+      }
+    );
+  }, [debouncedQuery, isLoaded]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
     };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
-    setInputValue(selected.name);
-    onSelect(selected);
-  };
+  const handleSelect = useCallback((prediction) => {
+    isUserTyping.current = false;
+    setShowDropdown(false);
+    setPredictions([]);
+    setInputValue(prediction.description);
+
+    placesService.current.getDetails(
+      {
+        placeId: prediction.place_id,
+        fields: ['name', 'formatted_address', 'geometry', 'place_id'],
+      },
+      (place, status) => {
+        if (status !== window.google.maps.places.PlacesServiceStatus.OK || !place) return;
+        const selected = {
+          name: place.name || '',
+          address: place.formatted_address || '',
+          lat: place.geometry?.location?.lat() ?? null,
+          lng: place.geometry?.location?.lng() ?? null,
+          placeId: place.place_id || null,
+        };
+        setInputValue(selected.name);
+        onSelect(selected);
+      }
+    );
+  }, [onSelect]);
 
   const handleClear = () => {
+    isUserTyping.current = false;
     setInputValue('');
-    if (inputRef.current) inputRef.current.value = '';
+    setPredictions([]);
+    setShowDropdown(false);
     onClear?.();
   };
 
@@ -59,29 +130,20 @@ export default function LocationAutocomplete({ value, onSelect, onClear }) {
   }
 
   return (
-    <div className="relative">
-      <Autocomplete
-        onLoad={(ref) => (autocompleteRef.current = ref)}
-        onPlaceChanged={handlePlaceChanged}
-        options={{
-          componentRestrictions: { country: 'in' },
-          types: ['establishment'],
-          fields: ['name', 'formatted_address', 'geometry', 'place_id'],
+    <div className="relative" ref={containerRef}>
+      <input
+        type="text"
+        value={inputValue}
+        onChange={(e) => {
+          isUserTyping.current = true;
+          setInputValue(e.target.value);
+          if (!e.target.value) onClear?.();
         }}
-      >
-        <input
-          ref={inputRef}
-          type="text"
-          value={inputValue}
-          onChange={(e) => {
-            setInputValue(e.target.value);
-            // If user clears the field manually, notify parent
-            if (!e.target.value) onClear?.();
-          }}
-          placeholder="Search pickleball court..."
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-        />
-      </Autocomplete>
+        onFocus={() => predictions.length > 0 && setShowDropdown(true)}
+        placeholder="Search pickleball court..."
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-8 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+        autoComplete="off"
+      />
 
       {/* Clear button */}
       {inputValue && (
@@ -93,6 +155,22 @@ export default function LocationAutocomplete({ value, onSelect, onClear }) {
         >
           ✕
         </button>
+      )}
+
+      {/* Predictions dropdown */}
+      {showDropdown && predictions.length > 0 && (
+        <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
+          {predictions.map((p) => (
+            <li
+              key={p.place_id}
+              onMouseDown={() => handleSelect(p)}
+              className="px-3 py-2 text-xs sm:text-sm text-gray-700 hover:bg-green-50 cursor-pointer"
+            >
+              <span className="font-medium">{p.structured_formatting.main_text}</span>
+              <span className="text-gray-400 ml-1">{p.structured_formatting.secondary_text}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

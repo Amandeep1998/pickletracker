@@ -41,6 +41,9 @@ export default function Navbar() {
           <NavLink to="/tournaments" className={linkClass}>
             Tournaments
           </NavLink>
+          <NavLink to="/expenses" className={linkClass}>
+            Expenses
+          </NavLink>
           <NavLink to="/calendar" className={linkClass}>
             Calendar
           </NavLink>

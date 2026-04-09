@@ -38,3 +38,9 @@ export const getTournaments = () => api.get('/tournaments');
 export const createTournament = (data) => api.post('/tournaments', data);
 export const updateTournament = (id, data) => api.put(`/tournaments/${id}`, data);
 export const deleteTournament = (id) => api.delete(`/tournaments/${id}`);
+
+// Expenses
+export const getExpenses = () => api.get('/expenses');
+export const createExpense = (data) => api.post('/expenses', data);
+export const updateExpense = (id, data) => api.put(`/expenses/${id}`, data);
+export const deleteExpense = (id) => api.delete(`/expenses/${id}`);
