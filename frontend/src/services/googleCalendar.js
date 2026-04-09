@@ -30,7 +30,7 @@ export async function syncTournamentToCalendar(tournament) {
     const cat = tournament.categories[i];
     if (!cat.date) continue;
 
-    const event = buildEvent(tournament.name, cat);
+    const event = buildEvent(tournament.name, cat, tournament.location);
 
     if (cat.calendarEventId) {
       // Update existing event
@@ -62,21 +62,34 @@ export async function deleteTournamentFromCalendar(tournament) {
 
 // --- Internal helpers ---
 
-function buildEvent(tournamentName, cat) {
+function buildEvent(tournamentName, cat, location) {
   const lines = [
     `Entry Fee: ₹${cat.entryFee}`,
     `Medal: ${cat.medal}`,
     cat.medal !== 'None' ? `Amount Won: ₹${cat.prizeAmount}` : null,
     `Profit: ₹${cat.prizeAmount - cat.entryFee}`,
-  ].filter(Boolean);
+  ];
 
-  return {
+  if (location?.lat && location?.lng) {
+    lines.push('');
+    lines.push('Tournament Location:');
+    lines.push(`https://www.google.com/maps?q=${location.lat},${location.lng}`);
+  }
+
+  const event = {
     summary: `${tournamentName} – ${cat.categoryName}`,
-    description: lines.join('\n'),
+    description: lines.filter((l) => l !== null).join('\n'),
     start: { date: cat.date },
     end: { date: cat.date },
     colorId: medalColorId(cat.medal),
   };
+
+  // Google Calendar native location field (shows in event details + maps button)
+  if (location?.name || location?.address) {
+    event.location = [location.name, location.address].filter(Boolean).join(', ');
+  }
+
+  return event;
 }
 
 function medalColorId(medal) {

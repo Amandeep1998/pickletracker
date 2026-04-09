@@ -287,6 +287,30 @@ export default function Calendar() {
             <div className="flex items-start justify-between mb-4 gap-3">
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 break-words">{selectedTournament.name}</h2>
+                {selectedTournament.location?.name && (
+                  <div className="mt-1.5 flex items-start gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-700 font-medium">{selectedTournament.location.name}</p>
+                      {selectedTournament.location.address && (
+                        <p className="text-xs text-gray-500 truncate">{selectedTournament.location.address}</p>
+                      )}
+                      {selectedTournament.location.lat && selectedTournament.location.lng && (
+                        <a
+                          href={`https://www.google.com/maps?q=${selectedTournament.location.lat},${selectedTournament.location.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
+                        >
+                          View on Map →
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               <button
                 onClick={() => setSelectedTournament(null)}

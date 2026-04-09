@@ -191,8 +191,27 @@ export default function Tournaments() {
             >
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{t.name}</h3>
+                  {t.location?.name && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <svg className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="text-xs text-gray-500 truncate">{t.location.name}</span>
+                      {t.location.lat && t.location.lng && (
+                        <a
+                          href={`https://www.google.com/maps?q=${t.location.lat},${t.location.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-500 hover:text-blue-700 hover:underline flex-shrink-0"
+                        >
+                          Map
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-gray-400">Total Profit</p>
