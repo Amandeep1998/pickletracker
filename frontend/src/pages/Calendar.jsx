@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import ReactCalendar from 'react-calendar';
 import { useNavigate } from 'react-router-dom';
 import 'react-calendar/dist/Calendar.css';
@@ -7,7 +7,11 @@ import TournamentForm from '../components/TournamentForm';
 import { formatINR } from '../utils/format';
 import { getMapUrl } from '../utils/mapUrl';
 import { connectGoogleCalendar } from '../services/firebase';
-import { isCalendarConnected, disconnectCalendar } from '../services/googleCalendar';
+import {
+  isCalendarConnected,
+  disconnectCalendar,
+  syncTournamentToCalendar,
+} from '../services/googleCalendar';
 
 const CalendarIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -30,6 +34,11 @@ export default function Calendar() {
   const [formLoading, setFormLoading] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(isCalendarConnected);
   const [calendarLoading, setCalendarLoading] = useState(false);
+
+  // Add-from-calendar modal state
+  const [addModal, setAddModal] = useState({ open: false, date: null });
+  const [addError, setAddError] = useState('');
+
   const navigate = useNavigate();
 
   const handleConnectCalendar = async () => {
@@ -66,7 +75,7 @@ export default function Calendar() {
     }
   };
 
-  // Helper: Convert Date object to YYYY-MM-DD string without timezone conversion
+  // Convert Date object → YYYY-MM-DD without timezone shift
   const dateToString = (date) => {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -74,28 +83,64 @@ export default function Calendar() {
     return `${year}-${month}-${day}`;
   };
 
-  // Build eventsByDate: { 'YYYY-MM-DD': [{ tournament, category }, ...] }
-  const eventsByDate = {};
-  tournaments.forEach((t) => {
-    t.categories.forEach((cat) => {
-      const dateStr = cat.date ? cat.date.split('T')[0] : null;
-      if (!dateStr) return; // Skip if no date
-      if (!eventsByDate[dateStr]) {
-        eventsByDate[dateStr] = [];
-      }
-      eventsByDate[dateStr].push({ tournament: t, category: cat });
+  // { 'YYYY-MM-DD': [{ tournament, category }, ...] }
+  const eventsByDate = useMemo(() => {
+    const map = {};
+    tournaments.forEach((t) => {
+      t.categories.forEach((cat) => {
+        const dateStr = cat.date ? cat.date.split('T')[0] : null;
+        if (!dateStr) return;
+        if (!map[dateStr]) map[dateStr] = [];
+        map[dateStr].push({ tournament: t, category: cat });
+      });
     });
-  });
+    return map;
+  }, [tournaments]);
 
-  // Custom tile content with event names (clickable)
+  // Pre-fill the first category date when opening from a calendar cell
+  const addInitial = useMemo(() => {
+    if (!addModal.date) return undefined;
+    return {
+      name: '',
+      location: null,
+      categories: [{ categoryName: '', date: addModal.date, medal: 'None', prizeAmount: '', entryFee: '' }],
+    };
+  }, [addModal.date]);
+
+  const openAddModal = (dateStr, e) => {
+    e.stopPropagation();
+    setAddError('');
+    setAddModal({ open: true, date: dateStr });
+  };
+
+  const closeAddModal = () => {
+    setAddModal({ open: false, date: null });
+    setAddError('');
+  };
+
+  // Tile content: "+" button (shown on hover) + event chips
   const tileContent = ({ date }) => {
     const dateStr = dateToString(date);
-    const eventsOnDate = eventsByDate[dateStr];
-
-    if (!eventsOnDate || eventsOnDate.length === 0) return null;
+    const eventsOnDate = eventsByDate[dateStr] || [];
 
     return (
-      <div className="w-full h-full flex flex-col justify-start pt-1 text-left">
+      <div className="relative w-full h-full flex flex-col justify-start pt-1 text-left">
+        {/* "+" add button — visible on tile hover via CSS */}
+        <div
+          role="button"
+          tabIndex={0}
+          className="tile-add-btn absolute top-0 right-0 w-5 h-5 rounded-full bg-green-500 text-white text-base leading-none flex items-center justify-center hover:bg-green-600 transition-all z-10 cursor-pointer select-none"
+          title="Add Tournament"
+          aria-label="Add tournament on this date"
+          onClick={(e) => openAddModal(dateStr, e)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') openAddModal(dateStr, e);
+          }}
+        >
+          +
+        </div>
+
+        {/* Event chips */}
         {eventsOnDate.slice(0, 2).map((event, idx) => (
           <div
             key={`${event.tournament._id}-${idx}`}
@@ -104,9 +149,9 @@ export default function Calendar() {
               e.stopPropagation();
               setSelectedTournament(event.tournament);
             }}
-            title={`${event.tournament.name} - ${event.category.categoryName}`}
+            title={`${event.tournament.name} – ${event.category.categoryName}`}
           >
-            {event.tournament.name} - {event.category.categoryName}
+            {event.tournament.name} – {event.category.categoryName}
           </div>
         ))}
         {eventsOnDate.length > 2 && (
@@ -124,10 +169,43 @@ export default function Calendar() {
     );
   };
 
-  // Custom tile styling for dates with events
   const tileClassName = ({ date }) => {
     const dateStr = dateToString(date);
-    return eventsByDate[dateStr] && eventsByDate[dateStr].length > 0 ? 'has-tournaments' : '';
+    return eventsByDate[dateStr]?.length > 0 ? 'has-tournaments' : '';
+  };
+
+  // Add tournament from calendar cell
+  const handleAddTournament = async (data) => {
+    setFormLoading(true);
+    setAddError('');
+    try {
+      const res = await api.createTournament(data);
+      const created = res.data.data;
+
+      if (isCalendarConnected()) {
+        try {
+          const eventResults = await syncTournamentToCalendar(created);
+          if (eventResults?.length) {
+            const updatedCategories = created.categories.map((cat, i) => {
+              const match = eventResults.find((r) => r.idx === i);
+              return match ? { ...cat, calendarEventId: match.calendarEventId } : cat;
+            });
+            await api.updateTournament(created._id, { ...created, categories: updatedCategories });
+          }
+        } catch {
+          // Calendar sync failure is silent
+        }
+      }
+
+      closeAddModal();
+      await fetchTournaments();
+    } catch (err) {
+      const msg =
+        err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add tournament';
+      setAddError(msg);
+    } finally {
+      setFormLoading(false);
+    }
   };
 
   const handleEditTournament = async (data) => {
@@ -144,7 +222,6 @@ export default function Calendar() {
     }
   };
 
-  // Format date for display
   const formatDate = (dateStr) => {
     const [year, month, day] = dateStr.split('-');
     const date = new Date(year, month - 1, day);
@@ -156,29 +233,20 @@ export default function Calendar() {
     });
   };
 
-  // Group events by tournament for date popup
   const getEventsByTournament = (dateStr) => {
     const events = eventsByDate[dateStr] || [];
     const grouped = {};
     events.forEach((event) => {
       if (!grouped[event.tournament._id]) {
-        grouped[event.tournament._id] = {
-          tournament: event.tournament,
-          categories: [],
-        };
+        grouped[event.tournament._id] = { tournament: event.tournament, categories: [] };
       }
       grouped[event.tournament._id].categories.push(event.category);
     });
     return Object.values(grouped);
   };
 
-  if (loading) {
-    return <div className="text-center py-24 text-gray-400">Loading calendar...</div>;
-  }
-
-  if (error) {
-    return <div className="text-center py-24 text-red-500">{error}</div>;
-  }
+  if (loading) return <div className="text-center py-24 text-gray-400">Loading calendar...</div>;
+  if (error) return <div className="text-center py-24 text-red-500">{error}</div>;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -228,6 +296,7 @@ export default function Calendar() {
         )}
       </div>
 
+      {/* Calendar */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
         <style>{`
           .react-calendar {
@@ -260,6 +329,7 @@ export default function Calendar() {
             letter-spacing: 0.05em;
           }
           .react-calendar__month-view__days__day {
+            position: relative;
             padding: 0.5rem 0.25rem;
             font-size: 0.875rem;
             border-radius: 0.5rem;
@@ -302,6 +372,14 @@ export default function Calendar() {
             background-color: #0ea5e9 !important;
             color: white !important;
           }
+
+          /* "+" add button: hidden by default, fade in on tile hover */
+          .react-calendar__tile .tile-add-btn {
+            opacity: 0;
+          }
+          .react-calendar__tile:hover .tile-add-btn {
+            opacity: 1;
+          }
         `}</style>
 
         <ReactCalendar
@@ -311,19 +389,51 @@ export default function Calendar() {
         />
 
         <p className="text-sm text-gray-500 mt-4 text-center">
-          Click on a tournament or category to view details and edit
+          Hover a date and click <span className="font-semibold text-green-600">+</span> to add a tournament, or click an event to view details
         </p>
       </div>
 
-      {/* Date Listing Popup - Shows all events on selected date */}
+      {/* ── Add Tournament Modal ── */}
+      {addModal.open && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-lg max-w-full sm:max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-1 gap-3">
+              <div>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">New Tournament</h2>
+                {addModal.date && (
+                  <p className="text-xs text-gray-500 mt-0.5">{formatDate(addModal.date)}</p>
+                )}
+              </div>
+              <button
+                onClick={closeAddModal}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold flex-shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {addError && (
+              <div className="mb-4 mt-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                {addError}
+              </div>
+            )}
+
+            <TournamentForm
+              initial={addInitial}
+              onSubmit={handleAddTournament}
+              onCancel={closeAddModal}
+              loading={formLoading}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Date listing popup ("+N more") ── */}
       {selectedDate && !selectedTournament && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
           <div className="bg-white rounded-2xl shadow-lg max-w-full sm:max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
-            {/* Header */}
             <div className="flex items-start justify-between mb-6 gap-3">
-              <div>
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Events on {formatDate(selectedDate)}</h2>
-              </div>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Events on {formatDate(selectedDate)}</h2>
               <button
                 onClick={() => setSelectedDate(null)}
                 className="text-gray-400 hover:text-gray-600 text-xl font-bold flex-shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
@@ -332,7 +442,6 @@ export default function Calendar() {
               </button>
             </div>
 
-            {/* Events grouped by tournament */}
             <div className="space-y-4">
               {getEventsByTournament(selectedDate).map((item) => (
                 <div key={item.tournament._id} className="border rounded-lg p-4">
@@ -358,11 +467,10 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* Tournament Details Modal */}
+      {/* ── Tournament details modal ── */}
       {selectedTournament && !isEditing && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
           <div className="bg-white rounded-2xl shadow-lg max-w-full sm:max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
-            {/* Header */}
             <div className="flex items-start justify-between mb-4 gap-3">
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg sm:text-xl font-bold text-gray-900 break-words">{selectedTournament.name}</h2>
@@ -399,7 +507,6 @@ export default function Calendar() {
               </button>
             </div>
 
-            {/* Categories */}
             <div className="space-y-3 mb-6">
               <h3 className="text-sm sm:text-base font-semibold text-gray-900">Categories</h3>
               {selectedTournament.categories.map((cat, idx) => (
@@ -432,7 +539,6 @@ export default function Calendar() {
               ))}
             </div>
 
-            {/* Summary */}
             <div className="bg-blue-50 rounded-lg p-3 sm:p-4 mb-6">
               <div className="text-xs sm:text-sm text-gray-600 space-y-2">
                 <div className="flex justify-between">
@@ -452,7 +558,6 @@ export default function Calendar() {
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
               <button
                 onClick={() => setIsEditing(true)}
@@ -471,7 +576,7 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* ── Edit tournament modal ── */}
       {selectedTournament && isEditing && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
           <div className="bg-white rounded-2xl shadow-lg max-w-full sm:max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
