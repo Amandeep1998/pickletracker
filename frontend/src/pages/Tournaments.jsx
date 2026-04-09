@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import * as api from '../services/api';
 import TournamentForm from '../components/TournamentForm';
 import { formatINR, MEDAL_COLORS } from '../utils/format';
+import { syncTournamentToCalendar, deleteTournamentFromCalendar, isCalendarConnected } from '../services/googleCalendar';
 
 export default function Tournaments() {
   const [tournaments, setTournaments] = useState([]);
@@ -31,7 +32,25 @@ export default function Tournaments() {
     setFormLoading(true);
     setApiError('');
     try {
-      await api.createTournament(data);
+      const res = await api.createTournament(data);
+      const created = res.data.data;
+
+      // Sync to Google Calendar if connected
+      if (isCalendarConnected()) {
+        try {
+          const eventResults = await syncTournamentToCalendar(created);
+          if (eventResults?.length) {
+            const updatedCategories = created.categories.map((cat, i) => {
+              const match = eventResults.find((r) => r.idx === i);
+              return match ? { ...cat, calendarEventId: match.calendarEventId } : cat;
+            });
+            await api.updateTournament(created._id, { ...created, categories: updatedCategories });
+          }
+        } catch {
+          // Calendar sync failure is silent — tournament was saved successfully
+        }
+      }
+
       setShowAdd(false);
       fetchTournaments();
     } catch (err) {
@@ -47,7 +66,34 @@ export default function Tournaments() {
     setFormLoading(true);
     setApiError('');
     try {
-      await api.updateTournament(editingItem._id, data);
+      // Preserve existing calendarEventIds when submitting edit
+      const dataWithCalendarIds = {
+        ...data,
+        categories: data.categories.map((cat, i) => ({
+          ...cat,
+          calendarEventId: editingItem.categories[i]?.calendarEventId || null,
+        })),
+      };
+
+      const res = await api.updateTournament(editingItem._id, dataWithCalendarIds);
+      const updated = res.data.data;
+
+      // Sync to Google Calendar if connected
+      if (isCalendarConnected()) {
+        try {
+          const eventResults = await syncTournamentToCalendar(updated);
+          if (eventResults?.length) {
+            const updatedCategories = updated.categories.map((cat, i) => {
+              const match = eventResults.find((r) => r.idx === i);
+              return match ? { ...cat, calendarEventId: match.calendarEventId } : cat;
+            });
+            await api.updateTournament(updated._id, { ...updated, categories: updatedCategories });
+          }
+        } catch {
+          // Calendar sync failure is silent
+        }
+      }
+
       setEditingItem(null);
       fetchTournaments();
     } catch (err) {
@@ -61,6 +107,14 @@ export default function Tournaments() {
 
   const handleDelete = async (id) => {
     try {
+      // Delete calendar events first if connected
+      if (isCalendarConnected()) {
+        const tournament = tournaments.find((t) => t._id === id);
+        if (tournament) {
+          await deleteTournamentFromCalendar(tournament).catch(() => {});
+        }
+      }
+
       await api.deleteTournament(id);
       setDeleteId(null);
       fetchTournaments();

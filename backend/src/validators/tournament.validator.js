@@ -70,6 +70,7 @@ const categorySchema = Joi.object({
     'number.min': 'Entry fee cannot be negative',
     'any.required': 'Entry fee is required',
   }),
+  calendarEventId: Joi.string().allow(null, '').optional(),
 });
 
 const tournamentSchema = Joi.object({

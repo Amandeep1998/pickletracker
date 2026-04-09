@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 
+
 export function isFirebaseClientConfigured() {
   return Boolean(
     import.meta.env.VITE_FIREBASE_API_KEY &&
@@ -42,4 +43,31 @@ export async function signInWithGoogleAndGetCredentials() {
   const name = result.user.displayName || '';
   const email = result.user.email || '';
   return { idToken, name, email };
+}
+
+/**
+ * Opens Google sign-in popup requesting Calendar access scope.
+ * Works for both manual and Google sign-in users — it's a separate OAuth request.
+ * Stores the access token + expiry in localStorage.
+ */
+export async function connectGoogleCalendar() {
+  if (!isFirebaseClientConfigured()) {
+    throw new Error('Firebase is not configured. Set VITE_FIREBASE_* environment variables.');
+  }
+  const app = getFirebaseApp();
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+  provider.addScope('https://www.googleapis.com/auth/calendar');
+  provider.setCustomParameters({ prompt: 'consent' });
+
+  const result = await signInWithPopup(auth, provider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  const accessToken = credential.accessToken;
+
+  // Store with 1-hour expiry
+  const expiry = Date.now() + 3600 * 1000;
+  localStorage.setItem('gcal_token', accessToken);
+  localStorage.setItem('gcal_token_expiry', String(expiry));
+
+  return accessToken;
 }

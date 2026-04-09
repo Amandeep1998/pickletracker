@@ -66,6 +66,10 @@ const categorySchema = new mongoose.Schema(
       default: 0,
       min: [0, 'Prize amount cannot be negative'],
     },
+    calendarEventId: {
+      type: String,
+      default: null,
+    },
   },
   { _id: false }
 );
