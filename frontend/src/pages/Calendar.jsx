@@ -40,6 +40,9 @@ export default function Calendar() {
   const [addModal, setAddModal] = useState({ open: false, date: null });
   const [addError, setAddError] = useState('');
 
+  // Bulk sync progress (shown while syncing existing tournaments on connect)
+  const [syncProgress, setSyncProgress] = useState(null); // null | { done, total }
+
   const navigate = useNavigate();
 
   const handleConnectCalendar = async () => {
@@ -47,6 +50,40 @@ export default function Calendar() {
     try {
       await connectGoogleCalendar();
       setCalendarConnected(true);
+
+      // Sync all tournaments that have at least one category on today or in the future
+      const todayStr = new Date().toISOString().split('T')[0];
+      const toSync = tournaments.filter((t) =>
+        t.categories.some((cat) => cat.date && cat.date >= todayStr)
+      );
+
+      if (toSync.length > 0) {
+        setSyncProgress({ done: 0, total: toSync.length });
+
+        for (let i = 0; i < toSync.length; i++) {
+          const tournament = toSync[i];
+          try {
+            const eventResults = await syncTournamentToCalendar(tournament);
+            if (eventResults?.length) {
+              const updatedCategories = tournament.categories.map((cat, idx) => {
+                const match = eventResults.find((r) => r.idx === idx);
+                return match ? { ...cat, calendarEventId: match.calendarEventId } : cat;
+              });
+              await api.updateTournament(tournament._id, {
+                ...tournament,
+                categories: updatedCategories,
+              });
+            }
+          } catch {
+            // If one tournament fails, continue with the rest
+          }
+          setSyncProgress({ done: i + 1, total: toSync.length });
+        }
+
+        // Refresh local tournament list so calendarEventIds are up to date
+        await fetchTournaments();
+        setSyncProgress(null);
+      }
     } catch (err) {
       if (err?.code !== 'auth/popup-closed-by-user') {
         alert('Failed to connect Google Calendar. Please try again.');
@@ -277,9 +314,30 @@ export default function Calendar() {
             </button>
           )}
         </div>
-        {calendarConnected && (
-          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mt-3">
-            Only tournaments added or edited after connecting will appear in Google Calendar. Existing tournaments are not synced retroactively.
+
+        {/* Bulk sync progress */}
+        {syncProgress && (
+          <div className="mt-3">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-blue-700 font-medium">
+                Syncing tournaments to Google Calendar… {syncProgress.done}/{syncProgress.total}
+              </p>
+              <p className="text-xs text-blue-500">
+                {Math.round((syncProgress.done / syncProgress.total) * 100)}%
+              </p>
+            </div>
+            <div className="w-full bg-blue-100 rounded-full h-1.5">
+              <div
+                className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                style={{ width: `${(syncProgress.done / syncProgress.total) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {calendarConnected && !syncProgress && (
+          <p className="text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2 mt-3">
+            All tournaments from today onwards are synced. New or edited tournaments will sync automatically.
           </p>
         )}
       </div>
