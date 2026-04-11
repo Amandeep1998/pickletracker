@@ -236,7 +236,33 @@ export default function Calendar() {
   const handleEditTournament = async (data) => {
     setFormLoading(true);
     try {
-      await api.updateTournament(selectedTournament._id, data);
+      // Preserve existing calendarEventIds so sync can update (not duplicate) events
+      const dataWithCalendarIds = {
+        ...data,
+        categories: data.categories.map((cat, i) => ({
+          ...cat,
+          calendarEventId: selectedTournament.categories[i]?.calendarEventId || null,
+        })),
+      };
+
+      const res = await api.updateTournament(selectedTournament._id, dataWithCalendarIds);
+      const updated = res.data.data;
+
+      if (isCalendarConnected()) {
+        try {
+          const eventResults = await syncTournamentToCalendar(updated);
+          if (eventResults?.length) {
+            const updatedCategories = updated.categories.map((cat, i) => {
+              const match = eventResults.find((r) => r.idx === i);
+              return match ? { ...cat, calendarEventId: match.calendarEventId } : cat;
+            });
+            await api.updateTournament(updated._id, { ...updated, categories: updatedCategories });
+          }
+        } catch {
+          // Calendar sync failure is silent — tournament was saved successfully
+        }
+      }
+
       setIsEditing(false);
       setSelectedTournament(null);
       await fetchTournaments();
