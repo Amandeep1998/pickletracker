@@ -226,7 +226,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Entry Fees (₹)
+                  My Entry Fee (₹)
                 </label>
                 <input
                   type="number"
@@ -237,6 +237,11 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
                   className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   placeholder="0"
                 />
+                {/doubles|mixed/i.test(cat.categoryName) && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    Enter your share only — not the combined total for both partners.
+                  </p>
+                )}
                 {errors[`cat_${idx}_entryFee`] && (
                   <p className="text-red-500 text-xs mt-1">{errors[`cat_${idx}_entryFee`]}</p>
                 )}
