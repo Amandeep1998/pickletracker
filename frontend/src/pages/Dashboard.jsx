@@ -32,6 +32,7 @@ export default function Dashboard() {
   const [tournaments, setTournaments] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [slowLoad, setSlowLoad] = useState(false);
   const [error, setError] = useState('');
   const [filterYear, setFilterYear] = useState(String(currentYear));
   const [filterMonth, setFilterMonth] = useState('');
@@ -39,13 +40,22 @@ export default function Dashboard() {
   const [includeGear, setIncludeGear] = useState(false);
 
   useEffect(() => {
+    // After 4 s still loading → server is cold-starting; show a friendlier message
+    const slowTimer = setTimeout(() => setSlowLoad(true), 4000);
+
     Promise.all([api.getTournaments(), api.getExpenses()])
       .then(([tRes, eRes]) => {
         setTournaments(tRes.data.data);
         setExpenses(eRes.data.data);
       })
       .catch(() => setError('Failed to load data'))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        clearTimeout(slowTimer);
+        setLoading(false);
+        setSlowLoad(false);
+      });
+
+    return () => clearTimeout(slowTimer);
   }, []);
 
   // Tournaments in the selected year+month window
@@ -160,7 +170,27 @@ export default function Dashboard() {
   ];
 
   if (loading) {
-    return <div className="text-center py-24 text-gray-400">Loading dashboard...</div>;
+    return (
+      <div className="text-center py-24 px-4">
+        <div className="inline-flex flex-col items-center gap-3">
+          {/* Spinner */}
+          <svg className="animate-spin w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+          </svg>
+          {!slowLoad ? (
+            <p className="text-gray-400 text-sm">Loading dashboard...</p>
+          ) : (
+            <div className="text-center">
+              <p className="text-gray-600 text-sm font-medium">Server is waking up...</p>
+              <p className="text-gray-400 text-xs mt-1">
+                This takes up to 30 seconds on first load. Hang tight!
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   if (error) {
