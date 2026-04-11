@@ -11,9 +11,26 @@ export function isCalendarConnected() {
   return Boolean(getCalendarToken());
 }
 
+/**
+ * Returns true if the user has previously connected Google Calendar,
+ * even if the current token is expired. Used to trigger silent refresh.
+ */
+export function wasCalendarConnected() {
+  return localStorage.getItem('gcal_was_connected') === 'true';
+}
+
+/** Call this whenever a new token is obtained (connect or silent refresh). */
+export function saveCalendarToken(accessToken) {
+  const expiry = Date.now() + 3600 * 1000; // Google tokens last 1 hour
+  localStorage.setItem('gcal_token', accessToken);
+  localStorage.setItem('gcal_token_expiry', String(expiry));
+  localStorage.setItem('gcal_was_connected', 'true');
+}
+
 export function disconnectCalendar() {
   localStorage.removeItem('gcal_token');
   localStorage.removeItem('gcal_token_expiry');
+  localStorage.removeItem('gcal_was_connected');
 }
 
 /**

@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import ReactCalendar from 'react-calendar';
-import { useNavigate } from 'react-router-dom';
 import 'react-calendar/dist/Calendar.css';
 import * as api from '../services/api';
 import TournamentForm from '../components/TournamentForm';
 import AddTournamentButton from '../components/AddTournamentButton';
 import { formatINR } from '../utils/format';
 import { getMapUrl } from '../utils/mapUrl';
-import { connectGoogleCalendar } from '../services/firebase';
+import { connectGoogleCalendar, silentlyRefreshCalendarToken } from '../services/firebase';
 import {
   isCalendarConnected,
+  wasCalendarConnected,
   disconnectCalendar,
   syncTournamentToCalendar,
 } from '../services/googleCalendar';
@@ -43,7 +43,18 @@ export default function Calendar() {
   // Bulk sync progress (shown while syncing existing tournaments on connect)
   const [syncProgress, setSyncProgress] = useState(null); // null | { done, total }
 
-  const navigate = useNavigate();
+  // Silently refresh the Calendar token on mount if it was previously connected
+  // but the 1-hour access token has expired — avoids making users reconnect manually
+  useEffect(() => {
+    if (!isCalendarConnected() && wasCalendarConnected()) {
+      silentlyRefreshCalendarToken()
+        .then(() => setCalendarConnected(true))
+        .catch(() => {
+          // Silent refresh failed (user signed out of Google, revoked access, etc.)
+          // Leave the UI showing "Connect" — user must reconnect manually
+        });
+    }
+  }, []);
 
   const handleConnectCalendar = async () => {
     setCalendarLoading(true);

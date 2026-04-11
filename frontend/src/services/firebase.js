@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { saveCalendarToken } from './googleCalendar';
 
 
 export function isFirebaseClientConfigured() {
@@ -64,10 +65,31 @@ export async function connectGoogleCalendar() {
   const credential = GoogleAuthProvider.credentialFromResult(result);
   const accessToken = credential.accessToken;
 
-  // Store with 1-hour expiry
-  const expiry = Date.now() + 3600 * 1000;
-  localStorage.setItem('gcal_token', accessToken);
-  localStorage.setItem('gcal_token_expiry', String(expiry));
+  saveCalendarToken(accessToken);
+  return accessToken;
+}
 
+/**
+ * Silently refreshes the Google Calendar access token without showing a popup.
+ * Uses prompt=none — works if the user is still signed in to Google and has
+ * already granted calendar permission. Throws if silent auth is not possible.
+ */
+export async function silentlyRefreshCalendarToken() {
+  if (!isFirebaseClientConfigured()) {
+    throw new Error('Firebase is not configured.');
+  }
+  const app = getFirebaseApp();
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+  provider.addScope('https://www.googleapis.com/auth/calendar');
+  // prompt=none: no UI shown — if the user is already signed in + already
+  // granted calendar scope, Google returns a new token immediately
+  provider.setCustomParameters({ prompt: 'none' });
+
+  const result = await signInWithPopup(auth, provider);
+  const credential = GoogleAuthProvider.credentialFromResult(result);
+  const accessToken = credential.accessToken;
+
+  saveCalendarToken(accessToken);
   return accessToken;
 }
