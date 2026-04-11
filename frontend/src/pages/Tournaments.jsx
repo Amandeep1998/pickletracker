@@ -12,6 +12,8 @@ export default function Tournaments() {
   const [formLoading, setFormLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [deleteId, setDeleteId] = useState(null);
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [deleteAllLoading, setDeleteAllLoading] = useState(false);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -127,6 +129,24 @@ export default function Tournaments() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    setDeleteAllLoading(true);
+    try {
+      for (const t of tournaments) {
+        if (isCalendarConnected()) {
+          await deleteTournamentFromCalendar(t).catch(() => {});
+        }
+        await api.deleteTournament(t._id);
+      }
+      setShowDeleteAllConfirm(false);
+      fetchTournaments();
+    } catch {
+      setApiError('Failed to delete all tournaments');
+    } finally {
+      setDeleteAllLoading(false);
+    }
+  };
+
   const handleDelete = async (id) => {
     try {
       if (isCalendarConnected()) {
@@ -148,12 +168,22 @@ export default function Tournaments() {
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6">
         <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Tournaments</h1>
-        <button
-          onClick={openAddModal}
-          className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm font-semibold px-4 py-2 min-h-[40px] rounded-lg transition-colors"
-        >
-          + Add Tournament
-        </button>
+        <div className="flex gap-2">
+          {tournaments.length > 0 && (
+            <button
+              onClick={() => setShowDeleteAllConfirm(true)}
+              className="bg-red-50 hover:bg-red-100 text-red-600 text-xs sm:text-sm font-semibold px-4 py-2 min-h-[40px] rounded-lg transition-colors border border-red-200"
+            >
+              Delete All
+            </button>
+          )}
+          <button
+            onClick={openAddModal}
+            className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm font-semibold px-4 py-2 min-h-[40px] rounded-lg transition-colors"
+          >
+            + Add Tournament
+          </button>
+        </div>
       </div>
 
       {apiError && !modalOpen && (
@@ -278,6 +308,37 @@ export default function Tournaments() {
           ))}
         </div>
       )}
+
+      {/* Delete All Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteAllConfirm}
+        onClose={() => !deleteAllLoading && setShowDeleteAllConfirm(false)}
+        title="Delete All Tournaments"
+      >
+        <div className="py-2">
+          <p className="text-sm text-gray-700 mb-1">
+            This will permanently delete{' '}
+            <span className="font-semibold text-red-600">all {tournaments.length} tournament{tournaments.length !== 1 ? 's' : ''}</span>.
+          </p>
+          <p className="text-sm text-gray-500 mb-6">This cannot be undone.</p>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setShowDeleteAllConfirm(false)}
+              disabled={deleteAllLoading}
+              className="text-sm text-gray-600 hover:text-gray-800 font-medium px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteAll}
+              disabled={deleteAllLoading}
+              className="text-sm bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition disabled:opacity-60"
+            >
+              {deleteAllLoading ? 'Deleting...' : 'Delete All'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Add / Edit Modal */}
       <Modal
