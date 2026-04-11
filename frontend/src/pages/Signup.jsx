@@ -122,6 +122,18 @@ export default function Signup() {
           >
             {loading ? 'Creating account...' : 'Sign Up'}
           </button>
+
+          <p className="text-xs text-gray-400 text-center pt-1">
+            By creating an account, you agree to our{' '}
+            <Link to="/terms" className="text-gray-500 hover:text-green-600 hover:underline transition-colors">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link to="/privacy-policy" className="text-gray-500 hover:text-green-600 hover:underline transition-colors">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         </form>
 
         <div className="relative my-6">
@@ -148,6 +160,17 @@ export default function Signup() {
           </Link>
         </p>
         </div>
+
+        {/* Footer links */}
+        <p className="text-center text-xs text-gray-400 mt-6">
+          <Link to="/privacy-policy" className="hover:text-gray-600 hover:underline transition-colors">
+            Privacy Policy
+          </Link>
+          <span className="mx-2">·</span>
+          <Link to="/terms" className="hover:text-gray-600 hover:underline transition-colors">
+            Terms of Service
+          </Link>
+        </p>
       </div>
     </div>
   );

@@ -118,7 +118,19 @@ export default function Login() {
           onSuccess={() => navigate('/dashboard')}
         />
 
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-xs text-gray-400 text-center mt-3">
+          By continuing, you agree to our{' '}
+          <Link to="/terms" className="text-gray-500 hover:text-green-600 hover:underline transition-colors">
+            Terms of Service
+          </Link>{' '}
+          and{' '}
+          <Link to="/privacy-policy" className="text-gray-500 hover:text-green-600 hover:underline transition-colors">
+            Privacy Policy
+          </Link>
+          .
+        </p>
+
+        <p className="text-center text-sm text-gray-500 mt-4">
           Don't have an account?{' '}
           <Link to="/signup" className="text-green-600 font-medium hover:underline">
             Sign up
