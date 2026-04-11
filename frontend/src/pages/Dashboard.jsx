@@ -58,6 +58,33 @@ export default function Dashboard() {
     return () => clearTimeout(slowTimer);
   }, []);
 
+  // Next upcoming tournament (across all years, nearest future date)
+  const nextTournament = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    let nearest = null;
+
+    for (const t of tournaments) {
+      for (const cat of t.categories) {
+        if (!cat.date) continue;
+        const dateStr = cat.date.split('T')[0];
+        if (dateStr >= todayStr) {
+          if (!nearest || dateStr < nearest.dateStr) {
+            nearest = { tournament: t, cat, dateStr };
+          }
+        }
+      }
+    }
+
+    if (!nearest) return null;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const eventDate = new Date(nearest.dateStr + 'T00:00:00');
+    const diffDays = Math.round((eventDate - today) / (1000 * 60 * 60 * 24));
+
+    return { ...nearest, diffDays };
+  }, [tournaments]);
+
   // Tournaments in the selected year+month window
   const filteredTournaments = useMemo(() => {
     return tournaments.filter((t) => {
@@ -138,6 +165,34 @@ export default function Dashboard() {
     });
   }, [tournaments, expenses, filterYear, includeCourtBooking, includeGear]);
 
+  // Per-category profit breakdown — uses filteredTournaments so year/month filter applies
+  const categoryBreakdown = useMemo(() => {
+    const map = {};
+
+    for (const t of filteredTournaments) {
+      for (const cat of t.categories) {
+        if (!cat.categoryName) continue;
+        if (!map[cat.categoryName]) {
+          map[cat.categoryName] = { entries: 0, earnings: 0, expenses: 0 };
+        }
+        const row = map[cat.categoryName];
+        row.entries += 1;
+        row.earnings += cat.prizeAmount || 0;
+        row.expenses += cat.entryFee || 0;
+      }
+    }
+
+    return Object.entries(map)
+      .map(([name, data]) => ({
+        name,
+        entries: data.entries,
+        earnings: data.earnings,
+        expenses: data.expenses,
+        profit: data.earnings - data.expenses,
+      }))
+      .sort((a, b) => b.profit - a.profit);
+  }, [filteredTournaments]);
+
   const statCards = [
     {
       label: 'Total Earnings',
@@ -173,7 +228,6 @@ export default function Dashboard() {
     return (
       <div className="text-center py-24 px-4">
         <div className="inline-flex flex-col items-center gap-3">
-          {/* Spinner */}
           <svg className="animate-spin w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
@@ -200,6 +254,49 @@ export default function Dashboard() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-6">Dashboard</h1>
+
+      {/* Next Tournament Widget */}
+      {nextTournament && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0 text-lg">
+              🗓️
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Next Tournament</p>
+              <p className="text-sm font-semibold text-gray-900 mt-0.5">{nextTournament.tournament.name}</p>
+              <p className="text-xs text-gray-500">
+                {nextTournament.cat.categoryName}
+                {nextTournament.tournament.location?.name && (
+                  <span className="text-gray-400"> · {nextTournament.tournament.location.name}</span>
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 sm:flex-col sm:items-end">
+            <div className={`text-xs font-semibold px-3 py-1.5 rounded-full ${
+              nextTournament.diffDays === 0
+                ? 'bg-green-100 text-green-700'
+                : nextTournament.diffDays <= 7
+                ? 'bg-orange-50 text-orange-600'
+                : 'bg-blue-50 text-blue-600'
+            }`}>
+              {nextTournament.diffDays === 0
+                ? 'Today!'
+                : nextTournament.diffDays === 1
+                ? 'Tomorrow'
+                : `In ${nextTournament.diffDays} days`}
+            </div>
+            <p className="text-xs text-gray-400">
+              {new Date(nextTournament.dateStr + 'T00:00:00').toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              })}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Time filters */}
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
@@ -238,7 +335,6 @@ export default function Dashboard() {
       <div className="flex items-center gap-2 flex-wrap mb-6">
         <span className="text-xs text-gray-500 font-medium">Include in expenses:</span>
         <div className="flex gap-2 flex-wrap">
-          {/* Tournament is always on — shown as a static pill */}
           <span className="text-xs px-3 py-1.5 rounded-full font-medium bg-green-600 text-white border border-green-600">
             Tournament
           </span>
@@ -276,14 +372,14 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Chart */}
+      {/* Monthly Chart */}
       {tournaments.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-12 text-center text-gray-400">
           <p className="text-base sm:text-lg">No tournament data yet.</p>
           <p className="text-xs sm:text-sm mt-1">Add your first tournament to see analytics.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 mb-6">
           <h2 className="text-sm sm:text-base font-semibold text-gray-700 mb-4">
             Monthly Expenses vs Profit — {filterYear}
           </h2>
@@ -306,6 +402,62 @@ export default function Dashboard() {
               <Bar dataKey="Profit" fill="#4ade80" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Per-Category Profit Breakdown */}
+      {categoryBreakdown.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
+          <h2 className="text-sm sm:text-base font-semibold text-gray-700 mb-4">
+            Profit by Category — {filterYear}{filterMonth !== '' ? ` · ${MONTHS[Number(filterMonth)]}` : ''}
+          </h2>
+          <div className="space-y-3">
+            {categoryBreakdown.map((row) => {
+              const isProfit = row.profit >= 0;
+              const maxAbsProfit = Math.max(...categoryBreakdown.map((r) => Math.abs(r.profit)), 1);
+              const barWidth = Math.round((Math.abs(row.profit) / maxAbsProfit) * 100);
+
+              return (
+                <div key={row.name}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">{row.name}</span>
+                      <span className="text-xs text-gray-400 flex-shrink-0">
+                        {row.entries} {row.entries === 1 ? 'entry' : 'entries'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0 ml-2">
+                      <span className="text-xs text-gray-400 hidden sm:block">{formatINR(row.earnings)} earned</span>
+                      <span className={`text-xs sm:text-sm font-semibold ${isProfit ? 'text-green-600' : 'text-red-500'}`}>
+                        {isProfit ? '+' : ''}{formatINR(row.profit)}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Progress bar */}
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${isProfit ? 'bg-green-400' : 'bg-red-400'}`}
+                      style={{ width: `${barWidth}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Summary row */}
+          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-4 text-xs text-gray-500">
+            <span>
+              Best:{' '}
+              <span className="font-medium text-green-600">{categoryBreakdown[0]?.name}</span>
+            </span>
+            {categoryBreakdown.length > 1 && categoryBreakdown[categoryBreakdown.length - 1].profit < 0 && (
+              <span>
+                Worst:{' '}
+                <span className="font-medium text-red-500">{categoryBreakdown[categoryBreakdown.length - 1]?.name}</span>
+              </span>
+            )}
+          </div>
         </div>
       )}
 
