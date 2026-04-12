@@ -1,9 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import ReactCalendar from 'react-calendar';
-import 'react-calendar/dist/Calendar.css';
 import * as api from '../services/api';
 import TournamentForm from '../components/TournamentForm';
-import AddTournamentButton from '../components/AddTournamentButton';
 import { formatINR } from '../utils/format';
 import { getMapUrl } from '../utils/mapUrl';
 import { connectGoogleCalendar, silentlyRefreshCalendarToken } from '../services/firebase';
@@ -13,6 +10,9 @@ import {
   disconnectCalendar,
   syncTournamentToCalendar,
 } from '../services/googleCalendar';
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const CalendarIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -25,73 +25,160 @@ const CalendarIcon = () => (
   </svg>
 );
 
+// Build all day cells for a given month (including leading/trailing blanks)
+function buildMonthGrid(year, month) {
+  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  // Pad to complete last row
+  while (cells.length % 7 !== 0) cells.push(null);
+  return cells;
+}
+
+function toDateStr(year, month, day) {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
 export default function Calendar() {
+  const today = new Date();
+  const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
+
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Calendar navigation
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+
+  // Selected date in the grid (drives the day panel)
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+
+  // Tournament detail / edit modals
   const [selectedTournament, setSelectedTournament] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
-  const [calendarConnected, setCalendarConnected] = useState(isCalendarConnected);
-  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [formError, setFormError] = useState('');
 
-  // Add-from-calendar modal state
+  // Add tournament modal
   const [addModal, setAddModal] = useState({ open: false, date: null });
   const [addError, setAddError] = useState('');
 
-  // Bulk sync progress (shown while syncing existing tournaments on connect)
-  const [syncProgress, setSyncProgress] = useState(null); // null | { done, total }
+  // Google Calendar
+  const [calendarConnected, setCalendarConnected] = useState(isCalendarConnected);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(null);
 
-  // Silently refresh the Calendar token on mount if it was previously connected
-  // but the 1-hour access token has expired — avoids making users reconnect manually
   useEffect(() => {
     if (!isCalendarConnected() && wasCalendarConnected()) {
       silentlyRefreshCalendarToken()
         .then(() => setCalendarConnected(true))
-        .catch(() => {
-          // Silent refresh failed (user signed out of Google, revoked access, etc.)
-          // Leave the UI showing "Connect" — user must reconnect manually
-        });
+        .catch(() => {});
     }
   }, []);
 
+  useEffect(() => { fetchTournaments(); }, []);
+
+  const fetchTournaments = async () => {
+    try {
+      const res = await api.getTournaments();
+      setTournaments(res.data.data);
+    } catch {
+      setError('Failed to load tournaments');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // { 'YYYY-MM-DD': [{ tournament, category }, ...] }
+  const eventsByDate = useMemo(() => {
+    const map = {};
+    tournaments.forEach((t) => {
+      t.categories.forEach((cat) => {
+        const d = cat.date ? cat.date.split('T')[0] : null;
+        if (!d) return;
+        if (!map[d]) map[d] = [];
+        map[d].push({ tournament: t, category: cat });
+      });
+    });
+    return map;
+  }, [tournaments]);
+
+  // Events for the currently selected date
+  const selectedEvents = useMemo(() => {
+    if (!selectedDate) return [];
+    return eventsByDate[selectedDate] || [];
+  }, [selectedDate, eventsByDate]);
+
+  // Group by tournament for display
+  const selectedByTournament = useMemo(() => {
+    const grouped = {};
+    selectedEvents.forEach(({ tournament, category }) => {
+      if (!grouped[tournament._id]) {
+        grouped[tournament._id] = { tournament, categories: [] };
+      }
+      grouped[tournament._id].categories.push(category);
+    });
+    return Object.values(grouped);
+  }, [selectedEvents]);
+
+  const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
+    else setViewMonth(m => m + 1);
+  };
+  const goToToday = () => {
+    setViewYear(today.getFullYear());
+    setViewMonth(today.getMonth());
+    setSelectedDate(todayStr);
+  };
+
+  const formatDate = (dateStr) => {
+    const [year, month, day] = dateStr.split('-');
+    return new Date(year, month - 1, day).toLocaleDateString('en-IN', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+  };
+
+  const formatShortDate = (dateStr) => {
+    const [year, month, day] = dateStr.split('-');
+    return new Date(year, month - 1, day).toLocaleDateString('en-IN', {
+      weekday: 'short', month: 'short', day: 'numeric',
+    });
+  };
+
+  // ── Google Calendar handlers ──
   const handleConnectCalendar = async () => {
     setCalendarLoading(true);
     try {
       await connectGoogleCalendar();
       setCalendarConnected(true);
-
-      // Sync all tournaments that have at least one category on today or in the future
-      const todayStr = new Date().toISOString().split('T')[0];
       const toSync = tournaments.filter((t) =>
         t.categories.some((cat) => cat.date && cat.date >= todayStr)
       );
-
       if (toSync.length > 0) {
         setSyncProgress({ done: 0, total: toSync.length });
-
         for (let i = 0; i < toSync.length; i++) {
-          const tournament = toSync[i];
+          const t = toSync[i];
           try {
-            const eventResults = await syncTournamentToCalendar(tournament);
-            if (eventResults?.length) {
-              const updatedCategories = tournament.categories.map((cat, idx) => {
-                const match = eventResults.find((r) => r.idx === idx);
+            const results = await syncTournamentToCalendar(t);
+            if (results?.length) {
+              const updatedCats = t.categories.map((cat, idx) => {
+                const match = results.find((r) => r.idx === idx);
                 return match ? { ...cat, calendarEventId: match.calendarEventId } : cat;
               });
-              await api.updateTournament(tournament._id, {
-                ...tournament,
-                categories: updatedCategories,
-              });
+              await api.updateTournament(t._id, { ...t, categories: updatedCats });
             }
-          } catch {
-            // If one tournament fails, continue with the rest
-          }
+          } catch {}
           setSyncProgress({ done: i + 1, total: toSync.length });
         }
-
-        // Refresh local tournament list so calendarEventIds are up to date
         await fetchTournaments();
         setSyncProgress(null);
       }
@@ -109,44 +196,70 @@ export default function Calendar() {
     setCalendarConnected(false);
   };
 
-  useEffect(() => {
-    fetchTournaments();
-  }, []);
-
-  const fetchTournaments = async () => {
+  // ── Tournament handlers ──
+  const handleAddTournament = async (data) => {
+    setFormLoading(true);
+    setAddError('');
     try {
-      const res = await api.getTournaments();
-      setTournaments(res.data.data);
-    } catch {
-      setError('Failed to load tournaments');
+      const res = await api.createTournament(data);
+      const created = res.data.data;
+      if (isCalendarConnected()) {
+        try {
+          const results = await syncTournamentToCalendar(created);
+          if (results?.length) {
+            const updatedCats = created.categories.map((cat, i) => {
+              const match = results.find((r) => r.idx === i);
+              return match ? { ...cat, calendarEventId: match.calendarEventId } : cat;
+            });
+            await api.updateTournament(created._id, { ...created, categories: updatedCats });
+          }
+        } catch {}
+      }
+      setAddModal({ open: false, date: null });
+      await fetchTournaments();
+    } catch (err) {
+      const msg = err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add tournament';
+      setAddError(msg);
     } finally {
-      setLoading(false);
+      setFormLoading(false);
     }
   };
 
-  // Convert Date object → YYYY-MM-DD without timezone shift
-  const dateToString = (date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  const handleEditTournament = async (data) => {
+    setFormLoading(true);
+    setFormError('');
+    try {
+      const dataWithIds = {
+        ...data,
+        categories: data.categories.map((cat, i) => ({
+          ...cat,
+          calendarEventId: selectedTournament.categories[i]?.calendarEventId || null,
+        })),
+      };
+      const res = await api.updateTournament(selectedTournament._id, dataWithIds);
+      const updated = res.data.data;
+      if (isCalendarConnected()) {
+        try {
+          const results = await syncTournamentToCalendar(updated);
+          if (results?.length) {
+            const updatedCats = updated.categories.map((cat, i) => {
+              const match = results.find((r) => r.idx === i);
+              return match ? { ...cat, calendarEventId: match.calendarEventId } : cat;
+            });
+            await api.updateTournament(updated._id, { ...updated, categories: updatedCats });
+          }
+        } catch {}
+      }
+      setIsEditing(false);
+      setSelectedTournament(null);
+      await fetchTournaments();
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'Failed to update tournament');
+    } finally {
+      setFormLoading(false);
+    }
   };
 
-  // { 'YYYY-MM-DD': [{ tournament, category }, ...] }
-  const eventsByDate = useMemo(() => {
-    const map = {};
-    tournaments.forEach((t) => {
-      t.categories.forEach((cat) => {
-        const dateStr = cat.date ? cat.date.split('T')[0] : null;
-        if (!dateStr) return;
-        if (!map[dateStr]) map[dateStr] = [];
-        map[dateStr].push({ tournament: t, category: cat });
-      });
-    });
-    return map;
-  }, [tournaments]);
-
-  // Pre-fill the first category date when opening from a calendar cell
   const addInitial = useMemo(() => {
     if (!addModal.date) return undefined;
     return {
@@ -156,175 +269,23 @@ export default function Calendar() {
     };
   }, [addModal.date]);
 
-  const openAddModal = (dateStr, e) => {
-    e.stopPropagation();
-    setAddError('');
-    setAddModal({ open: true, date: dateStr });
-  };
-
-  const closeAddModal = () => {
-    setAddModal({ open: false, date: null });
-    setAddError('');
-  };
-
-  // Tile content: event chips + always-visible add button (bottom-right)
-  const tileContent = ({ date }) => {
-    const dateStr = dateToString(date);
-    const eventsOnDate = eventsByDate[dateStr] || [];
-
-    return (
-      // pb-8 reserves space so event chips never slide under the add button
-      <div className="relative w-full h-full flex flex-col justify-start pt-1 pb-8 text-left">
-        {eventsOnDate.slice(0, 2).map((event, idx) => (
-          <div
-            key={`${event.tournament._id}-${idx}`}
-            className="text-xs font-medium text-gray-900 truncate px-1 hover:underline cursor-pointer"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedTournament(event.tournament);
-            }}
-            title={`${event.tournament.name} – ${event.category.categoryName}`}
-          >
-            {event.tournament.name} – {event.category.categoryName}
-          </div>
-        ))}
-        {eventsOnDate.length > 2 && (
-          <div
-            className="text-xs text-gray-600 px-1 cursor-pointer hover:text-gray-900"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedDate(dateStr);
-            }}
-          >
-            +{eventsOnDate.length - 2} more
-          </div>
-        )}
-
-        <AddTournamentButton onClick={(e) => openAddModal(dateStr, e)} />
-      </div>
-    );
-  };
-
-  const tileClassName = ({ date }) => {
-    const dateStr = dateToString(date);
-    return eventsByDate[dateStr]?.length > 0 ? 'has-tournaments' : '';
-  };
-
-  // Add tournament from calendar cell
-  const handleAddTournament = async (data) => {
-    setFormLoading(true);
-    setAddError('');
-    try {
-      const res = await api.createTournament(data);
-      const created = res.data.data;
-
-      if (isCalendarConnected()) {
-        try {
-          const eventResults = await syncTournamentToCalendar(created);
-          if (eventResults?.length) {
-            const updatedCategories = created.categories.map((cat, i) => {
-              const match = eventResults.find((r) => r.idx === i);
-              return match ? { ...cat, calendarEventId: match.calendarEventId } : cat;
-            });
-            await api.updateTournament(created._id, { ...created, categories: updatedCategories });
-          }
-        } catch {
-          // Calendar sync failure is silent
-        }
-      }
-
-      closeAddModal();
-      await fetchTournaments();
-    } catch (err) {
-      const msg =
-        err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add tournament';
-      setAddError(msg);
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const handleEditTournament = async (data) => {
-    setFormLoading(true);
-    try {
-      // Preserve existing calendarEventIds so sync can update (not duplicate) events
-      const dataWithCalendarIds = {
-        ...data,
-        categories: data.categories.map((cat, i) => ({
-          ...cat,
-          calendarEventId: selectedTournament.categories[i]?.calendarEventId || null,
-        })),
-      };
-
-      const res = await api.updateTournament(selectedTournament._id, dataWithCalendarIds);
-      const updated = res.data.data;
-
-      if (isCalendarConnected()) {
-        try {
-          const eventResults = await syncTournamentToCalendar(updated);
-          if (eventResults?.length) {
-            const updatedCategories = updated.categories.map((cat, i) => {
-              const match = eventResults.find((r) => r.idx === i);
-              return match ? { ...cat, calendarEventId: match.calendarEventId } : cat;
-            });
-            await api.updateTournament(updated._id, { ...updated, categories: updatedCategories });
-          }
-        } catch {
-          // Calendar sync failure is silent — tournament was saved successfully
-        }
-      }
-
-      setIsEditing(false);
-      setSelectedTournament(null);
-      await fetchTournaments();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update tournament');
-    } finally {
-      setFormLoading(false);
-    }
-  };
-
-  const formatDate = (dateStr) => {
-    const [year, month, day] = dateStr.split('-');
-    const date = new Date(year, month - 1, day);
-    return date.toLocaleDateString('en-IN', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
-  const getEventsByTournament = (dateStr) => {
-    const events = eventsByDate[dateStr] || [];
-    const grouped = {};
-    events.forEach((event) => {
-      if (!grouped[event.tournament._id]) {
-        grouped[event.tournament._id] = { tournament: event.tournament, categories: [] };
-      }
-      grouped[event.tournament._id].categories.push(event.category);
-    });
-    return Object.values(grouped);
-  };
-
   if (loading) return <div className="text-center py-24 text-gray-400">Loading calendar...</div>;
   if (error) return <div className="text-center py-24 text-red-500">{error}</div>;
 
+  const monthName = new Date(viewYear, viewMonth).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-6">Tournament Calendar</h1>
+    <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
 
       {/* Google Calendar Connect */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 mb-6">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 mb-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <CalendarIcon />
             <div>
               <p className="text-sm font-medium text-gray-900">Google Calendar</p>
               <p className="text-xs text-gray-500">
-                {calendarConnected
-                  ? 'New & edited tournaments sync automatically'
-                  : 'Connect to sync future tournaments to your calendar'}
+                {calendarConnected ? 'Syncing automatically' : 'Connect to sync tournaments'}
               </p>
             </div>
           </div>
@@ -334,10 +295,7 @@ export default function Calendar() {
                 <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
                 Connected
               </span>
-              <button
-                onClick={handleDisconnectCalendar}
-                className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-              >
+              <button onClick={handleDisconnectCalendar} className="text-xs text-gray-400 hover:text-red-500 transition-colors">
                 Disconnect
               </button>
             </div>
@@ -345,210 +303,233 @@ export default function Calendar() {
             <button
               onClick={handleConnectCalendar}
               disabled={calendarLoading}
-              className="flex-shrink-0 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-md transition-colors flex items-center gap-2 shadow-sm disabled:opacity-60"
+              className="flex-shrink-0 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-md transition-colors shadow-sm disabled:opacity-60"
             >
               {calendarLoading ? 'Connecting...' : 'Connect'}
             </button>
           )}
         </div>
-
-        {/* Bulk sync progress */}
         {syncProgress && (
           <div className="mt-3">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-blue-700 font-medium">
-                Syncing tournaments to Google Calendar… {syncProgress.done}/{syncProgress.total}
-              </p>
-              <p className="text-xs text-blue-500">
-                {Math.round((syncProgress.done / syncProgress.total) * 100)}%
-              </p>
+            <div className="flex justify-between mb-1">
+              <p className="text-xs text-blue-700 font-medium">Syncing… {syncProgress.done}/{syncProgress.total}</p>
+              <p className="text-xs text-blue-500">{Math.round((syncProgress.done / syncProgress.total) * 100)}%</p>
             </div>
             <div className="w-full bg-blue-100 rounded-full h-1.5">
-              <div
-                className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
-                style={{ width: `${(syncProgress.done / syncProgress.total) * 100}%` }}
-              />
+              <div className="bg-blue-500 h-1.5 rounded-full transition-all" style={{ width: `${(syncProgress.done / syncProgress.total) * 100}%` }} />
             </div>
           </div>
         )}
-
-        {calendarConnected && !syncProgress && (
-          <p className="text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2 mt-3">
-            All tournaments from today onwards are synced. New or edited tournaments will sync automatically.
-          </p>
-        )}
       </div>
 
-      {/* Calendar */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-6">
-        <style>{`
-          .react-calendar {
-            width: 100%;
-            border: none;
-            font-family: inherit;
-          }
-          .react-calendar__navigation {
-            margin-bottom: 1.5rem;
-          }
-          .react-calendar__navigation button {
-            color: #374151;
-            font-weight: 600;
-            font-size: 0.875rem;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            border: 1px solid #e5e7eb;
-            background-color: #f9fafb;
-          }
-          .react-calendar__navigation button:hover {
-            background-color: #f3f4f6;
-          }
-          .react-calendar__month-view__weekdays {
-            text-align: center;
-            font-weight: 600;
-            font-size: 0.75rem;
-            color: #6b7280;
-            padding: 0.5rem 0;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-          }
-          .react-calendar__month-view__days__day {
-            position: relative;
-            padding: 0.5rem 0.25rem;
-            font-size: 0.875rem;
-            border-radius: 0.5rem;
-            margin: 0.125rem;
-            height: auto;
-            min-height: 80px;
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            justify-content: flex-start;
-            background-color: #f9fafb;
-            color: #374151;
-            cursor: pointer;
-            transition: all 0.2s;
-            overflow: hidden;
-          }
-          @media (min-width: 768px) {
-            .react-calendar__month-view__days__day {
-              min-height: 100px;
-              margin: 0.25rem;
+      {/* ── Calendar Card ── */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+
+        {/* Month navigation */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+          <button
+            onClick={prevMonth}
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-600"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+
+          <div className="text-center">
+            <p className="text-sm sm:text-base font-bold text-gray-900">{monthName}</p>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={goToToday}
+              className="text-xs font-medium text-green-600 hover:bg-green-50 px-2 py-1 rounded-md transition mr-1"
+            >
+              Today
+            </button>
+            <button
+              onClick={nextMonth}
+              className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-600"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Weekday headers */}
+        <div className="grid grid-cols-7 border-b border-gray-100">
+          {WEEKDAYS_SHORT.map((d, i) => (
+            <div key={i} className="text-center py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              <span className="sm:hidden">{d}</span>
+              <span className="hidden sm:inline">{WEEKDAYS[i]}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Day grid */}
+        <div className="grid grid-cols-7">
+          {monthGrid.map((day, idx) => {
+            if (!day) {
+              return <div key={`blank-${idx}`} className="border-b border-r border-gray-50 min-h-[72px] sm:min-h-[90px] bg-gray-50/40" />;
             }
-          }
-          .react-calendar__month-view__days__day:hover {
-            background-color: #f0fdf4;
-            color: #16a34a;
-          }
-          .react-calendar__month-view__days__day.has-tournaments {
-            background-color: #dcfce7;
-            color: #166534;
-            font-weight: 600;
-            border: 2px solid #16a34a;
-          }
-          .react-calendar__month-view__days__day.has-tournaments:hover {
-            background-color: #bbf7d0;
-          }
-          .react-calendar__tile--now {
-            background-color: #e0f2fe !important;
-          }
-          .react-calendar__tile--active {
-            background-color: #0ea5e9 !important;
-            color: white !important;
-          }
-        `}</style>
 
-        <ReactCalendar
-          onChange={() => {}}
-          tileClassName={tileClassName}
-          tileContent={tileContent}
-        />
+            const dateStr = toDateStr(viewYear, viewMonth, day);
+            const events = eventsByDate[dateStr] || [];
+            const isToday = dateStr === todayStr;
+            const isSelected = dateStr === selectedDate;
+            const hasEvents = events.length > 0;
 
-        <p className="text-sm text-gray-500 mt-4 text-center">
-          Hover a date and click <span className="font-semibold text-green-600">+</span> to add a tournament, or click an event to view details
-        </p>
+            return (
+              <div
+                key={dateStr}
+                onClick={() => setSelectedDate(dateStr)}
+                className={`relative border-b border-r border-gray-100 min-h-[72px] sm:min-h-[90px] p-1 sm:p-1.5 cursor-pointer transition-colors select-none
+                  ${isSelected ? 'bg-green-50' : 'hover:bg-gray-50'}
+                  ${idx % 7 === 0 ? 'border-l-0' : ''}
+                `}
+              >
+                {/* Date number */}
+                <div className="flex justify-center mb-1">
+                  <span className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold transition-colors
+                    ${isToday ? 'bg-green-600 text-white' : isSelected ? 'bg-green-100 text-green-800' : 'text-gray-700'}
+                  `}>
+                    {day}
+                  </span>
+                </div>
+
+                {/* Event chips — desktop: show name; mobile: show colored dot */}
+                <div className="space-y-0.5">
+                  {/* Mobile: dots */}
+                  <div className="sm:hidden flex flex-wrap gap-0.5 justify-center">
+                    {events.slice(0, 3).map((ev, i) => (
+                      <span key={i} className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+                    ))}
+                    {events.length > 3 && <span className="w-1.5 h-1.5 rounded-full bg-green-300 inline-block" />}
+                  </div>
+
+                  {/* Desktop: event name chips */}
+                  <div className="hidden sm:block space-y-0.5">
+                    {events.slice(0, 2).map((ev, i) => (
+                      <div
+                        key={i}
+                        onClick={(e) => { e.stopPropagation(); setSelectedTournament(ev.tournament); }}
+                        className="text-xs bg-green-100 text-green-800 rounded px-1 py-0.5 truncate font-medium hover:bg-green-200 transition cursor-pointer leading-tight"
+                        title={`${ev.tournament.name} – ${ev.category.categoryName}`}
+                      >
+                        {ev.tournament.name}
+                      </div>
+                    ))}
+                    {events.length > 2 && (
+                      <div className="text-xs text-gray-500 px-1 font-medium">
+                        +{events.length - 2} more
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Add button — bottom right, always visible */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); setAddModal({ open: true, date: dateStr }); setAddError(''); }}
+                  className={`absolute bottom-1 right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition-colors
+                    ${isSelected ? 'bg-green-200 text-green-700 hover:bg-green-300' : 'bg-gray-100 text-gray-400 hover:bg-green-100 hover:text-green-600'}
+                  `}
+                  title={`Add tournament on ${dateStr}`}
+                >
+                  +
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Selected Day Panel ── */}
+        {selectedDate && (
+          <div className="border-t border-gray-100 bg-gray-50/60 px-4 py-3">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-gray-900">{formatShortDate(selectedDate)}</p>
+              <button
+                onClick={() => { setAddModal({ open: true, date: selectedDate }); setAddError(''); }}
+                className="flex items-center gap-1.5 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition"
+              >
+                <span className="text-base leading-none">+</span>
+                Add Tournament
+              </button>
+            </div>
+
+            {selectedByTournament.length === 0 ? (
+              <p className="text-xs text-gray-400 py-2">No tournaments on this day. Tap + to add one.</p>
+            ) : (
+              <div className="space-y-2">
+                {selectedByTournament.map(({ tournament, categories }) => (
+                  <button
+                    key={tournament._id}
+                    onClick={() => setSelectedTournament(tournament)}
+                    className="w-full text-left bg-white rounded-xl border border-gray-100 px-3 py-2.5 hover:border-green-200 hover:bg-green-50 transition shadow-sm"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{tournament.name}</p>
+                        <p className="text-xs text-gray-500 truncate mt-0.5">
+                          {categories.map(c => c.categoryName).join(' · ')}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className={`text-sm font-bold ${(tournament.totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                          {formatINR(tournament.totalProfit || 0)}
+                        </p>
+                        <svg className="w-4 h-4 text-gray-300 ml-auto mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Add Tournament Modal ── */}
       {addModal.open && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-lg max-w-full sm:max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
             <div className="flex items-center justify-between mb-1 gap-3">
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900">New Tournament</h2>
-                {addModal.date && (
-                  <p className="text-xs text-gray-500 mt-0.5">{formatDate(addModal.date)}</p>
-                )}
+                <h2 className="text-lg font-bold text-gray-900">New Tournament</h2>
+                {addModal.date && <p className="text-xs text-gray-500 mt-0.5">{formatDate(addModal.date)}</p>}
               </div>
               <button
-                onClick={closeAddModal}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold flex-shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
+                onClick={() => { setAddModal({ open: false, date: null }); setAddError(''); }}
+                className="text-gray-400 hover:text-gray-600 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
               >
-                ✕
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
-
             {addError && (
-              <div className="mb-4 mt-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-                {addError}
-              </div>
+              <div className="mb-4 mt-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{addError}</div>
             )}
-
             <TournamentForm
               initial={addInitial}
               onSubmit={handleAddTournament}
-              onCancel={closeAddModal}
+              onCancel={() => { setAddModal({ open: false, date: null }); setAddError(''); }}
               loading={formLoading}
             />
           </div>
         </div>
       )}
 
-      {/* ── Date listing popup ("+N more") ── */}
-      {selectedDate && !selectedTournament && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-lg max-w-full sm:max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
-            <div className="flex items-start justify-between mb-6 gap-3">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Events on {formatDate(selectedDate)}</h2>
-              <button
-                onClick={() => setSelectedDate(null)}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold flex-shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {getEventsByTournament(selectedDate).map((item) => (
-                <div key={item.tournament._id} className="border rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">{item.tournament.name}</h3>
-                  <div className="space-y-2">
-                    {item.categories.map((cat, idx) => (
-                      <button
-                        key={`${item.tournament._id}-${idx}`}
-                        onClick={() => {
-                          setSelectedTournament(item.tournament);
-                          setSelectedDate(null);
-                        }}
-                        className="w-full text-left px-3 py-2 bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-900 rounded text-sm transition min-h-[40px] flex items-center"
-                      >
-                        • {cat.categoryName}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Tournament details modal ── */}
+      {/* ── Tournament Detail Modal ── */}
       {selectedTournament && !isEditing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-lg max-w-full sm:max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
             <div className="flex items-start justify-between mb-4 gap-3">
               <div className="flex-1 min-w-0">
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900 break-words">{selectedTournament.name}</h2>
+                <h2 className="text-lg font-bold text-gray-900 break-words">{selectedTournament.name}</h2>
                 {selectedTournament.location?.name && (
                   <div className="mt-1.5 flex items-start gap-1.5">
                     <svg className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -557,16 +538,8 @@ export default function Calendar() {
                     </svg>
                     <div className="min-w-0">
                       <p className="text-xs text-gray-700 font-medium">{selectedTournament.location.name}</p>
-                      {selectedTournament.location.address && (
-                        <p className="text-xs text-gray-500 truncate">{selectedTournament.location.address}</p>
-                      )}
                       {getMapUrl(selectedTournament.location) && (
-                        <a
-                          href={getMapUrl(selectedTournament.location)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-500 hover:text-blue-700 hover:underline"
-                        >
+                        <a href={getMapUrl(selectedTournament.location)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
                           View on Map →
                         </a>
                       )}
@@ -576,73 +549,66 @@ export default function Calendar() {
               </div>
               <button
                 onClick={() => setSelectedTournament(null)}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold flex-shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
+                className="text-gray-400 hover:text-gray-600 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition flex-shrink-0"
               >
-                ✕
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
-            <div className="space-y-3 mb-6">
-              <h3 className="text-sm sm:text-base font-semibold text-gray-900">Categories</h3>
+            <div className="space-y-2 mb-4">
               {selectedTournament.categories.map((cat, idx) => (
-                <div key={idx} className="bg-gray-50 rounded-lg p-3 sm:p-4">
-                  <div className="text-sm sm:text-base font-semibold text-gray-900 mb-2">{cat.categoryName}</div>
-                  <div className="text-xs sm:text-sm text-gray-600 mb-2">
-                    <p>{formatDate(cat.date || '2000-01-01')}</p>
-                  </div>
-                  <div className="text-xs sm:text-sm text-gray-600 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                <div key={idx} className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-sm font-semibold text-gray-900">{cat.categoryName}</p>
+                  <p className="text-xs text-gray-500 mb-2">{cat.date ? formatDate(cat.date.split('T')[0]) : ''}</p>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
                     <div>
-                      <p className="text-xs text-gray-500">Medal</p>
-                      <p className="font-medium">{cat.medal}</p>
+                      <p className="text-gray-400">Medal</p>
+                      <p className="font-medium text-gray-800">{cat.medal}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Entry Fees Paid</p>
-                      <p className="font-medium">{formatINR(cat.entryFee)}</p>
+                      <p className="text-gray-400">Entry Fee</p>
+                      <p className="font-medium text-red-600">{formatINR(cat.entryFee)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">Amount Won</p>
-                      <p className="font-medium">{formatINR(cat.prizeAmount)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Profit</p>
-                      <p className={`font-medium ${(cat.prizeAmount - cat.entryFee) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatINR(cat.prizeAmount - cat.entryFee)}
-                      </p>
+                      <p className="text-gray-400">Won</p>
+                      <p className="font-medium text-green-600">{formatINR(cat.prizeAmount)}</p>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="bg-blue-50 rounded-lg p-3 sm:p-4 mb-6">
-              <div className="text-xs sm:text-sm text-gray-600 space-y-2">
-                <div className="flex justify-between">
-                  <span>Total Earnings:</span>
-                  <span className="font-semibold text-gray-900">{formatINR(selectedTournament.totalEarnings || 0)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Total Expenses:</span>
-                  <span className="font-semibold text-gray-900">{formatINR(selectedTournament.totalExpenses || 0)}</span>
-                </div>
-                <div className="border-t pt-2 flex justify-between">
-                  <span>Total Profit:</span>
-                  <span className={`text-base sm:text-lg font-bold ${(selectedTournament.totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatINR(selectedTournament.totalProfit || 0)}
-                  </span>
-                </div>
+            <div className="bg-blue-50 rounded-xl p-3 mb-4 text-sm">
+              <div className="flex justify-between text-gray-600 mb-1">
+                <span>Total Earnings</span>
+                <span className="font-semibold text-gray-900">{formatINR(selectedTournament.totalEarnings || 0)}</span>
+              </div>
+              <div className="flex justify-between text-gray-600 mb-1">
+                <span>Total Entry Fees</span>
+                <span className="font-semibold text-gray-900">{formatINR(selectedTournament.totalExpenses || 0)}</span>
+              </div>
+              <div className="flex justify-between border-t border-blue-100 pt-2 mt-2">
+                <span className="font-semibold text-gray-900">Net Profit</span>
+                <span className={`text-base font-bold ${(selectedTournament.totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatINR(selectedTournament.totalProfit || 0)}
+                </span>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+            {formError && <p className="text-red-500 text-sm mb-3">{formError}</p>}
+
+            <div className="flex gap-2">
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base font-semibold py-2 sm:py-2.5 min-h-[40px] rounded-lg transition"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 min-h-[44px] rounded-xl transition"
               >
-                Edit Tournament
+                Edit
               </button>
               <button
                 onClick={() => setSelectedTournament(null)}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 text-sm sm:text-base font-semibold py-2 sm:py-2.5 min-h-[40px] rounded-lg transition"
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-semibold py-2.5 min-h-[44px] rounded-xl transition"
               >
                 Close
               </button>
@@ -651,17 +617,19 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* ── Edit tournament modal ── */}
+      {/* ── Edit Tournament Modal ── */}
       {selectedTournament && isEditing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-3 sm:p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-lg max-w-full sm:max-w-2xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto p-4 sm:p-6">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4 gap-3">
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Edit Tournament</h2>
+              <h2 className="text-lg font-bold text-gray-900">Edit Tournament</h2>
               <button
                 onClick={() => setIsEditing(false)}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold flex-shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
+                className="text-gray-400 hover:text-gray-600 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
               >
-                ✕
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
             <TournamentForm
