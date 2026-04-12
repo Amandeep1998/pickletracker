@@ -1,4 +1,3 @@
-import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MobileMenu from './MobileMenu';
@@ -17,56 +16,46 @@ export default function Navbar() {
 
   const linkClass = ({ isActive }) =>
     `text-sm font-medium transition-colors ${
-      isActive ? 'text-green-600' : 'text-gray-600 hover:text-gray-900'
+      isActive ? 'text-green-400' : 'text-slate-300 hover:text-white'
     }`;
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-20">
+    <nav className="bg-slate-900 sticky top-0 z-20 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        {/* Brand with Logo */}
+        {/* Brand */}
         <NavLink to="/dashboard" className="flex items-center gap-3 flex-shrink-0">
           <img
             src="/logo.svg"
             alt="PickleTracker"
-            className="h-10 w-10 object-contain"
+            className="h-9 w-9 object-contain"
           />
           <div className="hidden sm:flex items-baseline gap-0.5">
-            <span className="text-lg font-bold text-green-600">Pickle</span>
-            <span className="text-lg font-bold text-orange-500">Tracker</span>
+            <span className="text-lg font-bold text-green-400">Pickle</span>
+            <span className="text-lg font-bold text-orange-400">Tracker</span>
           </div>
         </NavLink>
 
-        {/* Desktop Links - Hidden on Mobile */}
+        {/* Desktop Links */}
         <div className="hidden md:flex items-center gap-8">
-          <NavLink to="/dashboard" className={linkClass}>
-            Dashboard
-          </NavLink>
-          <NavLink to="/tournaments" className={linkClass}>
-            Tournaments
-          </NavLink>
-          <NavLink to="/expenses" className={linkClass}>
-            Expenses
-          </NavLink>
-          <NavLink to="/calendar" className={linkClass}>
-            Calendar
-          </NavLink>
+          <NavLink to="/dashboard" className={linkClass}>Dashboard</NavLink>
+          <NavLink to="/tournaments" className={linkClass}>Tournaments</NavLink>
+          <NavLink to="/expenses" className={linkClass}>Expenses</NavLink>
+          <NavLink to="/calendar" className={linkClass}>Calendar</NavLink>
           {isAdmin && (
             <NavLink to="/admin" className={({ isActive }) =>
-              `text-sm font-medium transition-colors ${isActive ? 'text-purple-600' : 'text-purple-400 hover:text-purple-600'}`
+              `text-sm font-medium transition-colors ${isActive ? 'text-purple-400' : 'text-purple-300 hover:text-purple-200'}`
             }>
               Admin
             </NavLink>
           )}
         </div>
 
-        {/* Desktop User + Logout - Hidden on Mobile */}
+        {/* Desktop User + Logout */}
         <div className="hidden md:flex items-center gap-4 flex-shrink-0">
-          <span className="text-sm text-gray-600">
-            {user?.name}
-          </span>
+          <span className="text-sm text-slate-400">{user?.name}</span>
           <button
             onClick={logout}
-            className="text-sm px-3 py-1.5 text-red-500 hover:bg-red-50 rounded-md font-medium transition-colors"
+            className="text-sm px-3 py-1.5 text-red-400 hover:text-red-300 hover:bg-slate-800 rounded-md font-medium transition-colors"
           >
             Logout
           </button>

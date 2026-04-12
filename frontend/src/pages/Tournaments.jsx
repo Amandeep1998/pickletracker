@@ -166,26 +166,32 @@ export default function Tournaments() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-      {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-6">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Tournaments</h1>
-        <div className="flex gap-2">
+      {/* Hero Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-green-900 rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-6 flex items-center justify-between overflow-hidden relative">
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #4ade80 0%, transparent 60%)' }} />
+        <div className="relative">
+          <p className="text-green-400 text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">Tournaments</h1>
+          <p className="text-slate-400 text-xs sm:text-sm mt-1">Manage and track all your events</p>
+        </div>
+        <div className="relative flex gap-2">
           {tournaments.length > 0 && (
             <button
               onClick={() => setShowDeleteAllConfirm(true)}
-              className="bg-red-50 hover:bg-red-100 text-red-600 text-xs sm:text-sm font-semibold px-4 py-2 min-h-[40px] rounded-lg transition-colors border border-red-200"
+              className="bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs sm:text-sm font-semibold px-4 py-2 min-h-[40px] rounded-lg transition-colors border border-red-500/30"
             >
               Delete All
             </button>
           )}
           <button
             onClick={openAddModal}
-            className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm font-semibold px-4 py-2 min-h-[40px] rounded-lg transition-colors"
+            className="bg-green-500 hover:bg-green-400 text-white text-xs sm:text-sm font-bold px-4 py-2 min-h-[40px] rounded-lg transition-colors shadow-lg shadow-green-900/40"
           >
             + Add Tournament
           </button>
         </div>
       </div>
+
 
       {/* Calendar tip */}
       <div className="flex items-center gap-3 bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-6 text-sm text-blue-700">
@@ -220,7 +226,7 @@ export default function Tournaments() {
           {tournaments.map((t) => (
             <div
               key={t._id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5"
+              className="bg-white rounded-2xl shadow-md border border-gray-100 p-4 sm:p-5 border-l-4 border-l-green-500"
             >
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
@@ -257,7 +263,7 @@ export default function Tournaments() {
               {/* Categories */}
               <div className="space-y-2 mb-4 pb-4 border-b border-gray-200">
                 {t.categories.map((cat, idx) => (
-                  <div key={idx} className="bg-gray-50 rounded px-3 py-2">
+                  <div key={idx} className="bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                       <span className="font-medium text-gray-700 text-sm">{cat.categoryName}</span>
                       <span className="text-xs text-gray-500">

@@ -271,6 +271,17 @@ export default function Calendar() {
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
 
+      {/* Hero Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-green-900 rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-4 flex items-center justify-between overflow-hidden relative">
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #4ade80 0%, transparent 60%)' }} />
+        <div className="relative">
+          <p className="text-green-400 text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">Calendar</h1>
+          <p className="text-slate-400 text-xs sm:text-sm mt-1">View tournaments by date</p>
+        </div>
+        <div className="relative text-4xl sm:text-5xl select-none">🗓️</div>
+      </div>
+
       {/* Google Calendar Connect */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 mb-4">
         <div className="flex items-center justify-between gap-3">

@@ -207,29 +207,25 @@ export default function Dashboard() {
     {
       label: 'Total Earnings',
       value: formatINR(totals.earnings),
-      color: 'text-green-600',
-      bg: 'bg-green-50',
+      gradient: 'from-emerald-500 to-green-600',
       icon: '🏆',
     },
     {
       label: 'Total Expenses',
       value: formatINR(totals.totalExpenses),
-      color: 'text-red-500',
-      bg: 'bg-red-50',
+      gradient: 'from-rose-500 to-red-600',
       icon: '💸',
     },
     {
       label: 'Net Profit',
       value: formatINR(totals.profit),
-      color: totals.profit >= 0 ? 'text-blue-600' : 'text-red-500',
-      bg: totals.profit >= 0 ? 'bg-blue-50' : 'bg-red-50',
+      gradient: totals.profit >= 0 ? 'from-blue-500 to-indigo-600' : 'from-rose-600 to-red-700',
       icon: '📊',
     },
     {
       label: 'Tournaments',
       value: totals.count,
-      color: 'text-purple-600',
-      bg: 'bg-purple-50',
+      gradient: 'from-violet-500 to-purple-600',
       icon: '🎾',
     },
   ];
@@ -263,11 +259,20 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-      <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-6">Dashboard</h1>
+      {/* Hero Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-green-900 rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-6 flex items-center justify-between overflow-hidden relative">
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #4ade80 0%, transparent 60%)' }} />
+        <div className="relative">
+          <p className="text-green-400 text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">Dashboard</h1>
+          <p className="text-slate-400 text-xs sm:text-sm mt-1">Your tournament finance overview</p>
+        </div>
+        <div className="relative text-4xl sm:text-5xl select-none">🏓</div>
+      </div>
 
       {/* Next Tournament Widget */}
       {nextTournament && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-md px-4 py-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0 text-lg">
               🗓️
@@ -381,22 +386,22 @@ export default function Dashboard() {
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
         {statCards.map((card) => (
-          <div key={card.label} className={`rounded-2xl p-4 sm:p-5 ${card.bg}`}>
-            <div className="text-xl sm:text-2xl mb-2">{card.icon}</div>
-            <p className="text-xs text-gray-500 mb-1">{card.label}</p>
-            <p className={`text-lg sm:text-xl font-bold ${card.color}`}>{card.value}</p>
+          <div key={card.label} className={`rounded-2xl p-4 sm:p-5 bg-gradient-to-br ${card.gradient} shadow-md`}>
+            <div className="text-xl sm:text-2xl mb-2 filter drop-shadow-sm">{card.icon}</div>
+            <p className="text-xs text-white/70 font-medium mb-1">{card.label}</p>
+            <p className="text-lg sm:text-xl font-extrabold text-white leading-tight">{card.value}</p>
           </div>
         ))}
       </div>
 
       {/* Monthly Chart */}
       {tournaments.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-12 text-center text-gray-400">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6 sm:p-12 text-center text-gray-400">
           <p className="text-base sm:text-lg">No tournament data yet.</p>
           <p className="text-xs sm:text-sm mt-1">Add your first tournament to see analytics.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 mb-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-6 mb-6">
           <h2 className="text-sm sm:text-base font-semibold text-gray-700 mb-4">
             Monthly Expenses vs Profit — {filterYear}
           </h2>
@@ -425,7 +430,7 @@ export default function Dashboard() {
 
       {/* Per-Category Profit Breakdown */}
       {categoryBreakdown.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-6">
           <h2 className="text-sm sm:text-base font-semibold text-gray-700 mb-4">
             Profit by Category — {filterYear}{filterMonth !== '' ? ` · ${MONTHS[Number(filterMonth)]}` : ''}
           </h2>

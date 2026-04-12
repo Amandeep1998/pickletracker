@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+body {
+  background-color: #f1f5f9; /* slate-100 — premium off-white page base */
+}
+
 /*
  * Prevent iOS Safari from auto-zooming when tapping any input field.
  * Safari zooms in whenever an input's font-size is below 16px.
