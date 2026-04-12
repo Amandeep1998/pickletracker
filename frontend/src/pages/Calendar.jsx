@@ -425,7 +425,7 @@ export default function Calendar() {
                 {/* Add button — bottom right, always visible */}
                 <button
                   onClick={(e) => { e.stopPropagation(); setAddModal({ open: true, date: dateStr }); setAddError(''); }}
-                  className="absolute bottom-1 right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition-colors bg-gray-100 text-gray-400 hover:bg-green-100 hover:text-green-600"
+                  className="absolute bottom-1 right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition-colors bg-green-600 text-white hover:bg-green-700 shadow-sm"
                   title={`Add tournament on ${dateStr}`}
                 >
                   +
