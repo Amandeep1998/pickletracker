@@ -36,6 +36,7 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [filterYear, setFilterYear] = useState(String(currentYear));
   const [filterMonth, setFilterMonth] = useState('');
+  const [includeTournaments, setIncludeTournaments] = useState(true);
   const [includeCourtBooking, setIncludeCourtBooking] = useState(false);
   const [includeGear, setIncludeGear] = useState(false);
 
@@ -109,8 +110,12 @@ export default function Dashboard() {
 
   // Stat card totals — respects expense filter toggles
   const totals = useMemo(() => {
-    const earnings = filteredTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0);
-    const tournamentExpenses = filteredTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0);
+    const earnings = includeTournaments
+      ? filteredTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0)
+      : 0;
+    const tournamentExpenses = includeTournaments
+      ? filteredTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0)
+      : 0;
     const courtBookingTotal = filteredExpenses
       .filter((e) => e.type === 'court_booking')
       .reduce((s, e) => s + e.amount, 0);
@@ -128,7 +133,7 @@ export default function Dashboard() {
       profit: earnings - totalExpenses,
       count: filteredTournaments.length,
     };
-  }, [filteredTournaments, filteredExpenses, includeCourtBooking, includeGear]);
+  }, [filteredTournaments, filteredExpenses, includeTournaments, includeCourtBooking, includeGear]);
 
   // Monthly chart data for the selected year — also respects expense filter
   const chartData = useMemo(() => {
@@ -146,7 +151,10 @@ export default function Dashboard() {
       });
       const monthExpenses = yearExpenses.filter((e) => e.date.split('-')[1] === monthStr);
 
-      const tournamentExp = monthTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0);
+
+      const tournamentExp = includeTournaments
+        ? monthTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0)
+        : 0;
       const courtBooking = includeCourtBooking
         ? monthExpenses.filter((e) => e.type === 'court_booking').reduce((s, e) => s + e.amount, 0)
         : 0;
@@ -155,7 +163,9 @@ export default function Dashboard() {
         : 0;
 
       const totalExp = tournamentExp + courtBooking + gear;
-      const earnings = monthTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0);
+      const earnings = includeTournaments
+        ? monthTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0)
+        : 0;
 
       return {
         month,
@@ -163,7 +173,7 @@ export default function Dashboard() {
         Profit: +(earnings - totalExp).toFixed(2),
       };
     });
-  }, [tournaments, expenses, filterYear, includeCourtBooking, includeGear]);
+  }, [tournaments, expenses, filterYear, includeTournaments, includeCourtBooking, includeGear]);
 
   // Per-category profit breakdown — uses filteredTournaments so year/month filter applies
   const categoryBreakdown = useMemo(() => {
@@ -335,9 +345,16 @@ export default function Dashboard() {
       <div className="flex items-center gap-2 flex-wrap mb-6">
         <span className="text-xs text-gray-500 font-medium">Include in expenses:</span>
         <div className="flex gap-2 flex-wrap">
-          <span className="text-xs px-3 py-1.5 rounded-full font-medium bg-green-600 text-white border border-green-600">
-            Tournament
-          </span>
+          <button
+            onClick={() => setIncludeTournaments((v) => !v)}
+            className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors border ${
+              includeTournaments
+                ? 'bg-green-600 text-white border-green-600'
+                : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+            }`}
+          >
+            {includeTournaments ? '✓' : '+'} Tournament
+          </button>
           <button
             onClick={() => setIncludeCourtBooking((v) => !v)}
             className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors border ${
