@@ -2,7 +2,8 @@ const User = require('../models/User');
 const Tournament = require('../models/Tournament');
 const Expense = require('../models/Expense');
 
-const getUsers = async (req, res) => {
+const getUsers = async (req, res, next) => {
+  try {
   const users = await User.find({}).lean().sort({ createdAt: -1 });
 
   const now = new Date();
@@ -114,7 +115,10 @@ const getUsers = async (req, res) => {
     googleUsers: users.filter((u) => u.isGoogleUser).length,
   };
 
-  res.json({ success: true, data: { users: enriched, stats } });
+    res.json({ success: true, data: { users: enriched, stats } });
+  } catch (err) {
+    next(err);
+  }
 };
 
 module.exports = { getUsers };
