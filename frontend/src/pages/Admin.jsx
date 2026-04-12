@@ -105,7 +105,7 @@ export default function Admin() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 mb-8">
         <StatCard label="Total Users" value={stats.totalUsers} />
         <StatCard label="Active This Week" value={stats.activeThisWeek} color="text-green-600" />
         <StatCard label="Active This Month" value={stats.activeThisMonth} color="text-yellow-600" />
@@ -165,53 +165,64 @@ export default function Admin() {
                   {u.name.charAt(0)}
                 </div>
 
-                {/* Name + email */}
+                {/* Name + email + mobile meta */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{u.name}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{u.name}</p>
+                    {/* Auth badge — visible on all sizes */}
+                    {u.isGoogleUser ? (
+                      <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full border border-blue-100 flex-shrink-0">Google</span>
+                    ) : (
+                      <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200 flex-shrink-0">Email</span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-400 truncate">{u.email}</p>
+                  {/* Mobile-only sub-row */}
+                  <div className="flex items-center gap-3 mt-1 sm:hidden">
+                    <span className="text-xs text-gray-500">{u.tournamentCount} events</span>
+                    <span className={`text-xs font-semibold ${u.totalProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                      {formatINR(u.totalProfit)}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Auth method */}
-                <div className="hidden sm:flex items-center gap-1 flex-shrink-0">
-                  {u.isGoogleUser ? (
-                    <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100">Google</span>
-                  ) : (
-                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full border border-gray-200">Email</span>
-                  )}
-                </div>
-
-                {/* Joined */}
+                {/* Joined — hidden on mobile */}
                 <div className="hidden md:block text-xs text-gray-400 flex-shrink-0 w-24 text-right">
                   <p className="text-gray-500 font-medium">Joined</p>
                   <p>{new Date(u.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}</p>
                 </div>
 
-                {/* Last active */}
+                {/* Last active — hidden on mobile */}
                 <div className="hidden lg:block text-xs text-gray-400 flex-shrink-0 w-24 text-right">
                   <p className="text-gray-500 font-medium">Last active</p>
                   <p>{timeAgo(u.lastActive)}</p>
                 </div>
 
-                {/* Tournaments */}
-                <div className="text-xs text-center flex-shrink-0 w-16">
+                {/* Tournaments — hidden on mobile (shown inline above) */}
+                <div className="hidden sm:block text-xs text-center flex-shrink-0 w-14">
                   <p className="text-gray-500 font-medium">Events</p>
                   <p className="text-gray-900 font-bold">{u.tournamentCount}</p>
                 </div>
 
-                {/* Profit */}
-                <div className="text-xs text-right flex-shrink-0 w-20">
+                {/* Profit — hidden on mobile */}
+                <div className="hidden sm:block text-xs text-right flex-shrink-0 w-20">
                   <p className="text-gray-500 font-medium">Net Profit</p>
                   <p className={`font-bold ${u.totalProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                     {formatINR(u.totalProfit)}
                   </p>
                 </div>
 
-                {/* Status badge */}
-                <div className="flex-shrink-0">
+                {/* Status badge — hidden on mobile */}
+                <div className="hidden sm:flex flex-shrink-0">
                   <span className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${st.badge}`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
                     {st.label}
                   </span>
+                </div>
+
+                {/* Status dot only — mobile */}
+                <div className="sm:hidden flex-shrink-0">
+                  <span className={`w-2 h-2 rounded-full block ${st.dot}`} />
                 </div>
 
                 {/* Expand chevron */}

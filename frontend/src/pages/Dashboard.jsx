@@ -362,7 +362,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
         {statCards.map((card) => (
           <div key={card.label} className={`rounded-2xl p-4 sm:p-5 ${card.bg}`}>
             <div className="text-xl sm:text-2xl mb-2">{card.icon}</div>
@@ -383,12 +383,13 @@ export default function Dashboard() {
           <h2 className="text-sm sm:text-base font-semibold text-gray-700 mb-4">
             Monthly Expenses vs Profit — {filterYear}
           </h2>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
               <YAxis
-                tick={{ fontSize: 12 }}
+                width={48}
+                tick={{ fontSize: 11 }}
                 tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
               />
               <Tooltip

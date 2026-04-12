@@ -1,3 +1,53 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Prevent iOS Safari from auto-zooming when tapping any input field.
+ * Safari zooms in whenever an input's font-size is below 16px.
+ * This rule forces 16px on iOS without changing the visual text size
+ * (Tailwind's text-sm / text-xs classes still control visual size via rem).
+ */
+@supports (-webkit-touch-callout: none) {
+  input[type='text'],
+  input[type='number'],
+  input[type='email'],
+  input[type='password'],
+  input[type='date'],
+  input[type='search'],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* react-calendar mobile overrides */
+.react-calendar {
+  width: 100% !important;
+  border: none !important;
+  font-family: inherit !important;
+}
+
+.react-calendar__tile {
+  min-height: 64px;
+  position: relative;
+  padding: 4px 2px 2px !important;
+  font-size: 12px !important;
+}
+
+@media (max-width: 480px) {
+  .react-calendar__tile {
+    min-height: 52px;
+    padding: 2px 1px 1px !important;
+    font-size: 11px !important;
+  }
+
+  .react-calendar__navigation button {
+    min-width: 36px !important;
+    font-size: 13px !important;
+  }
+
+  .react-calendar__month-view__weekdays__weekday {
+    font-size: 10px !important;
+  }
+}
