@@ -9,6 +9,7 @@ import Tournaments from './pages/Tournaments';
 import Calendar from './pages/Calendar';
 import Expenses from './pages/Expenses';
 import Admin from './pages/Admin';
+import Landing from './pages/Landing';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 
@@ -17,6 +18,7 @@ export default function App() {
     <AuthProvider>
       <Routes>
         {/* Public routes */}
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -32,7 +34,7 @@ export default function App() {
         </Route>
 
         {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>
   );
