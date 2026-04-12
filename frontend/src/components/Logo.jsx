@@ -161,5 +161,5 @@ export function LogoStyleC({ height = 56, className = '' }) {
   );
 }
 
-// Default export for backward compat — currently Style B
-export const LogoFull = LogoStyleB;
+// Default export for backward compat — currently Style C
+export const LogoFull = LogoStyleC;
