@@ -183,7 +183,7 @@ export default function Tournaments() {
             ))}
           </svg>
         </div>
-        <div className="relative flex gap-2">
+        <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           {tournaments.length > 0 && (
             <button
               onClick={() => setShowDeleteAllConfirm(true)}
