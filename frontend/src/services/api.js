@@ -47,3 +47,17 @@ export const deleteExpense = (id) => api.delete(`/expenses/${id}`);
 
 // Admin
 export const getAdminUsers = () => api.get('/admin/users');
+
+// AI — voice
+export const parseTournamentVoice = (transcript, currentForm) =>
+  api.post('/ai/parse-voice', { transcript, currentForm });
+
+// AI — document (URL or file)
+export const parseFromFile = (file, currentForm) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (currentForm) formData.append('currentForm', JSON.stringify(currentForm));
+  return api.post('/document/parse-file', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};

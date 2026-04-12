@@ -4,7 +4,7 @@ import { useDebounce } from '../hooks/useDebounce';
 
 const LIBRARIES = ['places'];
 
-export default function LocationAutocomplete({ value, onSelect, onClear }) {
+export default function LocationAutocomplete({ value, onSelect, onClear, voiceQuery }) {
   const [inputValue, setInputValue] = useState(value?.name || '');
   const [predictions, setPredictions] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -38,6 +38,15 @@ export default function LocationAutocomplete({ value, onSelect, onClear }) {
     setPredictions([]);
     setShowDropdown(false);
   }, [value]);
+
+  // Voice query: pre-fill the input and trigger the Places search
+  useEffect(() => {
+    if (!voiceQuery || !isLoaded) return;
+    isUserTyping.current = true;
+    setInputValue(voiceQuery);
+    setPredictions([]);
+    setShowDropdown(false);
+  }, [voiceQuery, isLoaded]);
 
   // Fire API call only when the user has typed (not on pre-fill or mount)
   useEffect(() => {

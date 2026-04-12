@@ -119,8 +119,8 @@ export default function ExpenseForm({ initial, onSubmit, onCancel, loading }) {
             name="amount"
             value={form.amount}
             onChange={handleChange}
-            min="0.01"
-            step="0.01"
+            min="1"
+            step="1"
             placeholder="0"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
           />

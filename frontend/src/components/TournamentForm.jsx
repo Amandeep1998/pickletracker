@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { CATEGORIES, MEDALS } from '../utils/format';
 import SearchableSelect from './SearchableSelect';
 import LocationAutocomplete from './LocationAutocomplete';
+import VoiceInput from './VoiceInput';
+import DocumentInput from './DocumentInput';
 
 const EMPTY_CATEGORY = {
   categoryName: '',
@@ -20,6 +22,7 @@ const EMPTY_FORM = {
 export default function TournamentForm({ initial, onSubmit, onCancel, loading }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
+  const [voiceLocationQuery, setVoiceLocationQuery] = useState('');
 
   useEffect(() => {
     if (initial) {
@@ -73,6 +76,34 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
     }
   };
 
+  const handleVoiceFill = (data) => {
+    setForm((prev) => {
+      const next = { ...prev };
+
+      if (data.name) {
+        next.name = data.name;
+        setErrors((e) => ({ ...e, name: '' }));
+      }
+
+      // AI returns the complete merged categories — just apply them directly
+      if (data.categories && data.categories.length > 0) {
+        next.categories = data.categories.map((cat) => ({
+          categoryName: cat.categoryName || '',
+          date: cat.date || '',
+          medal: cat.medal || 'None',
+          prizeAmount: (cat.medal === 'None' || !cat.medal) ? 0 : cat.prizeAmount != null ? cat.prizeAmount : '',
+          entryFee: cat.entryFee != null ? cat.entryFee : '',
+        }));
+      }
+
+      return next;
+    });
+
+    if (data.locationQuery) {
+      setVoiceLocationQuery(data.locationQuery);
+    }
+  };
+
   const validate = () => {
     const errs = {};
     if (!form.name.trim()) errs.name = 'Tournament name is required';
@@ -123,7 +154,26 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
   const inputClass = "w-full border border-gray-300 rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]";
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 relative">
+
+      {/* AI Fill — voice or document */}
+      <div className="space-y-2 pb-1">
+        <VoiceInput onFill={handleVoiceFill} currentForm={form} />
+        <div className="flex items-center gap-2">
+          <div className="flex-1 h-px bg-gray-200" />
+          <span className="text-xs text-gray-400">or</span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+        <DocumentInput onFill={handleVoiceFill} currentForm={form} />
+      </div>
+
+      {/* Divider */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px bg-gray-200" />
+        <span className="text-xs text-gray-400 font-medium">or fill manually</span>
+        <div className="flex-1 h-px bg-gray-200" />
+      </div>
+
       {/* Name */}
       <div>
         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Tournament Name</label>
@@ -145,8 +195,15 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         </label>
         <LocationAutocomplete
           value={form.location}
-          onSelect={(place) => setForm((prev) => ({ ...prev, location: place }))}
-          onClear={() => setForm((prev) => ({ ...prev, location: null }))}
+          onSelect={(place) => {
+            setForm((prev) => ({ ...prev, location: place }));
+            setVoiceLocationQuery('');
+          }}
+          onClear={() => {
+            setForm((prev) => ({ ...prev, location: null }));
+            setVoiceLocationQuery('');
+          }}
+          voiceQuery={voiceLocationQuery}
         />
         {form.location?.address && (
           <p className="text-xs text-gray-500 mt-1 truncate">{form.location.address}</p>
@@ -228,7 +285,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
                   value={cat.entryFee}
                   onChange={(e) => handleCategoryChange(idx, 'entryFee', e.target.value)}
                   min="0"
-                  step="0.01"
+                  step="1"
                   className={inputClass}
                   placeholder="0"
                 />
@@ -249,7 +306,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
                   value={cat.prizeAmount}
                   onChange={(e) => handleCategoryChange(idx, 'prizeAmount', e.target.value)}
                   min="0"
-                  step="0.01"
+                  step="1"
                   disabled={cat.medal === 'None'}
                   className={`${inputClass} disabled:bg-gray-200 disabled:cursor-not-allowed`}
                   placeholder="0"
