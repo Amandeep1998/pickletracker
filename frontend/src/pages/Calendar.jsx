@@ -422,10 +422,10 @@ export default function Calendar() {
                   </div>
                 </div>
 
-                {/* Add button — bottom right, always visible */}
+                {/* Add button — desktop only, per cell */}
                 <button
                   onClick={(e) => { e.stopPropagation(); setAddModal({ open: true, date: dateStr }); setAddError(''); }}
-                  className="absolute bottom-1 right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold transition-colors bg-green-600 text-white hover:bg-green-700 shadow-sm"
+                  className="absolute bottom-1 right-1 w-5 h-5 rounded-full items-center justify-center text-xs font-bold transition-colors bg-white border border-gray-200 text-gray-400 hover:bg-green-600 hover:text-white hover:border-green-600 hidden sm:flex"
                   title={`Add tournament on ${dateStr}`}
                 >
                   +
@@ -665,6 +665,17 @@ export default function Calendar() {
           </div>
         </div>
       )}
+
+      {/* ── Mobile FAB — fixed bottom-right, hidden on desktop ── */}
+      <button
+        onClick={() => { setAddModal({ open: true, date: todayStr }); setAddError(''); }}
+        className="sm:hidden fixed bottom-6 right-5 z-40 w-14 h-14 rounded-full bg-green-600 hover:bg-green-700 text-white shadow-lg flex items-center justify-center transition-colors"
+        title="Add tournament"
+      >
+        <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
     </div>
   );
 }
