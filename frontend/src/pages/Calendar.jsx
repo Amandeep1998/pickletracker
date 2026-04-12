@@ -669,7 +669,8 @@ export default function Calendar() {
       {/* ── Mobile FAB — fixed bottom-right, hidden on desktop ── */}
       <button
         onClick={() => { setAddModal({ open: true, date: todayStr }); setAddError(''); }}
-        className="sm:hidden fixed bottom-6 right-5 z-40 w-14 h-14 rounded-full bg-green-600 hover:bg-green-700 text-white shadow-lg flex items-center justify-center transition-colors"
+        className="sm:hidden fixed right-5 z-50 w-14 h-14 rounded-full bg-green-600 active:bg-green-700 text-white flex items-center justify-center bottom-safe"
+        style={{ boxShadow: '0 4px 16px rgba(22,163,74,0.45)' }}
         title="Add tournament"
       >
         <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

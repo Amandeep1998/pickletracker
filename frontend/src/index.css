@@ -21,3 +21,12 @@
   }
 }
 
+/* Safe-area utility for iOS Safari notch / home indicator / toolbar */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+.bottom-safe {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 80px);
+}
+
