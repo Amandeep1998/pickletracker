@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { LogoIcon, LogoFull } from '../components/Logo';
 
 // Pickleball ball SVG — chartreuse with hole pattern
 const PickleballSVG = ({ size = 80, className = '' }) => (
@@ -65,9 +64,12 @@ export default function Landing() {
       {/* ── Navbar ── */}
       <header className="bg-[#272702] sticky top-0 z-20 shadow-lg">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center">
-            <span className="sm:hidden"><LogoIcon size={34} /></span>
-            <span className="hidden sm:inline-block"><LogoFull height={32} /></span>
+          <div className="flex items-center gap-3">
+            <img src="/logo.svg" alt="PickleTracker" className="h-9 w-9 object-contain" />
+            <div className="hidden sm:flex items-baseline gap-0.5">
+              <span className="text-lg font-bold text-[#91BE4D]">Pickle</span>
+              <span className="text-lg font-bold text-[#ec9937]">Tracker</span>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Link to="/login" className="text-sm font-medium text-slate-300 hover:text-[#ec9937] transition-colors">
@@ -219,7 +221,7 @@ export default function Landing() {
       <footer className="bg-[#272702] border-t border-white/10 py-6">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <LogoIcon size={22} />
+            <img src="/logo.svg" alt="" className="h-5 w-5 object-contain opacity-70" />
             <p className="text-xs text-slate-400">&copy; {new Date().getFullYear()} PickleTracker. All rights reserved.</p>
           </div>
           <div className="flex items-center gap-4">

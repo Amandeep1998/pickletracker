@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GoogleSignInButton from '../components/GoogleSignInButton';
-import { LogoFull } from '../components/Logo';
 
 export default function Login() {
   const { user, handleLogin, loading, error: contextError, clearError } = useAuth();
@@ -39,9 +38,13 @@ export default function Login() {
     <div className="min-h-screen bg-[#F3F8F9] flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
         {/* Branding */}
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <LogoFull height={80} />
-          <p className="text-sm text-gray-500">Track your pickleball tournaments and finances</p>
+        <div className="mb-8 text-center">
+          <img src="/logo.svg" alt="PickleTracker" className="h-20 w-20 object-contain mx-auto mb-4" />
+          <div className="flex items-baseline justify-center gap-0.5">
+            <span className="text-3xl font-bold text-[#91BE4D]">Pickle</span>
+            <span className="text-3xl font-bold text-[#ec9937]">Tracker</span>
+          </div>
+          <p className="text-sm text-gray-500 mt-2">Track your pickleball tournaments and finances</p>
         </div>
 
         {/* Card */}
