@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GoogleSignInButton from '../components/GoogleSignInButton';
@@ -40,7 +40,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Branding */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <LogoFull height={52} />
+          <LogoFull height={80} />
           <p className="text-sm text-gray-500">Track your pickleball tournaments and finances</p>
         </div>
 
