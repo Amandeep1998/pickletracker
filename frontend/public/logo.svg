@@ -1,31 +1,64 @@
 <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <!-- Pickleball -->
   <defs>
-    <radialGradient id="ballGradient" cx="35%" cy="35%">
-      <stop offset="0%" style="stop-color:#a3e635;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#16a34a;stop-opacity:1" />
+    <!-- Ball gradient (3D feel) -->
+    <radialGradient id="ballGrad" cx="38%" cy="32%" r="62%">
+      <stop offset="0%" stop-color="#D8E84E"/>
+      <stop offset="100%" stop-color="#A8C428"/>
     </radialGradient>
+    <!-- Paddle gradient (depth) -->
+    <radialGradient id="paddleGrad" cx="38%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#3a3a00"/>
+      <stop offset="100%" stop-color="#1a1a00"/>
+    </radialGradient>
+    <!-- Clip to keep trend line inside paddle face -->
+    <clipPath id="faceClip">
+      <ellipse cx="84" cy="104" rx="62" ry="70"/>
+    </clipPath>
   </defs>
 
-  <!-- Ball with holes -->
-  <circle cx="100" cy="100" r="75" fill="url(#ballGradient)" stroke="#15803d" stroke-width="3"/>
+  <!-- ── Paddle ── -->
+  <!-- Face -->
+  <ellipse cx="84" cy="104" rx="62" ry="70" fill="url(#paddleGrad)"/>
+  <!-- Handle -->
+  <rect x="66" y="165" width="36" height="28" rx="9" fill="#1a1a00"/>
+  <!-- Grip wraps (orange accent) -->
+  <rect x="66" y="169" width="36" height="5" rx="2" fill="#ec9937" opacity="0.75"/>
+  <rect x="66" y="179" width="36" height="5" rx="2" fill="#ec9937" opacity="0.75"/>
 
-  <!-- Ball holes (perforations) -->
-  <circle cx="75" cy="70" r="6" fill="white" opacity="0.8"/>
-  <circle cx="125" cy="70" r="6" fill="white" opacity="0.8"/>
-  <circle cx="100" cy="90" r="6" fill="white" opacity="0.8"/>
-  <circle cx="70" cy="115" r="6" fill="white" opacity="0.8"/>
-  <circle cx="130" cy="115" r="6" fill="white" opacity="0.8"/>
-  <circle cx="100" cy="135" r="6" fill="white" opacity="0.8"/>
+  <!-- Paddle face details -->
+  <!-- Inner border ring -->
+  <ellipse cx="84" cy="104" rx="56" ry="64" fill="none" stroke="#91BE4D" stroke-width="1.5" opacity="0.28"/>
+  <!-- Center vertical groove -->
+  <line x1="84" y1="37" x2="84" y2="168" stroke="#91BE4D" stroke-width="1.5" opacity="0.3"/>
+  <!-- Horizontal texture lines -->
+  <line x1="26" y1="82"  x2="142" y2="82"  stroke="#91BE4D" stroke-width="1" opacity="0.18"/>
+  <line x1="22" y1="104" x2="146" y2="104" stroke="#91BE4D" stroke-width="1" opacity="0.18"/>
+  <line x1="26" y1="126" x2="142" y2="126" stroke="#91BE4D" stroke-width="1" opacity="0.18"/>
 
-  <!-- Checkmark -->
-  <g transform="translate(100, 100)">
-    <!-- Orange arc/swoosh -->
-    <path d="M -30 -20 Q 0 20 30 -10" stroke="#f97316" stroke-width="12" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-    <!-- Checkmark -->
-    <path d="M -15 5 L 5 20 L 25 -15" stroke="white" stroke-width="10" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  </g>
+  <!-- ── Financial trend line (the "Tracker" element) ── -->
+  <polyline
+    points="34,142 54,122 68,132 82,108 96,116 112,88 130,76"
+    stroke="#ec9937"
+    stroke-width="5"
+    fill="none"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    clip-path="url(#faceClip)"
+  />
+  <!-- Trend line end dot -->
+  <circle cx="130" cy="76" r="6" fill="#ec9937" clip-path="url(#faceClip)"/>
 
-  <!-- Shadow -->
-  <ellipse cx="100" cy="170" rx="60" ry="12" fill="black" opacity="0.15"/>
+  <!-- ── Pickleball (overlapping top-right of paddle) ── -->
+  <circle cx="150" cy="50" r="42" fill="url(#ballGrad)"/>
+  <!-- 3D highlight -->
+  <circle cx="136" cy="37" r="14" fill="white" opacity="0.2"/>
+  <!-- Holes -->
+  <circle cx="136" cy="32" r="4.2" fill="#1a1a00" opacity="0.28"/>
+  <circle cx="153" cy="28" r="4.2" fill="#1a1a00" opacity="0.28"/>
+  <circle cx="168" cy="38" r="4.2" fill="#1a1a00" opacity="0.28"/>
+  <circle cx="130" cy="50" r="4.2" fill="#1a1a00" opacity="0.28"/>
+  <circle cx="147" cy="52" r="4.2" fill="#1a1a00" opacity="0.28"/>
+  <circle cx="164" cy="56" r="4.2" fill="#1a1a00" opacity="0.28"/>
+  <circle cx="138" cy="67" r="4.2" fill="#1a1a00" opacity="0.28"/>
+  <circle cx="156" cy="68" r="4.2" fill="#1a1a00" opacity="0.28"/>
 </svg>
