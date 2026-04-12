@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Tournaments from './pages/Tournaments';
 import Calendar from './pages/Calendar';
 import Expenses from './pages/Expenses';
+import Admin from './pages/Admin';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/expenses" element={<Expenses />} />
+          <Route path="/admin" element={<Admin />} />
         </Route>
 
         {/* Catch-all */}

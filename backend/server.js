@@ -7,6 +7,7 @@ const connectDB = require('./src/config/db');
 const authRoutes = require('./src/routes/auth.routes');
 const tournamentRoutes = require('./src/routes/tournament.routes');
 const expenseRoutes = require('./src/routes/expense.routes');
+const adminRoutes = require('./src/routes/admin.routes');
 const errorHandler = require('./src/middleware/error.middleware');
 
 const app = express();
@@ -23,6 +24,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/tournaments', tournamentRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use(errorHandler);
 

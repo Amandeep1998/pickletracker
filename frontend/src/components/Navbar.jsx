@@ -3,9 +3,12 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MobileMenu from './MobileMenu';
 
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+
 export default function Navbar() {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   const logout = () => {
     handleLogout();
@@ -47,6 +50,13 @@ export default function Navbar() {
           <NavLink to="/calendar" className={linkClass}>
             Calendar
           </NavLink>
+          {isAdmin && (
+            <NavLink to="/admin" className={({ isActive }) =>
+              `text-sm font-medium transition-colors ${isActive ? 'text-purple-600' : 'text-purple-400 hover:text-purple-600'}`
+            }>
+              Admin
+            </NavLink>
+          )}
         </div>
 
         {/* Desktop User + Logout - Hidden on Mobile */}
