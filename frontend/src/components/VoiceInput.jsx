@@ -13,6 +13,9 @@ export default function VoiceInput({ onFill, currentForm }) {
   const [error, setError] = useState('');
   const recognitionRef = useRef(null);
   const finalTextRef = useRef('');
+  // Mirrors status in a ref so event handlers (onend/onerror) always see the
+  // latest value without stale-closure issues.
+  const statusRef = useRef('idle');
 
   // ── Recording ──────────────────────────────────────────────────────────────
 
@@ -25,13 +28,17 @@ export default function VoiceInput({ onFill, currentForm }) {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.continuous = true;
+    // Use continuous=false + manual restart via onend.
+    // continuous=true on mobile causes silent restarts where event.resultIndex
+    // resets to 0 while event.results still holds old data, duplicating text.
+    recognition.continuous = false;
     recognition.interimResults = true;
     recognition.lang = 'en-IN';
 
     finalTextRef.current = '';
     setTranscript('');
     setInterimText('');
+    statusRef.current = 'recording';
 
     recognition.onresult = (event) => {
       let interim = '';
@@ -46,14 +53,25 @@ export default function VoiceInput({ onFill, currentForm }) {
       setInterimText(interim);
     };
 
+    // When a speech segment ends, restart if the user hasn't pressed Stop.
+    recognition.onend = () => {
+      setInterimText('');
+      if (statusRef.current === 'recording') {
+        try { recognition.start(); } catch { /* already restarting */ }
+      }
+    };
+
     recognition.onerror = (event) => {
       if (event.error === 'not-allowed') {
         setError('Microphone access was denied. Please allow microphone access and try again.');
+        statusRef.current = 'idle';
         setStatus('idle');
       } else if (event.error !== 'no-speech') {
         setError(`Recognition error: ${event.error}. Please try again.`);
+        statusRef.current = 'idle';
         setStatus('idle');
       }
+      // no-speech is fine — onend will restart automatically
     };
 
     recognition.start();
@@ -62,6 +80,8 @@ export default function VoiceInput({ onFill, currentForm }) {
   }, []);
 
   const stopAndProcess = useCallback(async () => {
+    // Set statusRef first so onend doesn't restart after we call .stop()
+    statusRef.current = 'processing';
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
@@ -72,6 +92,7 @@ export default function VoiceInput({ onFill, currentForm }) {
 
     if (!fullTranscript) {
       setError('No speech detected. Please try again.');
+      statusRef.current = 'idle';
       setStatus('idle');
       return;
     }
@@ -86,6 +107,7 @@ export default function VoiceInput({ onFill, currentForm }) {
       if (!data.categories || data.categories.length === 0) {
         if (!data.name && !data.locationQuery) {
           setError("Couldn't extract any tournament details. Please try speaking more clearly.");
+          statusRef.current = 'idle';
           setStatus('idle');
           return;
         }
@@ -95,6 +117,7 @@ export default function VoiceInput({ onFill, currentForm }) {
         setParsedData(data);
         setAmbiguities(data.ambiguities);
         setAmbiguityIdx(0);
+        statusRef.current = 'clarifying';
         setStatus('clarifying');
       } else {
         onFill(data);
@@ -102,11 +125,14 @@ export default function VoiceInput({ onFill, currentForm }) {
       }
     } catch {
       setError('Failed to process voice input. Please check your connection and try again.');
+      statusRef.current = 'idle';
       setStatus('idle');
     }
   }, [interimText, onFill]);
 
   const cancelRecording = useCallback(() => {
+    // Set statusRef first so onend doesn't restart
+    statusRef.current = 'idle';
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
@@ -115,6 +141,7 @@ export default function VoiceInput({ onFill, currentForm }) {
   }, []);
 
   const resetToIdle = () => {
+    statusRef.current = 'idle';
     setStatus('idle');
     setTranscript('');
     setInterimText('');
