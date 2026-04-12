@@ -10,55 +10,53 @@
  */
 
 // ─── Shared clean paddle + ball icon ────────────────────────────────────────
-// viewBox 0 0 50 58 — oval paddle head, grip handle, chartreuse ball top-right
+// viewBox 0 0 54 62 — oval paddle head, grip handle, chartreuse ball top-right
 function PaddleAndBall({ id = 'a' }) {
-  const ballGrad = `pb-ball-${id}`;
-  const clip     = `pb-clip-${id}`;
+  const ballGrad   = `pb-ball-${id}`;
+  const paddleGrad = `pb-pad-${id}`;
   return (
     <>
       <defs>
         <radialGradient id={ballGrad} cx="36%" cy="30%" r="65%">
-          <stop offset="0%"   stopColor="#DEEE50" />
+          <stop offset="0%"   stopColor="#E2F04A" />
           <stop offset="100%" stopColor="#A8C428" />
         </radialGradient>
-        <clipPath id={clip}>
-          <ellipse cx="20" cy="21" rx="16" ry="19" />
-        </clipPath>
+        <radialGradient id={paddleGrad} cx="30%" cy="25%" r="75%">
+          <stop offset="0%"   stopColor="#aacf55" />
+          <stop offset="100%" stopColor="#7aa030" />
+        </radialGradient>
       </defs>
 
-      {/* Paddle head — clean lime oval */}
-      <ellipse cx="20" cy="21" rx="16" ry="19" fill="#91BE4D" />
-      {/* Surface detail lines */}
-      <line x1="20" y1="4"  x2="20" y2="39" stroke="#6a9020" strokeWidth="1.2" opacity="0.6" />
-      <line x1="6"  y1="15" x2="34" y2="15" stroke="#6a9020" strokeWidth="0.8" opacity="0.4" />
-      <line x1="4"  y1="21" x2="36" y2="21" stroke="#6a9020" strokeWidth="0.8" opacity="0.4" />
-      <line x1="6"  y1="27" x2="34" y2="27" stroke="#6a9020" strokeWidth="0.8" opacity="0.4" />
+      {/* Paddle head — lime oval with gradient */}
+      <ellipse cx="20" cy="22" rx="17" ry="20" fill={`url(#${paddleGrad})`} />
+      {/* Surface grid lines */}
+      <line x1="20" y1="4"  x2="20" y2="41" stroke="#4a6e10" strokeWidth="1.1" opacity="0.45" />
+      <line x1="5"  y1="15" x2="35" y2="15" stroke="#4a6e10" strokeWidth="0.8" opacity="0.3" />
+      <line x1="3"  y1="22" x2="37" y2="22" stroke="#4a6e10" strokeWidth="0.8" opacity="0.3" />
+      <line x1="5"  y1="29" x2="35" y2="29" stroke="#4a6e10" strokeWidth="0.8" opacity="0.3" />
+      {/* Highlight shine */}
+      <ellipse cx="13" cy="13" rx="6" ry="7" fill="white" opacity="0.13" />
 
-      {/* Orange upward trend line across paddle face */}
-      <polyline
-        points="8,33 13,25 17,28 21,19 25,22 30,14"
-        stroke="#ec9937" strokeWidth="2.2" fill="none"
-        strokeLinecap="round" strokeLinejoin="round"
-        clipPath={`url(#${clip})`}
-      />
-      <circle cx="30" cy="14" r="2.2" fill="#ec9937" clipPath={`url(#${clip})`} />
-
+      {/* Neck taper */}
+      <rect x="15" y="39" width="10" height="4" rx="1" fill="#3d6010" />
       {/* Handle */}
-      <rect x="14" y="37" width="12" height="19" rx="4" fill="#5a7e1a" />
-      {/* Grip tape — orange bands */}
-      <rect x="14" y="41" width="12" height="3" rx="1" fill="#ec9937" opacity="0.85" />
-      <rect x="14" y="47" width="12" height="3" rx="1" fill="#ec9937" opacity="0.85" />
+      <rect x="14" y="42" width="12" height="20" rx="4" fill="#3d6010" />
+      {/* Grip wrap — dark lines only, no orange */}
+      <rect x="14" y="46" width="12" height="2" rx="1" fill="#2a4508" opacity="0.55" />
+      <rect x="14" y="51" width="12" height="2" rx="1" fill="#2a4508" opacity="0.55" />
+      <rect x="14" y="56" width="12" height="2" rx="1" fill="#2a4508" opacity="0.55" />
 
       {/* Pickleball — chartreuse, top-right, overlapping paddle */}
-      <circle cx="37" cy="12" r="12" fill={`url(#${ballGrad})`} />
-      <circle cx="33" cy="9"  r="4"  fill="white" opacity="0.18" />
+      <circle cx="38" cy="13" r="13" fill={`url(#${ballGrad})`} />
+      {/* Shine */}
+      <circle cx="34" cy="9"  r="4.5" fill="white" opacity="0.18" />
       {/* Holes */}
-      <circle cx="32" cy="8"  r="1.7" fill="#272702" opacity="0.3" />
-      <circle cx="39" cy="7"  r="1.7" fill="#272702" opacity="0.3" />
-      <circle cx="44" cy="12" r="1.7" fill="#272702" opacity="0.3" />
-      <circle cx="34" cy="15" r="1.7" fill="#272702" opacity="0.3" />
-      <circle cx="41" cy="17" r="1.7" fill="#272702" opacity="0.3" />
-      <circle cx="37" cy="12" r="1.7" fill="#272702" opacity="0.3" />
+      <circle cx="33" cy="8"  r="1.8" fill="#1a1a00" opacity="0.28" />
+      <circle cx="40" cy="7"  r="1.8" fill="#1a1a00" opacity="0.28" />
+      <circle cx="46" cy="12" r="1.8" fill="#1a1a00" opacity="0.28" />
+      <circle cx="35" cy="15" r="1.8" fill="#1a1a00" opacity="0.28" />
+      <circle cx="42" cy="18" r="1.8" fill="#1a1a00" opacity="0.28" />
+      <circle cx="38" cy="11" r="1.8" fill="#1a1a00" opacity="0.28" />
     </>
   );
 }
@@ -66,7 +64,7 @@ function PaddleAndBall({ id = 'a' }) {
 // ─── Icon only (mobile / favicon) ────────────────────────────────────────────
 export function LogoIcon({ size = 36, className = '' }) {
   return (
-    <svg viewBox="0 0 50 58" width={size} height={size}
+    <svg viewBox="0 0 54 62" width={size} height={size}
       xmlns="http://www.w3.org/2000/svg" aria-label="PickleTracker" className={className}>
       <PaddleAndBall id="icon" />
     </svg>
@@ -85,7 +83,7 @@ export function LogoStyleA({ height = 36, className = '' }) {
       aria-label="PickleTracker" className={className}
       style={{ overflow: 'visible', display: 'block' }}>
       {/* Icon in its own viewport */}
-      <svg viewBox="0 0 50 58" x={0} y={0} width={iconH} height={iconH}>
+      <svg viewBox="0 0 54 62" x={0} y={0} width={iconH} height={iconH}>
         <PaddleAndBall id="a" />
       </svg>
       {/* Wordmark */}
@@ -119,7 +117,7 @@ export function LogoStyleB({ height = 36, className = '' }) {
       {/* Lime left accent strip */}
       <rect x="0" y="0" width={Math.round(height * 0.18)} height={pillH} rx={r} fill="#91BE4D" />
       {/* Icon */}
-      <svg viewBox="0 0 50 58" x={iconX} y={iconY} width={iconSz} height={iconSz}>
+      <svg viewBox="0 0 54 62" x={iconX} y={iconY} width={iconSz} height={iconSz}>
         <PaddleAndBall id="b" />
       </svg>
       {/* Name */}
@@ -144,7 +142,7 @@ export function LogoStyleC({ height = 56, className = '' }) {
     <svg viewBox={`0 0 ${totalW} ${height}`} width={totalW} height={height}
       xmlns="http://www.w3.org/2000/svg" aria-label="PickleTracker" className={className}>
       {/* Icon centred */}
-      <svg viewBox="0 0 50 58" x={iconX} y={0} width={iconSz} height={iconSz}>
+      <svg viewBox="0 0 54 62" x={iconX} y={0} width={iconSz} height={iconSz}>
         <PaddleAndBall id="c" />
       </svg>
       {/* Divider line */}
