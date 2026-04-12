@@ -14,8 +14,8 @@ export default function MobileMenu() {
   const navLinkClass = ({ isActive }) =>
     `block px-4 py-3 text-sm font-medium transition-colors ${
       isActive
-        ? 'text-green-600 bg-green-50 border-l-4 border-green-600'
-        : 'text-gray-700 hover:bg-gray-50'
+        ? 'text-[#91BE4D] bg-[#91BE4D]/10 border-l-4 border-[#91BE4D]'
+        : 'text-gray-700 hover:bg-[#F3F8F9] hover:text-[#ec9937]'
     }`;
 
   return (
@@ -23,7 +23,7 @@ export default function MobileMenu() {
       {/* Hamburger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden flex flex-col gap-1.5 p-2 rounded-lg hover:bg-slate-800 transition-colors"
+        className="md:hidden flex flex-col gap-1.5 p-2 rounded hover:bg-[#3a3a00] transition-colors"
         aria-label="Toggle menu"
       >
         <span className={`h-0.5 w-6 bg-white transition-all ${isOpen ? 'rotate-45 translate-y-2' : ''}`}></span>

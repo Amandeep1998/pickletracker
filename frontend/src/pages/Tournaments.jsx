@@ -167,10 +167,10 @@ export default function Tournaments() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {/* Hero Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-green-900 rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-6 flex items-center justify-between overflow-hidden relative">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #4ade80 0%, transparent 60%)' }} />
+      <div className="bg-gradient-to-r from-[#272702] via-[#1e1e01] to-[#2a3300] rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-6 flex items-center justify-between overflow-hidden relative">
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
         <div className="relative">
-          <p className="text-green-400 text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
+          <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">Tournaments</h1>
           <p className="text-slate-400 text-xs sm:text-sm mt-1">Manage and track all your events</p>
         </div>
@@ -185,7 +185,7 @@ export default function Tournaments() {
           )}
           <button
             onClick={openAddModal}
-            className="bg-green-500 hover:bg-green-400 text-white text-xs sm:text-sm font-bold px-4 py-2 min-h-[40px] rounded-lg transition-colors shadow-lg shadow-green-900/40"
+            className="bg-[#ec9937] hover:bg-[#d4831f] text-white text-xs sm:text-sm font-bold px-4 py-2 min-h-[40px] rounded tracking-wide transition-colors shadow-lg shadow-black/30"
           >
             + Add Tournament
           </button>
@@ -226,7 +226,7 @@ export default function Tournaments() {
           {tournaments.map((t) => (
             <div
               key={t._id}
-              className="bg-white rounded-2xl shadow-md border border-gray-100 p-4 sm:p-5 border-l-4 border-l-green-500"
+              className="bg-white rounded-xl shadow-md border border-gray-100 p-4 sm:p-5 border-l-4 border-l-[#91BE4D]"
             >
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">

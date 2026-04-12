@@ -207,13 +207,13 @@ export default function Dashboard() {
     {
       label: 'Total Earnings',
       value: formatINR(totals.earnings),
-      gradient: 'from-emerald-500 to-green-600',
+      gradient: 'from-[#91BE4D] to-[#6a9020]',
       icon: '🏆',
     },
     {
       label: 'Total Expenses',
       value: formatINR(totals.totalExpenses),
-      gradient: 'from-rose-500 to-red-600',
+      gradient: 'from-[#ec9937] to-[#c07010]',
       icon: '💸',
     },
     {
@@ -225,7 +225,7 @@ export default function Dashboard() {
     {
       label: 'Tournaments',
       value: totals.count,
-      gradient: 'from-violet-500 to-purple-600',
+      gradient: 'from-[#272702] to-[#4a4a00]',
       icon: '🎾',
     },
   ];
@@ -260,10 +260,10 @@ export default function Dashboard() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {/* Hero Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-green-900 rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-6 flex items-center justify-between overflow-hidden relative">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #4ade80 0%, transparent 60%)' }} />
+      <div className="bg-gradient-to-r from-[#272702] via-[#1e1e01] to-[#2a3300] rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-6 flex items-center justify-between overflow-hidden relative">
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
         <div className="relative">
-          <p className="text-green-400 text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
+          <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">Dashboard</h1>
           <p className="text-slate-400 text-xs sm:text-sm mt-1">Your tournament finance overview</p>
         </div>
@@ -352,30 +352,30 @@ export default function Dashboard() {
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setIncludeTournaments((v) => !v)}
-            className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors border ${
+            className={`text-xs px-3 py-1.5 rounded font-semibold tracking-wide transition-colors border ${
               includeTournaments
-                ? 'bg-green-600 text-white border-green-600'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                ? 'bg-[#91BE4D] text-white border-[#91BE4D]'
+                : 'bg-white text-gray-600 border-gray-300 hover:border-[#91BE4D] hover:text-[#91BE4D]'
             }`}
           >
             {includeTournaments ? '✓' : '+'} Tournament
           </button>
           <button
             onClick={() => setIncludeCourtBooking((v) => !v)}
-            className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors border ${
+            className={`text-xs px-3 py-1.5 rounded font-semibold tracking-wide transition-colors border ${
               includeCourtBooking
                 ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600'
             }`}
           >
             {includeCourtBooking ? '✓' : '+'} Court Booking
           </button>
           <button
             onClick={() => setIncludeGear((v) => !v)}
-            className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors border ${
+            className={`text-xs px-3 py-1.5 rounded font-semibold tracking-wide transition-colors border ${
               includeGear
-                ? 'bg-orange-500 text-white border-orange-500'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                ? 'bg-[#ec9937] text-white border-[#ec9937]'
+                : 'bg-white text-gray-600 border-gray-300 hover:border-[#ec9937] hover:text-[#ec9937]'
             }`}
           >
             {includeGear ? '✓' : '+'} Gear
@@ -422,7 +422,7 @@ export default function Dashboard() {
               />
               <Legend />
               <Bar dataKey="Expenses" fill="#f87171" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Profit" fill="#4ade80" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Profit" fill="#91BE4D" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

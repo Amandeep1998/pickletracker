@@ -15,23 +15,19 @@ export default function Navbar() {
   };
 
   const linkClass = ({ isActive }) =>
-    `text-sm font-medium transition-colors ${
-      isActive ? 'text-green-400' : 'text-slate-300 hover:text-white'
+    `text-sm font-medium tracking-wide transition-colors ${
+      isActive ? 'text-[#91BE4D]' : 'text-slate-300 hover:text-[#ec9937]'
     }`;
 
   return (
-    <nav className="bg-slate-900 sticky top-0 z-20 shadow-lg">
+    <nav className="bg-[#272702] sticky top-0 z-20 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Brand */}
         <NavLink to="/dashboard" className="flex items-center gap-3 flex-shrink-0">
-          <img
-            src="/logo.svg"
-            alt="PickleTracker"
-            className="h-9 w-9 object-contain"
-          />
+          <img src="/logo.svg" alt="PickleTracker" className="h-9 w-9 object-contain" />
           <div className="hidden sm:flex items-baseline gap-0.5">
-            <span className="text-lg font-bold text-green-400">Pickle</span>
-            <span className="text-lg font-bold text-orange-400">Tracker</span>
+            <span className="text-lg font-bold text-[#91BE4D]">Pickle</span>
+            <span className="text-lg font-bold text-[#ec9937]">Tracker</span>
           </div>
         </NavLink>
 
@@ -43,7 +39,7 @@ export default function Navbar() {
           <NavLink to="/calendar" className={linkClass}>Calendar</NavLink>
           {isAdmin && (
             <NavLink to="/admin" className={({ isActive }) =>
-              `text-sm font-medium transition-colors ${isActive ? 'text-purple-400' : 'text-purple-300 hover:text-purple-200'}`
+              `text-sm font-medium tracking-wide transition-colors ${isActive ? 'text-purple-400' : 'text-purple-300 hover:text-purple-200'}`
             }>
               Admin
             </NavLink>
@@ -55,7 +51,7 @@ export default function Navbar() {
           <span className="text-sm text-slate-400">{user?.name}</span>
           <button
             onClick={logout}
-            className="text-sm px-3 py-1.5 text-red-400 hover:text-red-300 hover:bg-slate-800 rounded-md font-medium transition-colors"
+            className="text-sm px-4 py-1.5 bg-[#ec9937] hover:bg-[#d4831f] text-white rounded font-semibold transition-colors tracking-wide"
           >
             Logout
           </button>

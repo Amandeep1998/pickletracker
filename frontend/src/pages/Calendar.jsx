@@ -272,10 +272,10 @@ export default function Calendar() {
     <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
 
       {/* Hero Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-green-900 rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-4 flex items-center justify-between overflow-hidden relative">
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #4ade80 0%, transparent 60%)' }} />
+      <div className="bg-gradient-to-r from-[#272702] via-[#1e1e01] to-[#2a3300] rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-4 flex items-center justify-between overflow-hidden relative">
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
         <div className="relative">
-          <p className="text-green-400 text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
+          <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">Calendar</h1>
           <p className="text-slate-400 text-xs sm:text-sm mt-1">View tournaments by date</p>
         </div>
@@ -297,7 +297,7 @@ export default function Calendar() {
           {calendarConnected ? (
             <div className="flex items-center gap-3 flex-shrink-0">
               <span className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
-                <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+                <span className="w-2 h-2 rounded-full bg-[#91BE4D] inline-block" />
                 Connected
               </span>
               <button onClick={handleDisconnectCalendar} className="text-xs text-gray-400 hover:text-red-500 transition-colors">
@@ -397,7 +397,7 @@ export default function Calendar() {
                 {/* Date number */}
                 <div className="flex justify-center mb-1">
                   <span className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold transition-colors
-                    ${isToday ? 'bg-green-600 text-white' : 'text-gray-700'}
+                    ${isToday ? 'bg-[#91BE4D] text-white' : 'text-gray-700'}
                   `}>
                     {day}
                   </span>
@@ -408,7 +408,7 @@ export default function Calendar() {
                   {/* Mobile: dots */}
                   <div className="sm:hidden flex flex-wrap gap-0.5 justify-center">
                     {events.slice(0, 3).map((ev, i) => (
-                      <span key={i} className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+                      <span key={i} className="w-1.5 h-1.5 rounded-full bg-[#91BE4D] inline-block" />
                     ))}
                     {events.length > 3 && <span className="w-1.5 h-1.5 rounded-full bg-green-300 inline-block" />}
                   </div>
@@ -419,7 +419,7 @@ export default function Calendar() {
                       <div
                         key={i}
                         onClick={(e) => { e.stopPropagation(); setSelectedTournament(ev.tournament); }}
-                        className="text-xs bg-green-100 text-green-800 rounded px-1 py-0.5 truncate font-medium hover:bg-green-200 transition cursor-pointer leading-tight"
+                        className="text-xs bg-[#91BE4D]/15 text-[#4a6e10] rounded px-1 py-0.5 truncate font-medium hover:bg-green-200 transition cursor-pointer leading-tight"
                         title={`${ev.tournament.name} – ${ev.category.categoryName}`}
                       >
                         {ev.tournament.name}
@@ -491,7 +491,7 @@ export default function Calendar() {
                       <p className="text-sm font-semibold text-gray-900 truncate">{tournament.name}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {categories.map((cat, i) => (
-                          <span key={i} className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full font-medium truncate max-w-[140px]">
+                          <span key={i} className="text-xs bg-[#91BE4D]/15 text-[#4a6e10] px-1.5 py-0.5 rounded-full font-medium truncate max-w-[140px]">
                             {cat.categoryName}
                           </span>
                         ))}
@@ -515,7 +515,7 @@ export default function Calendar() {
             <div className="px-3 pb-4 pt-2 border-t border-gray-100">
               <button
                 onClick={() => { setDayPopup({ open: false, date: null }); setAddModal({ open: true, date: dayPopup.date }); setAddError(''); }}
-                className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold text-sm py-3 rounded-xl transition"
+                className="w-full flex items-center justify-center gap-2 bg-[#ec9937] hover:bg-[#d4831f] text-white font-semibold text-sm py-3 rounded-lg tracking-wide transition"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
