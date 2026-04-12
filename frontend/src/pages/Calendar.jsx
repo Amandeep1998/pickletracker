@@ -53,8 +53,8 @@ export default function Calendar() {
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
 
-  // Selected date in the grid (drives the day panel)
-  const [selectedDate, setSelectedDate] = useState(todayStr);
+  // Day popup — opens when tapping a date that has tournaments
+  const [dayPopup, setDayPopup] = useState({ open: false, date: null });
 
   // Tournament detail / edit modals
   const [selectedTournament, setSelectedTournament] = useState(null);
@@ -106,23 +106,17 @@ export default function Calendar() {
     return map;
   }, [tournaments]);
 
-  // Events for the currently selected date
-  const selectedEvents = useMemo(() => {
-    if (!selectedDate) return [];
-    return eventsByDate[selectedDate] || [];
-  }, [selectedDate, eventsByDate]);
-
-  // Group by tournament for display
-  const selectedByTournament = useMemo(() => {
+  // Group events for the popup date by tournament
+  const popupByTournament = useMemo(() => {
+    if (!dayPopup.date) return [];
+    const events = eventsByDate[dayPopup.date] || [];
     const grouped = {};
-    selectedEvents.forEach(({ tournament, category }) => {
-      if (!grouped[tournament._id]) {
-        grouped[tournament._id] = { tournament, categories: [] };
-      }
+    events.forEach(({ tournament, category }) => {
+      if (!grouped[tournament._id]) grouped[tournament._id] = { tournament, categories: [] };
       grouped[tournament._id].categories.push(category);
     });
     return Object.values(grouped);
-  }, [selectedEvents]);
+  }, [dayPopup.date, eventsByDate]);
 
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
 
@@ -378,22 +372,21 @@ export default function Calendar() {
             const dateStr = toDateStr(viewYear, viewMonth, day);
             const events = eventsByDate[dateStr] || [];
             const isToday = dateStr === todayStr;
-            const isSelected = dateStr === selectedDate;
             const hasEvents = events.length > 0;
 
             return (
               <div
                 key={dateStr}
-                onClick={() => setSelectedDate(dateStr)}
-                className={`relative border-b border-r border-gray-100 min-h-[72px] sm:min-h-[90px] p-1 sm:p-1.5 cursor-pointer transition-colors select-none
-                  ${isSelected ? 'bg-green-50' : 'hover:bg-gray-50'}
+                onClick={() => { if (hasEvents) setDayPopup({ open: true, date: dateStr }); }}
+                className={`relative border-b border-r border-gray-100 min-h-[72px] sm:min-h-[90px] p-1 sm:p-1.5 transition-colors select-none
+                  ${hasEvents ? 'cursor-pointer hover:bg-green-50/60' : 'cursor-default'}
                   ${idx % 7 === 0 ? 'border-l-0' : ''}
                 `}
               >
                 {/* Date number */}
                 <div className="flex justify-center mb-1">
                   <span className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold transition-colors
-                    ${isToday ? 'bg-green-600 text-white' : isSelected ? 'bg-green-100 text-green-800' : 'text-gray-700'}
+                    ${isToday ? 'bg-green-600 text-white' : 'text-gray-700'}
                   `}>
                     {day}
                   </span>
@@ -444,53 +437,86 @@ export default function Calendar() {
           })}
         </div>
 
-        {/* ── Selected Day Panel ── */}
-        {selectedDate && (
-          <div className="border-t border-gray-100 bg-gray-50/60 px-4 py-3">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-sm font-semibold text-gray-900">{formatShortDate(selectedDate)}</p>
+      </div>
+
+      {/* ── Day Popup (bottom sheet) ── */}
+      {dayPopup.open && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          onClick={() => setDayPopup({ open: false, date: null })}
+        >
+          {/* Scrim */}
+          <div className="absolute inset-0 bg-black/40" />
+
+          {/* Sheet */}
+          <div
+            className="relative bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-xl z-10 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
+              <div>
+                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Tournaments</p>
+                <p className="text-base font-bold text-gray-900 mt-0.5">{formatShortDate(dayPopup.date)}</p>
+              </div>
               <button
-                onClick={() => { setAddModal({ open: true, date: selectedDate }); setAddError(''); }}
-                className="flex items-center gap-1.5 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg transition"
+                onClick={() => setDayPopup({ open: false, date: null })}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 transition"
               >
-                <span className="text-base leading-none">+</span>
-                Add Tournament
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
-            {selectedByTournament.length === 0 ? (
-              <p className="text-xs text-gray-400 py-2">No tournaments on this day. Tap + to add one.</p>
-            ) : (
-              <div className="space-y-2">
-                {selectedByTournament.map(({ tournament, categories }) => (
-                  <button
-                    key={tournament._id}
-                    onClick={() => setSelectedTournament(tournament)}
-                    className="w-full text-left bg-white rounded-xl border border-gray-100 px-3 py-2.5 hover:border-green-200 hover:bg-green-50 transition shadow-sm"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">{tournament.name}</p>
-                        <p className="text-xs text-gray-500 truncate mt-0.5">
-                          {categories.map(c => c.categoryName).join(' · ')}
-                        </p>
+            {/* Tournament cards */}
+            <div className="px-3 py-3 space-y-2 max-h-72 overflow-y-auto">
+              {popupByTournament.map(({ tournament, categories }) => (
+                <button
+                  key={tournament._id}
+                  onClick={() => { setSelectedTournament(tournament); setDayPopup({ open: false, date: null }); }}
+                  className="w-full text-left bg-gray-50 hover:bg-green-50 rounded-xl px-3 py-3 transition border border-transparent hover:border-green-100"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{tournament.name}</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {categories.map((cat, i) => (
+                          <span key={i} className="text-xs bg-green-100 text-green-800 px-1.5 py-0.5 rounded-full font-medium truncate max-w-[140px]">
+                            {cat.categoryName}
+                          </span>
+                        ))}
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className={`text-sm font-bold ${(tournament.totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                          {formatINR(tournament.totalProfit || 0)}
-                        </p>
-                        <svg className="w-4 h-4 text-gray-300 ml-auto mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
+                      {tournament.location?.name && (
+                        <p className="text-xs text-gray-400 mt-1 truncate">📍 {tournament.location.name}</p>
+                      )}
                     </div>
-                  </button>
-                ))}
-              </div>
-            )}
+                    <div className="flex-shrink-0 text-right">
+                      <p className={`text-sm font-bold ${(tournament.totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                        {formatINR(tournament.totalProfit || 0)}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">profit</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Add button */}
+            <div className="px-3 pb-4 pt-2 border-t border-gray-100">
+              <button
+                onClick={() => { setDayPopup({ open: false, date: null }); setAddModal({ open: true, date: dayPopup.date }); setAddError(''); }}
+                className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold text-sm py-3 rounded-xl transition"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Add Tournament on this date
+              </button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Add Tournament Modal ── */}
       {addModal.open && (
