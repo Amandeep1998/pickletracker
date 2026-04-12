@@ -1,117 +1,109 @@
 /**
- * PickleTracker Logo
+ * PickleTracker Logo — refined, premium feel
  *
- * Concept: A pickleball with an upward trend-line inside it — the ball IS the
- * tracker. The orange chart line ties directly to the orange "Tracker" wordmark.
- * Horizontal layout keeps icon and text as one cohesive unit.
+ * Design principles:
+ *  • Ball: lime fill, subtle top-left highlight for depth, 5 precise holes
+ *  • Chart line: very thin orange stroke — sharp, not cartoonish
+ *  • Orange used ONLY for the chart line (accent), not in typography
+ *  • Wordmark: "Pickle" lime + "Tracker" dark-olive — same weight, same size
+ *    → single cohesive unit, no weight imbalance
+ *  • Horizontal layout everywhere — product mark, not sports badge
  *
- * LogoFull  — Larger horizontal mark  (Login / Signup / Landing)
- * LogoNav   — Compact horizontal mark (desktop Navbar)
- * LogoIcon  — Ball-only mark          (mobile Navbar)
+ * LogoFull  — 310×70  (Login / Signup / Landing hero)
+ * LogoNav   — 160×36  (desktop Navbar)
+ * LogoIcon  — 36×36   (mobile Navbar — ball only)
  */
 
-// ─── Ball with tracker chart inside ──────────────────────────────────────────
 function TrackerBall({ cx, cy, r, id }) {
-  const clipId = `tb-clip-${id}`;
-  // trend line points as fractions of r
-  const pts = [
-    [-0.70,  0.40],
-    [-0.38,  0.08],
-    [-0.10,  0.26],
-    [ 0.18, -0.15],
-    [ 0.46, -0.02],
-    [ 0.70, -0.48],
-  ].map(([dx, dy]) => `${cx + dx * r},${cy + dy * r}`).join(' ');
+  const clip = `tbc-${id}`;
+  const sw   = Math.max(r * 0.055, 1.0); // very thin, precise
 
-  const sw = Math.max(r * 0.14, 1.4); // stroke width scales with ball size
+  const trendPts = [
+    [-0.68,  0.42],
+    [-0.38,  0.10],
+    [-0.10,  0.28],
+    [ 0.18, -0.14],
+    [ 0.46, -0.02],
+    [ 0.70, -0.46],
+  ].map(([dx, dy]) => `${(cx + dx * r).toFixed(2)},${(cy + dy * r).toFixed(2)}`).join(' ');
 
   return (
     <>
       <defs>
-        <clipPath id={clipId}>
-          <circle cx={cx} cy={cy} r={r - 0.5} />
+        <clipPath id={clip}>
+          <circle cx={cx} cy={cy} r={r - 0.3} />
         </clipPath>
       </defs>
 
-      {/* Ball body */}
+      {/* Ball */}
       <circle cx={cx} cy={cy} r={r} fill="#91BE4D" />
 
-      {/* Holes — pickleball identity */}
-      {[[-0.30,-0.44],[0.10,-0.54],[0.50,-0.10],[-0.10,0.20],[0.32,0.44]].map(([dx,dy],i) => (
+      {/* Subtle highlight — gives the ball depth, not flat */}
+      <ellipse
+        cx={cx - r * 0.24} cy={cy - r * 0.26}
+        rx={r * 0.38} ry={r * 0.30}
+        fill="white" opacity="0.18"
+        clipPath={`url(#${clip})`}
+      />
+
+      {/* Holes — 5, evenly distributed, smaller radius */}
+      {[[-0.28,-0.44],[0.10,-0.52],[0.50,-0.10],[-0.10,0.20],[0.34,0.40]].map(([dx,dy],i) => (
         <circle key={i}
-          cx={cx + dx*r} cy={cy + dy*r}
-          r={r * 0.11} fill="#1e3300" opacity="0.38" />
+          cx={cx + dx * r} cy={cy + dy * r}
+          r={r * 0.10} fill="#1e3300" opacity="0.35" />
       ))}
 
-      {/* Upward trend line — the "Tracker" concept, orange */}
+      {/* Trend line — thin & sharp */}
       <polyline
-        points={pts}
+        points={trendPts}
         stroke="#ec9937" strokeWidth={sw}
         fill="none" strokeLinecap="round" strokeLinejoin="round"
-        clipPath={`url(#${clipId})`}
+        clipPath={`url(#${clip})`}
       />
-      {/* Peak dot — anchors the chart line */}
+      {/* Peak dot */}
       <circle
-        cx={cx + 0.70 * r} cy={cy - 0.48 * r}
-        r={sw * 1.1}
-        fill="#ec9937"
-        clipPath={`url(#${clipId})`}
+        cx={cx + 0.70 * r} cy={cy - 0.46 * r}
+        r={sw * 1.4} fill="#ec9937"
+        clipPath={`url(#${clip})`}
       />
     </>
   );
 }
 
-// ─── Full logo — Login / Signup / Landing ─────────────────────────────────────
-// Horizontal: [ball] [Pickle / Tracker]
-// viewBox 0 0 220 76
-export function LogoFull({ height = 80, className = '' }) {
-  const W = Math.round(220 * (height / 76));
+// ─── Full mark — Login / Signup / Landing ─────────────────────────────────────
+export function LogoFull({ height = 70, className = '' }) {
+  const W = Math.round(310 * (height / 70));
   return (
-    <svg viewBox="0 0 220 76" width={W} height={height}
+    <svg viewBox="0 0 310 70" width={W} height={height}
       xmlns="http://www.w3.org/2000/svg" aria-label="PickleTracker"
       className={className}>
 
-      {/* Ball with chart — vertically centred */}
-      <TrackerBall cx={36} cy={38} r={32} id="full" />
+      <TrackerBall cx={33} cy={35} r={30} id="full" />
 
-      {/* "Pickle" — lime, lighter weight, smaller — sits top-half */}
-      <text x="80" y="32"
+      {/* Single-line wordmark — same weight, same size, colour only differs */}
+      <text x="76" y="46"
         fontFamily="'Barlow Condensed', 'Arial Narrow', Impact, sans-serif"
-        fontWeight="600" fontSize="26" fill="#91BE4D" letterSpacing="1">
-        Pickle
-      </text>
-
-      {/* "Tracker" — orange, heavy, larger — anchors the mark bottom-half */}
-      <text x="78" y="62"
-        fontFamily="'Barlow Condensed', 'Arial Narrow', Impact, sans-serif"
-        fontWeight="800" fontSize="34" fill="#ec9937" letterSpacing="0.5">
-        Tracker
+        fontWeight="700" fontSize="38" letterSpacing="0.5">
+        <tspan fill="#91BE4D">Pickle</tspan><tspan fill="#272702">Tracker</tspan>
       </text>
     </svg>
   );
 }
 
-// ─── Compact logo — desktop Navbar ────────────────────────────────────────────
-// viewBox 0 0 168 40
+// ─── Compact mark — desktop Navbar ───────────────────────────────────────────
 export function LogoNav({ height = 36, className = '' }) {
-  const W = Math.round(168 * (height / 40));
+  const W = Math.round(160 * (height / 36));
   return (
-    <svg viewBox="0 0 168 40" width={W} height={height}
+    <svg viewBox="0 0 160 36" width={W} height={height}
       xmlns="http://www.w3.org/2000/svg" aria-label="PickleTracker"
       className={className}>
 
-      <TrackerBall cx={19} cy={20} r={17} id="nav" />
+      <TrackerBall cx={17} cy={18} r={15} id="nav" />
 
-      <text x="42" y="17"
+      <text x="38" y="23"
         fontFamily="'Barlow Condensed', 'Arial Narrow', Impact, sans-serif"
-        fontWeight="600" fontSize="14" fill="#91BE4D" letterSpacing="0.8">
-        Pickle
-      </text>
-
-      <text x="41" y="33"
-        fontFamily="'Barlow Condensed', 'Arial Narrow', Impact, sans-serif"
-        fontWeight="800" fontSize="18" fill="#ec9937" letterSpacing="0.3">
-        Tracker
+        fontWeight="700" fontSize="19" letterSpacing="0.3">
+        <tspan fill="#91BE4D">Pickle</tspan><tspan fill="#e8e8d8">Tracker</tspan>
       </text>
     </svg>
   );
