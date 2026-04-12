@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MobileMenu from './MobileMenu';
+import { LogoIcon, LogoFull } from './Logo';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
@@ -23,12 +24,15 @@ export default function Navbar() {
     <nav className="bg-[#272702] sticky top-0 z-20 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Brand */}
-        <NavLink to="/dashboard" className="flex items-center gap-3 flex-shrink-0">
-          <img src="/logo.svg" alt="PickleTracker" className="h-9 w-9 object-contain" />
-          <div className="hidden sm:flex items-baseline gap-0.5">
-            <span className="text-lg font-bold text-[#91BE4D]">Pickle</span>
-            <span className="text-lg font-bold text-[#ec9937]">Tracker</span>
-          </div>
+        <NavLink to="/dashboard" className="flex items-center flex-shrink-0">
+          {/* Mobile: icon only */}
+          <span className="sm:hidden">
+            <LogoIcon size={36} />
+          </span>
+          {/* Desktop: full wordmark */}
+          <span className="hidden sm:inline-block">
+            <LogoFull height={34} />
+          </span>
         </NavLink>
 
         {/* Desktop Links */}
