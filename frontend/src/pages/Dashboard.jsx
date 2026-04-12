@@ -267,7 +267,15 @@ export default function Dashboard() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">Dashboard</h1>
           <p className="text-slate-400 text-xs sm:text-sm mt-1">Your tournament finance overview</p>
         </div>
-        <div className="relative text-4xl sm:text-5xl select-none">🏓</div>
+        <div className="relative select-none opacity-90">
+          <svg width="72" height="72" viewBox="0 0 80 80" fill="none" aria-hidden="true">
+            <circle cx="40" cy="40" r="36" fill="#C8D636" />
+            <circle cx="40" cy="40" r="36" fill="white" opacity="0.12" />
+            {[[28,22],[40,18],[52,22],[20,32],[32,30],[44,30],[56,32],[24,42],[36,40],[44,40],[56,42],[28,52],[40,56],[52,52],[40,40]].map(([cx,cy],i)=>(
+              <circle key={i} cx={cx} cy={cy} r="2.8" fill="#272702" opacity="0.3"/>
+            ))}
+          </svg>
+        </div>
       </div>
 
       {/* Next Tournament Widget */}

@@ -115,11 +115,12 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
     });
   };
 
-  // Calculate total profit across all categories
   const totalProfit = form.categories.reduce(
     (sum, cat) => sum + ((Number(cat.prizeAmount) || 0) - (Number(cat.entryFee) || 0)),
     0
   );
+
+  const inputClass = "w-full border border-gray-300 rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
@@ -131,7 +132,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
           name="name"
           value={form.name}
           onChange={handleChange}
-          className="w-full border border-gray-300 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          className={inputClass}
           placeholder="e.g. City Open 2024"
         />
         {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
@@ -157,9 +158,9 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         <h3 className="text-xs sm:text-sm font-semibold text-gray-700 mb-3">Categories</h3>
 
         {form.categories.map((cat, idx) => (
-          <div key={idx} className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-3 space-y-3">
+          <div key={idx} className="bg-[#F3F8F9] border border-gray-200 rounded-lg p-3 sm:p-4 mb-3 space-y-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-gray-500">Category {idx + 1}</span>
+              <span className="text-xs font-semibold text-[#272702] uppercase tracking-wide">Category {idx + 1}</span>
               {form.categories.length > 1 && (
                 <button
                   type="button"
@@ -173,9 +174,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
 
             {/* Category Name */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Category Name
-              </label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Category Name</label>
               <SearchableSelect
                 options={CATEGORIES}
                 value={cat.categoryName}
@@ -189,14 +188,12 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
 
             {/* Category Date */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Category Date
-              </label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Category Date</label>
               <input
                 type="date"
                 value={cat.date}
                 onChange={(e) => handleCategoryChange(idx, 'date', e.target.value)}
-                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={inputClass}
               />
               {errors[`cat_${idx}_date`] && (
                 <p className="text-red-500 text-xs mt-1">{errors[`cat_${idx}_date`]}</p>
@@ -214,7 +211,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
                       checked={cat.medal === m}
                       onChange={(e) => handleCategoryChange(idx, 'medal', e.target.value)}
                       value={m}
-                      className="accent-green-600"
+                      className="accent-[#91BE4D]"
                     />
                     <span className="text-xs sm:text-sm">{m}</span>
                   </label>
@@ -225,16 +222,14 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
             {/* Financials */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  My Entry Fee (₹)
-                </label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">My Entry Fee (₹)</label>
                 <input
                   type="number"
                   value={cat.entryFee}
                   onChange={(e) => handleCategoryChange(idx, 'entryFee', e.target.value)}
                   min="0"
                   step="0.01"
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className={inputClass}
                   placeholder="0"
                 />
                 {/doubles|mixed/i.test(cat.categoryName) && (
@@ -248,9 +243,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Amount Won (₹)
-                </label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Amount Won (₹)</label>
                 <input
                   type="number"
                   value={cat.prizeAmount}
@@ -258,11 +251,11 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
                   min="0"
                   step="0.01"
                   disabled={cat.medal === 'None'}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-200 disabled:cursor-not-allowed"
+                  className={`${inputClass} disabled:bg-gray-200 disabled:cursor-not-allowed`}
                   placeholder="0"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  {cat.medal === 'None' ? 'Disabled: select a medal to enter amount' : 'Enter the amount you won in this category'}
+                  {cat.medal === 'None' ? 'Select a medal to enter amount' : 'Amount won in this category'}
                 </p>
                 {errors[`cat_${idx}_prizeAmount`] && (
                   <p className="text-red-500 text-xs mt-1">{errors[`cat_${idx}_prizeAmount`]}</p>
@@ -271,9 +264,9 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
             </div>
 
             {/* Per-category profit */}
-            <div className="text-xs">
+            <div className="text-xs border-t border-gray-200 pt-2">
               <span className="text-gray-600">Profit: </span>
-              <span className={`font-semibold ${(Number(cat.prizeAmount) || 0) - (Number(cat.entryFee) || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <span className={`font-semibold ${(Number(cat.prizeAmount) || 0) - (Number(cat.entryFee) || 0) >= 0 ? 'text-[#91BE4D]' : 'text-red-600'}`}>
                 {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(
                   (Number(cat.prizeAmount) || 0) - (Number(cat.entryFee) || 0)
                 )}
@@ -287,7 +280,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
           <button
             type="button"
             onClick={addCategory}
-            className="w-full sm:w-fit bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 min-h-[40px] rounded-md text-sm transition-colors flex items-center justify-center gap-2"
+            className="w-full sm:w-fit bg-[#272702] hover:bg-[#3a3a00] text-[#91BE4D] font-semibold px-4 py-2 min-h-[40px] rounded text-sm tracking-wide transition-colors flex items-center justify-center gap-2 border border-[#91BE4D]/30"
           >
             <span>+</span>
             <span>Add Category</span>
@@ -296,12 +289,10 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
       </div>
 
       {/* Total profit preview */}
-      <div className={`rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium ${totalProfit >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+      <div className={`rounded px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium border ${totalProfit >= 0 ? 'bg-[#91BE4D]/10 text-[#4a6e10] border-[#91BE4D]/30' : 'bg-red-50 text-red-700 border-red-200'}`}>
         Total Profit:{' '}
         <span className="font-bold">
-          {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(
-            totalProfit
-          )}
+          {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalProfit)}
         </span>
       </div>
 
@@ -310,15 +301,15 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-2 sm:py-2.5 min-h-[40px] rounded-lg text-xs sm:text-sm transition-colors"
+          className="flex-1 bg-[#ec9937] hover:bg-[#d4831f] disabled:opacity-60 text-white font-bold py-2 sm:py-2.5 min-h-[40px] rounded text-xs sm:text-sm tracking-wide transition-colors"
         >
-          {loading ? 'Saving...' : 'Save'}
+          {loading ? 'Saving...' : 'Save Tournament'}
         </button>
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold py-2 sm:py-2.5 min-h-[40px] rounded-lg text-xs sm:text-sm transition-colors"
+            className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold py-2 sm:py-2.5 min-h-[40px] rounded text-xs sm:text-sm transition-colors"
           >
             Cancel
           </button>

@@ -174,6 +174,15 @@ export default function Tournaments() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">Tournaments</h1>
           <p className="text-slate-400 text-xs sm:text-sm mt-1">Manage and track all your events</p>
         </div>
+        <div className="relative hidden sm:block select-none opacity-80 mr-2">
+          <svg width="56" height="56" viewBox="0 0 80 80" fill="none" aria-hidden="true">
+            <circle cx="40" cy="40" r="36" fill="#C8D636" />
+            <circle cx="40" cy="40" r="36" fill="white" opacity="0.12" />
+            {[[28,22],[40,18],[52,22],[20,32],[32,30],[44,30],[56,32],[24,42],[36,40],[44,40],[56,42],[28,52],[40,56],[52,52],[40,40]].map(([cx,cy],i)=>(
+              <circle key={i} cx={cx} cy={cy} r="2.8" fill="#272702" opacity="0.3"/>
+            ))}
+          </svg>
+        </div>
         <div className="relative flex gap-2">
           {tournaments.length > 0 && (
             <button
