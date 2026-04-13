@@ -411,17 +411,26 @@ export default function Calendar() {
                   </span>
                 </div>
 
-                {/* Event chips — desktop: show name; mobile: show colored dot */}
+                {/* Event chips — name on both mobile and desktop */}
                 <div className="space-y-0.5">
-                  {/* Mobile: dots */}
-                  <div className="sm:hidden flex flex-wrap gap-0.5 justify-center">
-                    {events.slice(0, 3).map((ev, i) => (
-                      <span key={i} className="w-1.5 h-1.5 rounded-full bg-[#91BE4D] inline-block" />
+                  {/* Mobile: 1 chip + +N */}
+                  <div className="sm:hidden space-y-0.5">
+                    {events.slice(0, 1).map((ev, i) => (
+                      <div
+                        key={i}
+                        className="text-[9px] bg-[#91BE4D]/15 text-[#4a6e10] rounded px-1 py-0.5 truncate font-semibold leading-tight"
+                      >
+                        {ev.tournament.name}
+                      </div>
                     ))}
-                    {events.length > 3 && <span className="w-1.5 h-1.5 rounded-full bg-green-300 inline-block" />}
+                    {events.length > 1 && (
+                      <div className="text-[9px] text-gray-400 px-1 font-semibold leading-tight">
+                        +{events.length - 1}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Desktop: event name chips */}
+                  {/* Desktop: 2 chips + +N more */}
                   <div className="hidden sm:block space-y-0.5">
                     {events.slice(0, 2).map((ev, i) => (
                       <div
