@@ -491,6 +491,13 @@ exports.connect = async (req, res, next) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
+    // Send welcome message
+    const user = await User.findById(req.user.id).select('name').lean();
+    await send(waId,
+      `👋 Hi *${user.name}*! Welcome to PickleTracker! 🏓\n\n` +
+      MENU_MSG
+    );
+
     res.json({ success: true });
   } catch (err) {
     next(err);
