@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import TournamentForm from '../components/TournamentForm';
@@ -17,13 +17,16 @@ export default function Welcome() {
   const [modalOpen, setModalOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
-  const [added, setAdded] = useState(null); // tournament name after success
+  const [added, setAdded] = useState(null);
+  const [ready, setReady] = useState(false);
 
-  // If not a first-time user, send to dashboard (must be after all hooks)
-  if (!localStorage.getItem('pt_first_time')) {
-    navigate('/dashboard', { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (!localStorage.getItem('pt_first_time')) {
+      navigate('/dashboard', { replace: true });
+    } else {
+      setReady(true);
+    }
+  }, []);
 
   const handleAdd = async (data) => {
     setFormLoading(true);
@@ -49,14 +52,15 @@ export default function Welcome() {
     navigate('/dashboard', { replace: true });
   };
 
+  if (!ready) return null;
+
   const firstName = user?.name?.split(' ')[0] || 'there';
 
   // ── Success screen ──
   if (added) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#f7f9f0] via-white to-[#f0f7f4] flex flex-col items-center justify-center px-4 py-12">
+      <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm text-center">
-          {/* Trophy */}
           <div className="w-20 h-20 rounded-full bg-[#f4f8e8] border-2 border-[#d6e89a] flex items-center justify-center mx-auto mb-5">
             <svg className="w-9 h-9 text-[#91BE4D]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -71,7 +75,6 @@ export default function Welcome() {
             Your first tournament is being tracked. Here's what you can do next:
           </p>
 
-          {/* CTAs */}
           <div className="space-y-3">
             <button
               onClick={() => navigate('/calendar')}
@@ -88,7 +91,7 @@ export default function Welcome() {
                   <p className="text-xs text-gray-400">See your tournament on the schedule</p>
                 </div>
               </div>
-              <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </button>
@@ -108,7 +111,7 @@ export default function Welcome() {
                   <p className="text-xs text-gray-400">Check your earnings and profit</p>
                 </div>
               </div>
-              <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </button>
@@ -120,9 +123,8 @@ export default function Welcome() {
 
   // ── Welcome screen ──
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#f7f9f0] via-white to-[#f0f7f4] flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm text-center">
-        {/* Logo */}
         <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-[#f4f8e8] border border-[#d6e89a] mb-5 mx-auto">
           <svg width="44" height="44" viewBox="0 0 80 80" fill="none" aria-hidden="true">
             <circle cx="40" cy="40" r="32" fill="#C8D636" opacity="0.25" />
@@ -144,7 +146,6 @@ export default function Welcome() {
           Let's add your first tournament to get started. It only takes a minute.
         </p>
 
-        {/* Steps preview */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-6 text-left space-y-3">
           {[
             { icon: '🏆', text: 'Add tournament name and location' },
@@ -173,7 +174,6 @@ export default function Welcome() {
         </button>
       </div>
 
-      {/* Tournament form modal */}
       <Modal
         isOpen={modalOpen}
         onClose={() => { setModalOpen(false); setFormError(''); }}
