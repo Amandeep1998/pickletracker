@@ -69,6 +69,20 @@ export default function Signup() {
               </div>
             )}
 
+            <GoogleSignInButton
+              onBegin={() => { setError(''); clearError(); }}
+              onSuccess={() => navigate('/dashboard')}
+            />
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-400">Or</span>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
@@ -96,20 +110,6 @@ export default function Signup() {
                 <Link to="/privacy-policy" className="text-gray-500 hover:text-[#91BE4D] transition-colors">Privacy Policy</Link>.
               </p>
             </form>
-
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-gray-400">Or</span>
-              </div>
-            </div>
-
-            <GoogleSignInButton
-              onBegin={() => { setError(''); clearError(); }}
-              onSuccess={() => navigate('/dashboard')}
-            />
 
             <p className="text-center text-sm text-gray-500 mt-6">
               Already have an account?{' '}

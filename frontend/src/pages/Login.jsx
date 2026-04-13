@@ -62,6 +62,20 @@ export default function Login() {
               </div>
             )}
 
+            <GoogleSignInButton
+              onBegin={() => { setError(''); clearError(); }}
+              onSuccess={() => navigate('/dashboard')}
+            />
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-gray-400">Or</span>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -79,20 +93,6 @@ export default function Login() {
                 {loading ? 'Signing in...' : 'Log In'}
               </button>
             </form>
-
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-gray-400">Or</span>
-              </div>
-            </div>
-
-            <GoogleSignInButton
-              onBegin={() => { setError(''); clearError(); }}
-              onSuccess={() => navigate('/dashboard')}
-            />
 
             <p className="text-xs text-gray-400 text-center mt-4">
               By continuing, you agree to our{' '}
