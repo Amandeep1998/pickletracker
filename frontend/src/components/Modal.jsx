@@ -36,11 +36,16 @@ export default function Modal({ isOpen, onClose, title, children }) {
     <div
       ref={overlayRef}
       onClick={handleOverlayClick}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 sm:px-4 sm:py-6"
     >
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div className="relative bg-white rounded-t-2xl sm:rounded-2xl shadow-xl w-full sm:max-w-2xl max-h-[90dvh] flex flex-col">
+        {/* Drag handle (mobile only) */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        </div>
+
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 sm:py-4 border-b border-gray-100 flex-shrink-0">
           <h2 className="text-base sm:text-lg font-semibold text-gray-800">{title}</h2>
           <button
             onClick={onClose}
@@ -54,7 +59,14 @@ export default function Modal({ isOpen, onClose, title, children }) {
         </div>
 
         {/* Scrollable body */}
-        <div className="overflow-y-auto px-5 py-4 flex-1">
+        <div
+          className="overflow-y-auto px-5 py-4 flex-1"
+          onFocus={(e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+              setTimeout(() => e.target.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 300);
+            }
+          }}
+        >
           {children}
         </div>
       </div>
