@@ -11,7 +11,7 @@ const expenseSchema = new mongoose.Schema(
     type: {
       type: String,
       required: [true, 'Expense type is required'],
-      enum: ['court_booking', 'gear'],
+      enum: ['gear'],
     },
     title: {
       type: String,

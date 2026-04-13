@@ -341,6 +341,14 @@ export default function Sessions() {
                 ))}
               </div>
 
+              {/* Court fee */}
+              {s.courtFee > 0 && (
+                <p className="text-xs text-gray-500 flex items-center gap-1 mb-1">
+                  <span className="text-gray-400">🏟️ Court fee:</span>
+                  <span className="font-semibold text-gray-700">₹{s.courtFee.toLocaleString('en-IN')}</span>
+                </p>
+              )}
+
               {/* Notes */}
               {s.notes && (
                 <p className="text-xs text-gray-500 italic border-t border-gray-100 pt-2 mt-2 line-clamp-2">{s.notes}</p>

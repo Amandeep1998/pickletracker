@@ -29,6 +29,7 @@ const EMPTY = {
   type: 'casual',
   date: today(),
   location: null,
+  courtFee: '',
   rating: null,
   wentWell: [],
   wentWrong: [],
@@ -45,6 +46,7 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
         type: initial.type || 'casual',
         date: initial.date || today(),
         location: initial.location || null,
+        courtFee: initial.courtFee || '',
         rating: initial.rating || null,
         wentWell: initial.wentWell || [],
         wentWrong: initial.wentWrong || [],
@@ -78,6 +80,7 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
       type: form.type,
       date: form.date,
       location: form.location || undefined,
+      courtFee: form.courtFee !== '' ? Number(form.courtFee) : 0,
       rating: form.rating,
       wentWell: form.wentWell,
       wentWrong: form.wentWrong,
@@ -148,6 +151,23 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
             onClear={() => setForm((p) => ({ ...p, location: null }))}
           />
         </div>
+      </div>
+
+      {/* Court fee */}
+      <div>
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+          Court Fee (₹) <span className="text-gray-400 font-normal normal-case">(optional)</span>
+        </label>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          value={form.courtFee}
+          onChange={(e) => setForm((p) => ({ ...p, courtFee: e.target.value }))}
+          placeholder="0"
+          className="w-full sm:w-40 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
+        />
+        <p className="text-[11px] text-gray-400 mt-1">What you paid to book the court for this session</p>
       </div>
 
       {/* Rating */}

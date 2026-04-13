@@ -1,8 +1,8 @@
 const Joi = require('joi');
 
 const expenseSchema = Joi.object({
-  type: Joi.string().valid('court_booking', 'gear').required().messages({
-    'any.only': 'Type must be court_booking or gear',
+  type: Joi.string().valid('gear').required().messages({
+    'any.only': 'Type must be gear',
     'any.required': 'Expense type is required',
   }),
   title: Joi.string().trim().min(1).max(100).required().messages({

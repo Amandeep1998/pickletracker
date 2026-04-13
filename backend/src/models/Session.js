@@ -72,6 +72,11 @@ const sessionSchema = new mongoose.Schema(
       maxlength: [2000, 'Notes cannot exceed 2000 characters'],
       default: '',
     },
+    courtFee: {
+      type: Number,
+      min: [0, 'Court fee cannot be negative'],
+      default: 0,
+    },
     // Optional link to a Tournament document (for tournament-type sessions)
     tournamentId: {
       type: mongoose.Schema.Types.ObjectId,

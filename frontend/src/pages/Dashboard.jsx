@@ -32,6 +32,7 @@ const getTournamentDate = (tournament) => {
 export default function Dashboard() {
   const [tournaments, setTournaments] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [allSessions, setAllSessions] = useState([]);
   const [recentSessions, setRecentSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [slowLoad, setSlowLoad] = useState(false);
@@ -39,7 +40,6 @@ export default function Dashboard() {
   const [filterYear, setFilterYear] = useState(String(currentYear));
   const [filterMonth, setFilterMonth] = useState('');
   const [includeTournaments, setIncludeTournaments] = useState(true);
-  const [includeCourtBooking, setIncludeCourtBooking] = useState(false);
   const [includeGear, setIncludeGear] = useState(false);
 
   useEffect(() => {
@@ -50,6 +50,7 @@ export default function Dashboard() {
       .then(([tRes, eRes, sRes]) => {
         setTournaments(tRes.data.data);
         setExpenses(eRes.data.data);
+        setAllSessions(sRes.data.data);
         setRecentSessions(sRes.data.data.slice(0, 3));
       })
       .catch(() => setError('Failed to load data'))
@@ -101,7 +102,7 @@ export default function Dashboard() {
     });
   }, [tournaments, filterYear, filterMonth]);
 
-  // Expenses in the selected year+month window
+  // Gear expenses in the selected year+month window
   const filteredExpenses = useMemo(() => {
     return expenses.filter((e) => {
       const [year, month] = e.date.split('-');
@@ -111,7 +112,17 @@ export default function Dashboard() {
     });
   }, [expenses, filterYear, filterMonth]);
 
-  // Stat card totals — respects expense filter toggles
+  // Sessions in the selected year+month window
+  const filteredSessions = useMemo(() => {
+    return allSessions.filter((s) => {
+      const [year, month] = s.date.split('-');
+      if (filterYear && year !== filterYear) return false;
+      if (filterMonth !== '' && String(Number(month) - 1) !== filterMonth) return false;
+      return true;
+    });
+  }, [allSessions, filterYear, filterMonth]);
+
+  // Stat card totals
   const totals = useMemo(() => {
     const earnings = includeTournaments
       ? filteredTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0)
@@ -119,16 +130,13 @@ export default function Dashboard() {
     const tournamentExpenses = includeTournaments
       ? filteredTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0)
       : 0;
-    const courtBookingTotal = filteredExpenses
-      .filter((e) => e.type === 'court_booking')
-      .reduce((s, e) => s + e.amount, 0);
+    // Court fees always come from sessions
+    const courtFeesTotal = filteredSessions.reduce((s, x) => s + (x.courtFee || 0), 0);
     const gearTotal = filteredExpenses
       .filter((e) => e.type === 'gear')
       .reduce((s, e) => s + e.amount, 0);
 
-    const additionalExpenses =
-      (includeCourtBooking ? courtBookingTotal : 0) + (includeGear ? gearTotal : 0);
-    const totalExpenses = tournamentExpenses + additionalExpenses;
+    const totalExpenses = tournamentExpenses + courtFeesTotal + (includeGear ? gearTotal : 0);
 
     return {
       earnings,
@@ -136,14 +144,15 @@ export default function Dashboard() {
       profit: earnings - totalExpenses,
       count: filteredTournaments.length,
     };
-  }, [filteredTournaments, filteredExpenses, includeTournaments, includeCourtBooking, includeGear]);
+  }, [filteredTournaments, filteredExpenses, filteredSessions, includeTournaments, includeGear]);
 
-  // Monthly chart data for the selected year — also respects expense filter
+  // Monthly chart data for the selected year
   const chartData = useMemo(() => {
     const yearTournaments = tournaments.filter((t) =>
       getTournamentDate(t)?.startsWith(filterYear)
     );
     const yearExpenses = expenses.filter((e) => e.date?.startsWith(filterYear));
+    const yearSessions = allSessions.filter((s) => s.date?.startsWith(filterYear));
 
     return MONTHS.map((month, idx) => {
       const monthStr = String(idx + 1).padStart(2, '0');
@@ -153,19 +162,18 @@ export default function Dashboard() {
         return date && date.split('-')[1] === monthStr;
       });
       const monthExpenses = yearExpenses.filter((e) => e.date.split('-')[1] === monthStr);
-
+      const monthSessions = yearSessions.filter((s) => s.date.split('-')[1] === monthStr);
 
       const tournamentExp = includeTournaments
         ? monthTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0)
         : 0;
-      const courtBooking = includeCourtBooking
-        ? monthExpenses.filter((e) => e.type === 'court_booking').reduce((s, e) => s + e.amount, 0)
-        : 0;
+      // Court fees always included — they come from session logs
+      const courtFees = monthSessions.reduce((s, x) => s + (x.courtFee || 0), 0);
       const gear = includeGear
         ? monthExpenses.filter((e) => e.type === 'gear').reduce((s, e) => s + e.amount, 0)
         : 0;
 
-      const totalExp = tournamentExp + courtBooking + gear;
+      const totalExp = tournamentExp + courtFees + gear;
       const earnings = includeTournaments
         ? monthTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0)
         : 0;
@@ -176,7 +184,7 @@ export default function Dashboard() {
         Profit: +(earnings - totalExp).toFixed(2),
       };
     });
-  }, [tournaments, expenses, filterYear, includeTournaments, includeCourtBooking, includeGear]);
+  }, [tournaments, expenses, allSessions, filterYear, includeTournaments, includeGear]);
 
   // Per-category profit breakdown — uses filteredTournaments so year/month filter applies
   const categoryBreakdown = useMemo(() => {
@@ -425,16 +433,9 @@ export default function Dashboard() {
           >
             {includeTournaments ? '✓' : '+'} Tournament
           </button>
-          <button
-            onClick={() => setIncludeCourtBooking((v) => !v)}
-            className={`text-xs px-3 py-1.5 rounded font-semibold tracking-wide transition-colors border ${
-              includeCourtBooking
-                ? 'bg-blue-600 text-white border-blue-600'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600'
-            }`}
-          >
-            {includeCourtBooking ? '✓' : '+'} Court Booking
-          </button>
+          <span className="text-xs px-3 py-1.5 rounded font-semibold border bg-blue-50 text-blue-600 border-blue-200 cursor-default" title="Court fees are always included from session logs">
+            🏟️ Court fees (auto)
+          </span>
           <button
             onClick={() => setIncludeGear((v) => !v)}
             className={`text-xs px-3 py-1.5 rounded font-semibold tracking-wide transition-colors border ${
