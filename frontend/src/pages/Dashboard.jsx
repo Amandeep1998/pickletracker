@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { NavLink } from 'react-router-dom';
 import {
   BarChart,
   Bar,
@@ -31,6 +32,7 @@ const getTournamentDate = (tournament) => {
 export default function Dashboard() {
   const [tournaments, setTournaments] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [recentSessions, setRecentSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [slowLoad, setSlowLoad] = useState(false);
   const [error, setError] = useState('');
@@ -44,10 +46,11 @@ export default function Dashboard() {
     // After 4 s still loading → server is cold-starting; show a friendlier message
     const slowTimer = setTimeout(() => setSlowLoad(true), 4000);
 
-    Promise.all([api.getTournaments(), api.getExpenses()])
-      .then(([tRes, eRes]) => {
+    Promise.all([api.getTournaments(), api.getExpenses(), api.getSessions()])
+      .then(([tRes, eRes, sRes]) => {
         setTournaments(tRes.data.data);
         setExpenses(eRes.data.data);
+        setRecentSessions(sRes.data.data.slice(0, 3));
       })
       .catch(() => setError('Failed to load data'))
       .finally(() => {
@@ -276,6 +279,60 @@ export default function Dashboard() {
             ))}
           </svg>
         </div>
+      </div>
+
+      {/* Recent Sessions Widget */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-md px-4 py-4 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-base">📓</span>
+            <p className="text-sm font-bold text-gray-800">Performance Journal</p>
+          </div>
+          <NavLink to="/sessions" className="text-xs font-semibold text-[#4a6e10] hover:underline">
+            View all →
+          </NavLink>
+        </div>
+        {recentSessions.length === 0 ? (
+          <div className="text-center py-4">
+            <p className="text-xs text-gray-400 mb-2">No sessions logged yet</p>
+            <NavLink
+              to="/sessions"
+              className="inline-block text-xs font-bold px-4 py-1.5 rounded-lg hover:opacity-90 text-white transition-opacity"
+              style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
+            >
+              Log your first session
+            </NavLink>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {recentSessions.map((s) => {
+              const EMOJI = { 1: '😫', 2: '😕', 3: '😐', 4: '😊', 5: '🔥' };
+              const TYPE_ICON = { tournament: '🏆', casual: '🏸', practice: '🎯' };
+              const TYPE_LABEL = { tournament: 'Tournament', casual: 'Casual', practice: 'Practice' };
+              const [y, m, d] = s.date.split('-');
+              const dateLabel = new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+              return (
+                <div key={s._id} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm">{TYPE_ICON[s.type]}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-700">{TYPE_LABEL[s.type]}</p>
+                      <p className="text-[10px] text-gray-400">{dateLabel}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {s.wentWrong?.[0] && (
+                      <span className="text-[10px] bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded-full border border-orange-100 font-medium hidden sm:inline">
+                        ✗ {s.wentWrong[0]}
+                      </span>
+                    )}
+                    <span className="text-lg">{EMOJI[s.rating]}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Next Tournament Widget */}

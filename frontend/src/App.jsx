@@ -8,6 +8,7 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import Tournaments from './pages/Tournaments';
 import Calendar from './pages/Calendar';
+import Sessions from './pages/Sessions';
 import Expenses from './pages/Expenses';
 import Admin from './pages/Admin';
 import Landing from './pages/Landing';
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/calendar" element={<Calendar />} />
+          <Route path="/sessions" element={<Sessions />} />
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/admin" element={<Admin />} />
         </Route>

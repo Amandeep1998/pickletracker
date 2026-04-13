@@ -60,6 +60,12 @@ export const connectWhatsApp = (phone) => api.post('/whatsapp/connect', { phone 
 export const disconnectWhatsApp = () => api.delete('/whatsapp/connect');
 export const toggleWhatsAppAccess = (userId) => api.put(`/admin/users/${userId}/whatsapp-access`);
 
+// Sessions (performance journal)
+export const getSessions = () => api.get('/sessions');
+export const createSession = (data) => api.post('/sessions', data);
+export const updateSession = (id, data) => api.put(`/sessions/${id}`, data);
+export const deleteSession = (id) => api.delete(`/sessions/${id}`);
+
 // AI — voice
 export const parseTournamentVoice = (transcript, currentForm) =>
   api.post('/ai/parse-voice', { transcript, currentForm });

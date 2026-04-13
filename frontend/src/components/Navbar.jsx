@@ -35,6 +35,7 @@ export default function Navbar() {
           <NavLink to="/dashboard"   className={linkClass}>Dashboard</NavLink>
           <NavLink to="/tournaments" className={linkClass}>Tournaments</NavLink>
           <NavLink to="/calendar"    className={linkClass}>Calendar</NavLink>
+          <NavLink to="/sessions"   className={linkClass}>Journal</NavLink>
           {isAdmin && (
             <NavLink to="/admin" className={({ isActive }) =>
               `text-sm font-medium tracking-wide transition-colors ${isActive ? 'text-purple-500' : 'text-purple-400 hover:text-purple-500'}`
