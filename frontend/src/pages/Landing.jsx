@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import BrandLogo from '../components/BrandLogo';
 
 /* ─── Custom Icons ─────────────────────────────────────────── */
 const IconTrophy = () => (
@@ -100,7 +101,7 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5 flex-shrink-0">
-            <img src="/brand-logo.png" alt="PickleTracker" className="h-11 w-auto object-contain" style={{ mixBlendMode: 'multiply' }} />
+            <BrandLogo size="lg" />
           </Link>
 
           {/* Nav actions */}
@@ -328,10 +329,7 @@ export default function Landing() {
 
             {/* Brand */}
             <div className="max-w-xs">
-              <div className="flex items-baseline gap-0.5 mb-4">
-                <span className="text-xl font-bold text-[#91BE4D]">Pickle</span>
-                <span className="text-xl font-bold text-[#ec9937]">Tracker</span>
-              </div>
+              <div className="mb-4"><BrandLogo size="lg" /></div>
               <p className="text-sm text-slate-400 leading-relaxed">
                 India's tournament tracker for pickleball players. Log matches, track your money, grow your game.
               </p>

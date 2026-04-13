@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import BrandLogo from './BrandLogo';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
@@ -52,7 +53,7 @@ export default function MobileMenu() {
       >
         {/* Sidebar header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-          <img src="/brand-logo.png" alt="PickleTracker" className="h-10 w-auto object-contain" style={{ mixBlendMode: 'multiply' }} />
+          <BrandLogo size="md" />
           <button
             onClick={() => setIsOpen(false)}
             className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"

@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import MobileMenu from './MobileMenu';
+import BrandLogo from './BrandLogo';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
@@ -25,12 +26,7 @@ export default function Navbar() {
 
         {/* Brand */}
         <NavLink to="/dashboard" className="flex-shrink-0">
-          <img
-            src="/brand-logo.png"
-            alt="PickleTracker"
-            className="h-11 w-auto object-contain"
-            style={{ mixBlendMode: 'multiply' }}
-          />
+          <BrandLogo size="lg" />
         </NavLink>
 
         {/* Desktop Links */}

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 import Footer from '../components/Footer';
+import BrandLogo from '../components/BrandLogo';
 
 export default function Signup() {
   const { user, handleSignup, loading, error: contextError, clearError } = useAuth();
@@ -43,7 +44,7 @@ export default function Signup() {
         <div className="w-full max-w-md">
           {/* Branding */}
           <div className="mb-8 text-center">
-            <img src="/brand-logo.png" alt="PickleTracker" className="h-24 w-auto object-contain mx-auto mb-3" style={{ mixBlendMode: 'multiply' }} />
+            <div className="mb-3"><BrandLogo size="2xl" /></div>
             <p className="text-sm text-gray-500 mt-2">Track your pickleball tournaments and finances</p>
           </div>
 

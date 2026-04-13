@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import BrandLogo from './BrandLogo';
 
 export default function Footer() {
   const year = new Date().getFullYear();
@@ -21,9 +22,8 @@ export default function Footer() {
 
           {/* Brand */}
           <div>
-            <div className="flex items-baseline gap-0.5 mb-4">
-              <span className="text-xl font-bold text-[#91BE4D]">Pickle</span>
-              <span className="text-xl font-bold text-[#ec9937]">Tracker</span>
+            <div className="mb-4">
+              <BrandLogo size="lg" />
             </div>
             <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
               India's tournament finance tracker for pickleball players. Log matches, track earnings, and grow your game.

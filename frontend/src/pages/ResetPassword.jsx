@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { resetPassword } from '../services/api';
 import Footer from '../components/Footer';
+import BrandLogo from '../components/BrandLogo';
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
@@ -60,7 +61,7 @@ export default function ResetPassword() {
         <div className="w-full max-w-md">
           {/* Branding */}
           <div className="mb-8 text-center">
-            <img src="/brand-logo.png" alt="PickleTracker" className="h-24 w-auto object-contain mx-auto mb-3" style={{ mixBlendMode: 'multiply' }} />
+            <BrandLogo size="2xl" />
           </div>
 
           <div className="bg-white rounded-xl shadow-md p-8 border border-gray-100">
