@@ -21,7 +21,10 @@ export default function Footer() {
 
           {/* Brand */}
           <div>
-            <img src="/brand-logo.png" alt="PickleTracker" className="h-12 w-auto object-contain mb-4 opacity-90" />
+            <div className="flex items-baseline gap-0.5 mb-4">
+              <span className="text-xl font-bold text-[#91BE4D]">Pickle</span>
+              <span className="text-xl font-bold text-[#ec9937]">Tracker</span>
+            </div>
             <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
               India's tournament finance tracker for pickleball players. Log matches, track earnings, and grow your game.
             </p>

@@ -60,7 +60,7 @@ export default function ResetPassword() {
         <div className="w-full max-w-md">
           {/* Branding */}
           <div className="mb-8 text-center">
-            <img src="/brand-logo.png" alt="PickleTracker" className="h-24 w-auto object-contain mx-auto mb-3" />
+            <img src="/brand-logo.png" alt="PickleTracker" className="h-24 w-auto object-contain mx-auto mb-3" style={{ mixBlendMode: 'multiply' }} />
           </div>
 
           <div className="bg-white rounded-xl shadow-md p-8 border border-gray-100">

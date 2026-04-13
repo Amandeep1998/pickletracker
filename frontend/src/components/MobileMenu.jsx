@@ -46,13 +46,13 @@ export default function MobileMenu() {
 
       {/* Sidebar */}
       <div
-        className={`fixed left-0 top-20 h-[calc(100dvh-80px)] w-64 bg-white shadow-xl z-50 transform transition-transform duration-300 md:hidden flex flex-col border-r border-gray-100 ${
+        className={`fixed left-0 top-16 h-[calc(100dvh-64px)] w-64 bg-white shadow-xl z-50 transform transition-transform duration-300 md:hidden flex flex-col border-r border-gray-100 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Sidebar header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-          <img src="/brand-logo.png" alt="PickleTracker" className="h-11 w-auto object-contain" />
+          <img src="/brand-logo.png" alt="PickleTracker" className="h-10 w-auto object-contain" style={{ mixBlendMode: 'multiply' }} />
           <button
             onClick={() => setIsOpen(false)}
             className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
