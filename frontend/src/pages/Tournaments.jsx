@@ -14,6 +14,7 @@ export default function Tournaments() {
   const [formLoading, setFormLoading] = useState(false);
   const [apiError, setApiError] = useState('');
   const [deleteId, setDeleteId] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [deleteAllLoading, setDeleteAllLoading] = useState(false);
 
@@ -150,6 +151,7 @@ export default function Tournaments() {
   };
 
   const handleDelete = async (id) => {
+    setDeleteLoading(true);
     try {
       if (isCalendarConnected()) {
         const tournament = tournaments.find((t) => t._id === id);
@@ -162,6 +164,8 @@ export default function Tournaments() {
       fetchTournaments();
     } catch {
       setApiError('Failed to delete tournament');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -341,13 +345,15 @@ export default function Tournaments() {
                   <span className="flex gap-2 items-center">
                     <button
                       onClick={() => handleDelete(t._id)}
-                      className="text-xs sm:text-sm text-red-600 hover:text-red-800 font-medium min-h-[40px] px-2 sm:px-3 py-1 rounded hover:bg-red-50 transition"
+                      disabled={deleteLoading}
+                      className="text-xs sm:text-sm text-red-600 hover:text-red-800 font-medium min-h-[40px] px-2 sm:px-3 py-1 rounded hover:bg-red-50 transition disabled:opacity-60"
                     >
-                      Confirm
+                      {deleteLoading ? 'Deleting…' : 'Confirm'}
                     </button>
                     <button
                       onClick={() => setDeleteId(null)}
-                      className="text-xs sm:text-sm text-gray-400 hover:text-gray-600 min-h-[40px] px-2 sm:px-3 py-1 rounded transition"
+                      disabled={deleteLoading}
+                      className="text-xs sm:text-sm text-gray-400 hover:text-gray-600 min-h-[40px] px-2 sm:px-3 py-1 rounded transition disabled:opacity-40"
                     >
                       Cancel
                     </button>

@@ -156,6 +156,15 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
   return (
     <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4 relative">
 
+      {/* Saving overlay */}
+      {loading && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-white/85 backdrop-blur-sm rounded-xl">
+          <div className="w-11 h-11 rounded-full border-[3px] border-[#91BE4D]/30 border-t-[#91BE4D] animate-spin" />
+          <p className="text-sm font-semibold text-gray-700">Saving tournament…</p>
+          <p className="text-xs text-gray-400">Just a moment</p>
+        </div>
+      )}
+
       {/* AI Fill — voice or document */}
       <div className="space-y-2 pb-1">
         <VoiceInput onFill={handleVoiceFill} currentForm={form} />

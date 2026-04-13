@@ -59,14 +59,7 @@ export default function Modal({ isOpen, onClose, title, children }) {
         </div>
 
         {/* Scrollable body */}
-        <div
-          className="overflow-y-auto px-5 py-4 flex-1"
-          onFocus={(e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
-              setTimeout(() => e.target.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 300);
-            }
-          }}
-        >
+        <div className="overflow-y-auto px-5 py-4 pb-8 flex-1">
           {children}
         </div>
       </div>
