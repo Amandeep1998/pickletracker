@@ -14,16 +14,16 @@ export default function Welcome() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // If not a first-time user, send to dashboard
-  if (!localStorage.getItem('pt_first_time')) {
-    navigate('/dashboard', { replace: true });
-    return null;
-  }
-
   const [modalOpen, setModalOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [added, setAdded] = useState(null); // tournament name after success
+
+  // If not a first-time user, send to dashboard (must be after all hooks)
+  if (!localStorage.getItem('pt_first_time')) {
+    navigate('/dashboard', { replace: true });
+    return null;
+  }
 
   const handleAdd = async (data) => {
     setFormLoading(true);
