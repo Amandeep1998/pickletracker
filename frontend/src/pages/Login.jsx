@@ -56,12 +56,12 @@ export default function Login() {
   const inputClass = "w-full border border-gray-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]";
 
   return (
-    <div className="min-h-screen bg-[#F3F8F9] flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       <div className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
           {/* Branding */}
           <div className="mb-8 text-center">
-            <img src="/brand-logo.png" alt="PickleTracker" className="h-16 w-auto object-contain mx-auto mb-3" />
+            <img src="/brand-logo.png" alt="PickleTracker" className="h-24 w-auto object-contain mx-auto mb-3" />
             <p className="text-sm text-gray-500 mt-2">Track your pickleball tournaments and finances</p>
           </div>
 

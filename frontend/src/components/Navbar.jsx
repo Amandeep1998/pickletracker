@@ -21,11 +21,11 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white sticky top-0 z-20 shadow-sm border-b border-gray-100">
-      <div className="max-w-7xl mx-auto px-5 sm:px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 h-20 flex items-center justify-between">
 
         {/* Brand */}
         <NavLink to="/dashboard" className="flex-shrink-0">
-          <img src="/brand-logo.png" alt="PickleTracker" className="h-11 w-auto object-contain" />
+          <img src="/brand-logo.png" alt="PickleTracker" className="h-14 w-auto object-contain" />
         </NavLink>
 
         {/* Desktop Links */}
