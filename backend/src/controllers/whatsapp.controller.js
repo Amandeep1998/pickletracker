@@ -444,6 +444,67 @@ const sendSummary = async (session, waId) => {
   );
 };
 
+// ── Phone normalisation ────────────────────────────────────────────────────────
+
+/**
+ * Normalise an Indian mobile number to 12-digit waId format (91XXXXXXXXXX).
+ * Returns null if the input is not a valid Indian mobile number.
+ */
+const normalisePhone = (input) => {
+  const digits = input.replace(/\D/g, '');
+  if (digits.length === 10 && /^[6-9]/.test(digits)) return `91${digits}`;
+  if (digits.length === 12 && /^91[6-9]/.test(digits)) return digits;
+  return null;
+};
+
+// ── App-side connect / disconnect / status ─────────────────────────────────────
+
+exports.getStatus = async (req, res) => {
+  const user = await User.findById(req.user.id).select('whatsappPhone').lean();
+  res.json({ connected: !!user?.whatsappPhone, phone: user?.whatsappPhone || null });
+};
+
+exports.connect = async (req, res) => {
+  const waId = normalisePhone(req.body.phone || '');
+  if (!waId) {
+    return res.status(400).json({ message: 'Please enter a valid 10-digit Indian mobile number.' });
+  }
+
+  // Remove any existing session for this user (changing number)
+  await WhatsAppSession.deleteOne({ userId: req.user.id });
+
+  // If another user already linked this number, unlink them first
+  await User.updateOne({ whatsappPhone: waId, _id: { $ne: req.user.id } }, { whatsappPhone: null });
+
+  // Link number on the User record (persistent — survives session expiry)
+  await User.findByIdAndUpdate(req.user.id, { whatsappPhone: waId });
+
+  // Create fresh session so the user lands straight on the menu
+  await WhatsAppSession.findOneAndUpdate(
+    { waId },
+    { waId, userId: req.user.id, state: 'MENU', context: {}, updatedAt: new Date() },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  // Send welcome message
+  const user = await User.findById(req.user.id).select('name').lean();
+  await send(waId,
+    `✅ *PickleTracker connected!* Welcome, ${user.name}! 🏓\n\n` +
+    MENU_MSG
+  );
+
+  res.json({ success: true });
+};
+
+exports.disconnect = async (req, res) => {
+  const user = await User.findById(req.user.id).select('whatsappPhone').lean();
+  if (user?.whatsappPhone) {
+    await WhatsAppSession.deleteOne({ waId: user.whatsappPhone });
+    await User.findByIdAndUpdate(req.user.id, { whatsappPhone: null });
+  }
+  res.json({ success: true });
+};
+
 // ── Main message processor ─────────────────────────────────────────────────────
 
 const GLOBAL_COMMANDS = new Set(['menu', 'cancel', 'hi', 'hello', 'start', '/start']);
@@ -451,8 +512,22 @@ const GLOBAL_COMMANDS = new Set(['menu', 'cancel', 'hi', 'hello', 'start', '/sta
 const processMessage = async (waId, text) => {
   let session = await WhatsAppSession.findOne({ waId });
 
-  // First contact — create session and ask for email
+  // No session — check if this number is linked via the app (session may have expired)
   if (!session) {
+    const linkedUser = await User.findOne({ whatsappPhone: waId }).select('_id name').lean();
+    if (linkedUser) {
+      // Auto-restore session so they never see the email-link flow again
+      session = await WhatsAppSession.create({
+        waId,
+        userId: linkedUser._id,
+        state: 'MENU',
+        context: {},
+      });
+      await send(waId, `Welcome back, *${linkedUser.name}*! 👋\n\n${MENU_MSG}`);
+      return;
+    }
+
+    // Truly unknown — ask for email (fallback for users who haven't used the app)
     await WhatsAppSession.create({ waId, state: 'LINK_EMAIL' });
     await send(waId,
       `👋 Welcome to *PickleTracker*! 🏓\n\n` +

@@ -31,6 +31,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    whatsappPhone: {
+      type: String,
+      default: null,
+      // Stored as 12-digit format: 919876543210 (no + or spaces)
+    },
   },
   {
     timestamps: true,

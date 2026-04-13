@@ -48,6 +48,11 @@ export const deleteExpense = (id) => api.delete(`/expenses/${id}`);
 // Admin
 export const getAdminUsers = () => api.get('/admin/users');
 
+// WhatsApp
+export const getWhatsAppStatus = () => api.get('/whatsapp/status');
+export const connectWhatsApp = (phone) => api.post('/whatsapp/connect', { phone });
+export const disconnectWhatsApp = () => api.delete('/whatsapp/connect');
+
 // AI — voice
 export const parseTournamentVoice = (transcript, currentForm) =>
   api.post('/ai/parse-voice', { transcript, currentForm });
