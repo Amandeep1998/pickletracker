@@ -86,6 +86,7 @@ const getUsers = async (req, res, next) => {
         name: user.name,
         email: user.email,
         isGoogleUser: user.isGoogleUser,
+        whatsappEnabled: user.whatsappEnabled || false,
         createdAt: user.createdAt,
         lastActive,
         activityStatus,
@@ -121,4 +122,18 @@ const getUsers = async (req, res, next) => {
   }
 };
 
-module.exports = { getUsers };
+const toggleWhatsAppAccess = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id).select('whatsappEnabled');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    user.whatsappEnabled = !user.whatsappEnabled;
+    await user.save();
+
+    res.json({ success: true, whatsappEnabled: user.whatsappEnabled });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getUsers, toggleWhatsAppAccess };

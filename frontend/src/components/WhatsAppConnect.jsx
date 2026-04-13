@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getWhatsAppStatus, connectWhatsApp, disconnectWhatsApp } from '../services/api';
 
 export default function WhatsAppConnect() {
-  const [status, setStatus] = useState('loading'); // 'loading' | 'connected' | 'disconnected'
+  const [status, setStatus] = useState('loading'); // 'loading' | 'disabled' | 'connected' | 'disconnected'
   const [phone, setPhone] = useState('');
   const [linkedPhone, setLinkedPhone] = useState(null);
   const [error, setError] = useState('');
@@ -12,14 +12,16 @@ export default function WhatsAppConnect() {
   useEffect(() => {
     getWhatsAppStatus()
       .then((res) => {
-        if (res.data.connected) {
+        if (!res.data.enabled) {
+          setStatus('disabled');
+        } else if (res.data.connected) {
           setLinkedPhone(res.data.phone);
           setStatus('connected');
         } else {
           setStatus('disconnected');
         }
       })
-      .catch(() => setStatus('disconnected'));
+      .catch(() => setStatus('disabled'));
   }, []);
 
   const handleConnectClick = () => {
@@ -67,7 +69,7 @@ export default function WhatsAppConnect() {
     return `+91 ${num.slice(0, 5)} ${num.slice(5)}`;
   };
 
-  if (status === 'loading') return null;
+  if (status === 'loading' || status === 'disabled') return null;
 
   const digits = phone.replace(/\D/g, '');
 

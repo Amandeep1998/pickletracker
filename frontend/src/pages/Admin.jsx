@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import { formatINR } from '../utils/format';
+import { toggleWhatsAppAccess } from '../services/api';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
@@ -55,6 +56,8 @@ export default function Admin() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [expandedId, setExpandedId] = useState(null);
+  const [whatsappAccess, setWhatsappAccess] = useState({}); // { [userId]: boolean }
+  const [whatsappToggling, setWhatsappToggling] = useState({}); // { [userId]: boolean }
 
   // Guard: only admin can access
   useEffect(() => {
@@ -65,10 +68,28 @@ export default function Admin() {
 
   useEffect(() => {
     api.getAdminUsers()
-      .then((res) => setData(res.data.data))
+      .then((res) => {
+        setData(res.data.data);
+        const access = {};
+        res.data.data.users.forEach((u) => { access[u._id] = u.whatsappEnabled; });
+        setWhatsappAccess(access);
+      })
       .catch(() => setError('Failed to load admin data'))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleToggleWhatsApp = async (userId, e) => {
+    e.stopPropagation();
+    setWhatsappToggling((prev) => ({ ...prev, [userId]: true }));
+    try {
+      const res = await toggleWhatsAppAccess(userId);
+      setWhatsappAccess((prev) => ({ ...prev, [userId]: res.data.whatsappEnabled }));
+    } catch {
+      // silent — user sees no change
+    } finally {
+      setWhatsappToggling((prev) => ({ ...prev, [userId]: false }));
+    }
+  };
 
   const filteredUsers = useMemo(() => {
     if (!data?.users) return [];
@@ -361,6 +382,30 @@ export default function Admin() {
                     </div>
 
                   </div>
+
+                  {/* WhatsApp access toggle */}
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-700">WhatsApp Access</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {whatsappAccess[u._id] ? 'User can connect WhatsApp' : 'WhatsApp feature hidden for this user'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => handleToggleWhatsApp(u._id, e)}
+                      disabled={whatsappToggling[u._id]}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${
+                        whatsappAccess[u._id] ? 'bg-[#25D366]' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                          whatsappAccess[u._id] ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
                 </div>
               )}
             </div>

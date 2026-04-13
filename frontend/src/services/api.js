@@ -52,6 +52,7 @@ export const getAdminUsers = () => api.get('/admin/users');
 export const getWhatsAppStatus = () => api.get('/whatsapp/status');
 export const connectWhatsApp = (phone) => api.post('/whatsapp/connect', { phone });
 export const disconnectWhatsApp = () => api.delete('/whatsapp/connect');
+export const toggleWhatsAppAccess = (userId) => api.put(`/admin/users/${userId}/whatsapp-access`);
 
 // AI — voice
 export const parseTournamentVoice = (transcript, currentForm) =>

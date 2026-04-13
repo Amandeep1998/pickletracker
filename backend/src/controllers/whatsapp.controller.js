@@ -461,8 +461,12 @@ const normalisePhone = (input) => {
 
 exports.getStatus = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id).select('whatsappPhone').lean();
-    res.json({ connected: !!user?.whatsappPhone, phone: user?.whatsappPhone || null });
+    const user = await User.findById(req.user.id).select('whatsappPhone whatsappEnabled').lean();
+    res.json({
+      enabled: !!user?.whatsappEnabled,
+      connected: !!user?.whatsappPhone,
+      phone: user?.whatsappPhone || null,
+    });
   } catch (err) {
     next(err);
   }
