@@ -7,6 +7,7 @@ export default function WhatsAppConnect() {
   const [linkedPhone, setLinkedPhone] = useState(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [confirming, setConfirming] = useState(false); // show confirmation popup
 
   useEffect(() => {
     getWhatsAppStatus()
@@ -21,15 +22,20 @@ export default function WhatsAppConnect() {
       .catch(() => setStatus('disconnected'));
   }, []);
 
-  const handleConnect = async () => {
+  const handleConnectClick = () => {
     setError('');
     const digits = phone.replace(/\D/g, '');
     if (digits.length !== 10 || !/^[6-9]/.test(digits)) {
       setError('Please enter a valid 10-digit Indian mobile number.');
       return;
     }
+    setConfirming(true);
+  };
 
+  const handleConfirm = async () => {
+    setConfirming(false);
     setSaving(true);
+    const digits = phone.replace(/\D/g, '');
     try {
       await connectWhatsApp(digits);
       setLinkedPhone(`91${digits}`);
@@ -63,7 +69,54 @@ export default function WhatsAppConnect() {
 
   if (status === 'loading') return null;
 
+  const digits = phone.replace(/\D/g, '');
+
   return (
+    <>
+    {/* Confirmation popup */}
+    {confirming && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-[#25D366]/10 flex items-center justify-center shrink-0">
+              <WhatsAppIcon className="w-5 h-5 text-[#25D366]" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-800">Confirm your number</p>
+              <p className="text-xs text-gray-400">Is this your WhatsApp number?</p>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-xl px-4 py-3 mb-4 text-center">
+            <p className="text-xl font-bold text-gray-800 tracking-wide">
+              +91 {digits.slice(0, 5)} {digits.slice(5)}
+            </p>
+          </div>
+
+          <p className="text-xs text-gray-500 text-center mb-5">
+            You will receive a WhatsApp message from PickleTracker on this number.
+          </p>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              className="flex-1 border border-gray-200 text-gray-600 font-semibold text-sm py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              Edit Number
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              className="flex-1 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-semibold text-sm py-2.5 rounded-xl transition-colors"
+            >
+              Yes, Connect
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     <div className={`rounded-xl border px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 ${
       status === 'connected'
         ? 'bg-[#f0fdf4] border-[#25D366]/30'
@@ -103,7 +156,7 @@ export default function WhatsAppConnect() {
                 />
               </div>
               <button
-                onClick={handleConnect}
+                onClick={handleConnectClick}
                 disabled={saving || !phone.trim()}
                 className="bg-[#25D366] hover:bg-[#1ebe5d] disabled:opacity-50 text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
               >
@@ -125,6 +178,7 @@ export default function WhatsAppConnect() {
         )}
       </div>
     </div>
+    </>
   );
 }
 
