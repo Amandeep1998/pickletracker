@@ -28,7 +28,6 @@ export default function Signup() {
     clearError();
     const result = await handleSignup(form);
     if (result.success) {
-      localStorage.setItem('pt_first_time', '1');
       setSuccess('Account created! Redirecting to login...');
       setTimeout(() => navigate('/login'), 1500);
     } else {
@@ -72,7 +71,7 @@ export default function Signup() {
 
             <GoogleSignInButton
               onBegin={() => { setError(''); clearError(); }}
-              onSuccess={(isNewUser) => navigate(isNewUser ? '/calendar' : '/dashboard')}
+              onSuccess={() => navigate('/tournaments')}
             />
 
             <div className="relative my-6">

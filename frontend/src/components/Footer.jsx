@@ -6,8 +6,22 @@ export default function Footer() {
 
   return (
     <footer className="bg-[#1a1a01] mt-auto">
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 py-10 sm:py-12">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-12">
+      {/* Mobile: compact single bar */}
+      <div className="sm:hidden px-4 py-4 flex items-center justify-between gap-4">
+        <p className="text-xs text-gray-600">&copy; {year} PickleTracker</p>
+        <div className="flex items-center gap-4">
+          <Link to="/privacy-policy" className="text-xs text-gray-500 hover:text-[#91BE4D] transition-colors">
+            Privacy
+          </Link>
+          <Link to="/terms" className="text-xs text-gray-500 hover:text-[#91BE4D] transition-colors">
+            Terms
+          </Link>
+        </div>
+      </div>
+
+      {/* Desktop: full 3-column layout */}
+      <div className="hidden sm:block max-w-6xl mx-auto px-8 py-12">
+        <div className="grid grid-cols-3 gap-12">
 
           {/* Brand */}
           <div>

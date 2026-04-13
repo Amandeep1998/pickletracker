@@ -57,11 +57,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const { idToken, name, email } = await signInWithGoogleAndGetCredentials();
       const res = await api.loginWithGoogle({ idToken, name, email });
-      const { token, user: userData, isNewUser } = res.data;
+      const { token, user: userData } = res.data;
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
-      return { success: true, isNewUser: Boolean(isNewUser) };
+      return { success: true };
     } catch (err) {
       if (err?.code === 'auth/popup-closed-by-user') {
         const msg = 'Sign-in was cancelled';
