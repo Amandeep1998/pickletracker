@@ -459,50 +459,59 @@ const normalisePhone = (input) => {
 
 // ── App-side connect / disconnect / status ─────────────────────────────────────
 
-exports.getStatus = async (req, res) => {
-  const user = await User.findById(req.user.id).select('whatsappPhone').lean();
-  res.json({ connected: !!user?.whatsappPhone, phone: user?.whatsappPhone || null });
+exports.getStatus = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).select('whatsappPhone').lean();
+    res.json({ connected: !!user?.whatsappPhone, phone: user?.whatsappPhone || null });
+  } catch (err) {
+    next(err);
+  }
 };
 
-exports.connect = async (req, res) => {
-  const waId = normalisePhone(req.body.phone || '');
-  if (!waId) {
-    return res.status(400).json({ message: 'Please enter a valid 10-digit Indian mobile number.' });
+exports.connect = async (req, res, next) => {
+  try {
+    const waId = normalisePhone(req.body.phone || '');
+    if (!waId) {
+      return res.status(400).json({ message: 'Please enter a valid 10-digit Indian mobile number.' });
+    }
+
+    // Remove any existing session for this user (changing number)
+    await WhatsAppSession.deleteOne({ userId: req.user.id });
+
+    // If another user already linked this number, unlink them first
+    await User.updateOne({ whatsappPhone: waId, _id: { $ne: req.user.id } }, { whatsappPhone: null });
+
+    // Link number on the User record (persistent — survives session expiry)
+    await User.findByIdAndUpdate(req.user.id, { whatsappPhone: waId });
+
+    // Create fresh session so the user lands straight on the menu
+    await WhatsAppSession.findOneAndUpdate(
+      { waId },
+      { waId, userId: req.user.id, state: 'MENU', context: {}, updatedAt: new Date() },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    // Send welcome message (non-blocking — don't fail connect if message fails)
+    const user = await User.findById(req.user.id).select('name').lean();
+    send(waId, `✅ *PickleTracker connected!* Welcome, ${user.name}! 🏓\n\n${MENU_MSG}`);
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
   }
-
-  // Remove any existing session for this user (changing number)
-  await WhatsAppSession.deleteOne({ userId: req.user.id });
-
-  // If another user already linked this number, unlink them first
-  await User.updateOne({ whatsappPhone: waId, _id: { $ne: req.user.id } }, { whatsappPhone: null });
-
-  // Link number on the User record (persistent — survives session expiry)
-  await User.findByIdAndUpdate(req.user.id, { whatsappPhone: waId });
-
-  // Create fresh session so the user lands straight on the menu
-  await WhatsAppSession.findOneAndUpdate(
-    { waId },
-    { waId, userId: req.user.id, state: 'MENU', context: {}, updatedAt: new Date() },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
-
-  // Send welcome message
-  const user = await User.findById(req.user.id).select('name').lean();
-  await send(waId,
-    `✅ *PickleTracker connected!* Welcome, ${user.name}! 🏓\n\n` +
-    MENU_MSG
-  );
-
-  res.json({ success: true });
 };
 
-exports.disconnect = async (req, res) => {
-  const user = await User.findById(req.user.id).select('whatsappPhone').lean();
-  if (user?.whatsappPhone) {
-    await WhatsAppSession.deleteOne({ waId: user.whatsappPhone });
-    await User.findByIdAndUpdate(req.user.id, { whatsappPhone: null });
+exports.disconnect = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).select('whatsappPhone').lean();
+    if (user?.whatsappPhone) {
+      await WhatsAppSession.deleteOne({ waId: user.whatsappPhone });
+      await User.findByIdAndUpdate(req.user.id, { whatsappPhone: null });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
   }
-  res.json({ success: true });
 };
 
 // ── Main message processor ─────────────────────────────────────────────────────
