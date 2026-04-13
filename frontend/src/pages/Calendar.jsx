@@ -272,7 +272,7 @@ export default function Calendar() {
     <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
 
       {/* Hero Banner */}
-      <div className="bg-[#1c350a] rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-4 flex items-center justify-between overflow-hidden relative">
+      <div className="rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-4 flex items-center justify-between overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}>
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
         <div className="relative">
           <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
@@ -532,7 +532,8 @@ export default function Calendar() {
             <div className="px-3 pb-4 pt-2 border-t border-gray-100">
               <button
                 onClick={() => { setDayPopup({ open: false, date: null }); setAddModal({ open: true, date: dayPopup.date }); setAddError(''); }}
-                className="w-full flex items-center justify-center gap-2 bg-[#ec9937] hover:bg-[#d4831f] text-white font-semibold text-sm py-3 rounded-lg tracking-wide transition"
+                className="w-full flex items-center justify-center gap-2 hover:opacity-90 text-white font-semibold text-sm py-3 rounded-lg tracking-wide transition-opacity"
+                style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />

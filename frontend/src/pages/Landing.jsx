@@ -154,7 +154,8 @@ export default function Landing() {
                 <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
                   <Link
                     to="/signup"
-                    className="inline-flex items-center justify-center gap-2 bg-[#ec9937] hover:bg-[#d4831f] text-white font-bold px-8 py-3.5 rounded-lg text-sm tracking-wide transition-colors shadow-lg shadow-orange-900/30"
+                    className="inline-flex items-center justify-center gap-2 hover:opacity-90 text-white font-bold px-8 py-3.5 rounded-lg text-sm tracking-wide transition-opacity shadow-lg shadow-orange-900/30"
+                    style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
                   >
                     Start tracking free
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -305,7 +306,8 @@ export default function Landing() {
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
                 to="/signup"
-                className="inline-flex items-center justify-center gap-2 bg-[#ec9937] hover:bg-[#d4831f] text-white font-bold px-8 py-3.5 rounded-lg text-sm tracking-wide transition-colors shadow-md shadow-orange-100"
+                className="inline-flex items-center justify-center gap-2 hover:opacity-90 text-white font-bold px-8 py-3.5 rounded-lg text-sm tracking-wide transition-opacity shadow-md"
+                style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
               >
                 Create your free account
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

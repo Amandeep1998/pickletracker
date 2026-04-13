@@ -348,7 +348,8 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
           <button
             type="button"
             onClick={addCategory}
-            className="w-full sm:w-fit bg-[#272702] hover:bg-[#3a3a00] text-[#91BE4D] font-semibold px-4 py-2 min-h-[40px] rounded text-sm tracking-wide transition-colors flex items-center justify-center gap-2 border border-[#91BE4D]/30"
+            className="w-full sm:w-fit hover:opacity-90 text-white font-semibold px-4 py-2 min-h-[40px] rounded text-sm tracking-wide transition-opacity flex items-center justify-center gap-2"
+            style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
           >
             <span>+</span>
             <span>Add Category</span>
@@ -369,7 +370,8 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 bg-[#ec9937] hover:bg-[#d4831f] disabled:opacity-60 text-white font-bold py-2 sm:py-2.5 min-h-[40px] rounded text-xs sm:text-sm tracking-wide transition-colors"
+          className="flex-1 disabled:opacity-60 hover:opacity-90 text-white font-bold py-2 sm:py-2.5 min-h-[40px] rounded text-xs sm:text-sm tracking-wide transition-opacity"
+          style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
         >
           {loading ? 'Saving...' : 'Save Tournament'}
         </button>

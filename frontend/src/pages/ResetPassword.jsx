@@ -126,7 +126,8 @@ export default function ResetPassword() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[#ec9937] hover:bg-[#d4831f] disabled:opacity-60 text-white font-bold py-3 rounded text-sm tracking-wide transition-colors"
+                    className="w-full disabled:opacity-60 hover:opacity-90 text-white font-bold py-3 rounded text-sm tracking-wide transition-opacity"
+                    style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
                   >
                     {loading ? 'Updating...' : 'Update Password'}
                   </button>

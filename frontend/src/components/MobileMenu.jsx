@@ -91,7 +91,8 @@ export default function MobileMenu() {
           )}
           <button
             onClick={handleLogoutClick}
-            className="w-full bg-[#ec9937] hover:bg-[#d4831f] text-white font-bold py-2.5 rounded-lg text-sm transition-colors tracking-wide"
+            className="w-full hover:opacity-90 text-white font-bold py-2.5 rounded-lg text-sm transition-opacity tracking-wide"
+            style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
           >
             Logout
           </button>

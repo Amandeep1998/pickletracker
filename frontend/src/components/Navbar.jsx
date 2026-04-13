@@ -49,7 +49,8 @@ export default function Navbar() {
           <span className="text-sm text-gray-400 font-medium">{user?.name}</span>
           <button
             onClick={logout}
-            className="text-sm px-4 py-2 bg-[#ec9937] hover:bg-[#d4831f] text-white rounded-lg font-semibold transition-colors tracking-wide"
+            className="text-sm px-4 py-2 hover:opacity-90 text-white rounded-lg font-semibold transition-opacity tracking-wide"
+            style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
           >
             Logout
           </button>

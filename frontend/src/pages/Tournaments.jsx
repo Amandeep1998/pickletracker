@@ -172,7 +172,7 @@ export default function Tournaments() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {/* Hero Banner */}
-      <div className="bg-[#1c350a] rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-6 flex items-center justify-between overflow-hidden relative">
+      <div className="rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-6 flex items-center justify-between overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}>
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
         <div className="relative">
           <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
@@ -199,7 +199,8 @@ export default function Tournaments() {
           )}
           <button
             onClick={openAddModal}
-            className="bg-[#ec9937] hover:bg-[#d4831f] text-white text-xs sm:text-sm font-bold px-4 py-2 min-h-[40px] rounded tracking-wide transition-colors shadow-lg shadow-black/30"
+            className="hover:opacity-90 text-white text-xs sm:text-sm font-bold px-4 py-2 min-h-[40px] rounded tracking-wide transition-opacity shadow-lg shadow-black/30"
+            style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
           >
             + Add Tournament
           </button>
@@ -251,7 +252,8 @@ export default function Tournaments() {
           </p>
           <button
             onClick={openAddModal}
-            className="bg-[#ec9937] hover:bg-[#d4831f] text-white font-bold px-6 py-3 rounded-xl text-sm tracking-wide transition-colors shadow-md shadow-orange-100"
+            className="hover:opacity-90 text-white font-bold px-6 py-3 rounded-xl text-sm tracking-wide transition-opacity shadow-md"
+            style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
           >
             + Add Your First Tournament
           </button>
