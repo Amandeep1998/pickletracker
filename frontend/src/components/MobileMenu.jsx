@@ -41,7 +41,7 @@ export default function MobileMenu() {
 
       {/* Sidebar */}
       <div
-        className={`fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-white shadow-lg z-50 transform transition-transform duration-300 md:hidden flex flex-col ${
+        className={`fixed left-0 top-16 h-[calc(100dvh-64px)] w-64 bg-white shadow-lg z-50 transform transition-transform duration-300 md:hidden flex flex-col ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
