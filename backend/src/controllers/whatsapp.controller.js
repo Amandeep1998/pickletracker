@@ -491,10 +491,6 @@ exports.connect = async (req, res, next) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    // Send welcome message (non-blocking — don't fail connect if message fails)
-    const user = await User.findById(req.user.id).select('name').lean();
-    send(waId, `✅ *PickleTracker connected!* Welcome, ${user.name}! 🏓\n\n${MENU_MSG}`);
-
     res.json({ success: true });
   } catch (err) {
     next(err);
@@ -525,14 +521,17 @@ const processMessage = async (waId, text) => {
   if (!session) {
     const linkedUser = await User.findOne({ whatsappPhone: waId }).select('_id name').lean();
     if (linkedUser) {
-      // Auto-restore session so they never see the email-link flow again
+      // Auto-restore session — user connected via app, greet and show menu
       session = await WhatsAppSession.create({
         waId,
         userId: linkedUser._id,
         state: 'MENU',
         context: {},
       });
-      await send(waId, `Welcome back, *${linkedUser.name}*! 👋\n\n${MENU_MSG}`);
+      await send(waId,
+        `👋 Hi *${linkedUser.name}*! Welcome to PickleTracker! 🏓\n\n` +
+        MENU_MSG
+      );
       return;
     }
 

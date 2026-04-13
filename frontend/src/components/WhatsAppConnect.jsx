@@ -132,7 +132,7 @@ export default function WhatsAppConnect() {
           </p>
           <p className="text-xs text-gray-400 leading-tight mt-0.5">
             {status === 'connected'
-              ? `${formatDisplay(linkedPhone)} · Check your WhatsApp for a welcome message`
+              ? formatDisplay(linkedPhone)
               : 'Manage tournaments directly from WhatsApp'}
           </p>
         </div>
@@ -168,13 +168,26 @@ export default function WhatsAppConnect() {
         )}
 
         {status === 'connected' && (
-          <button
-            onClick={handleDisconnect}
-            disabled={saving}
-            className="text-xs text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors font-medium self-start sm:self-end"
-          >
-            {saving ? 'Disconnecting…' : 'Disconnect'}
-          </button>
+          <div className="flex items-center gap-3 sm:flex-col sm:items-end gap-y-1.5">
+            {import.meta.env.VITE_WHATSAPP_BUSINESS_NUMBER && (
+              <a
+                href={`https://wa.me/${import.meta.env.VITE_WHATSAPP_BUSINESS_NUMBER}?text=Hi`}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-semibold text-xs px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+              >
+                <WhatsAppIcon className="w-3.5 h-3.5" />
+                Open WhatsApp
+              </a>
+            )}
+            <button
+              onClick={handleDisconnect}
+              disabled={saving}
+              className="text-xs text-gray-400 hover:text-red-500 disabled:opacity-50 transition-colors font-medium"
+            >
+              {saving ? 'Disconnecting…' : 'Disconnect'}
+            </button>
+          </div>
         )}
       </div>
     </div>
