@@ -3,7 +3,6 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Navbar from './Navbar';
 import Footer from './Footer';
-import WelcomeModal from './WelcomeModal';
 
 export default function PrivateRoute() {
   const { user } = useAuth();
@@ -19,7 +18,6 @@ export default function PrivateRoute() {
         <Outlet />
       </main>
       <Footer />
-      <WelcomeModal userName={user.name} />
     </div>
   );
 }

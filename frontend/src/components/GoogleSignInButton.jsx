@@ -39,7 +39,7 @@ export default function GoogleSignInButton({ onSuccess, onBegin }) {
     onBegin?.();
     const result = await handleGoogleLogin();
     if (result.success && onSuccess) {
-      onSuccess();
+      onSuccess(result.isNewUser);
     }
   };
 

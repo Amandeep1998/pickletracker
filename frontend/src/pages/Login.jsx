@@ -47,7 +47,8 @@ export default function Login() {
     clearError();
     const result = await handleLogin(form);
     if (result.success) {
-      navigate('/dashboard');
+      const isFirstTime = localStorage.getItem('pt_first_time');
+      navigate(isFirstTime ? '/welcome' : '/dashboard');
     } else {
       setError(result.message);
     }
@@ -84,7 +85,7 @@ export default function Login() {
 
             <GoogleSignInButton
               onBegin={() => { setError(''); clearError(); }}
-              onSuccess={() => navigate('/dashboard')}
+              onSuccess={(isNewUser) => navigate(isNewUser ? '/welcome' : '/dashboard')}
             />
 
             <div className="relative my-6">

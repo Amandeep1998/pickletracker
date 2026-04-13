@@ -128,6 +128,7 @@ const googleAuth = async (req, res, next) => {
         : email.split('@')[0]);
 
     let user = await User.findOne({ email });
+    let isNewUser = false;
 
     if (user) {
       if (user.password && !user.isGoogleUser) {
@@ -149,6 +150,7 @@ const googleAuth = async (req, res, next) => {
         password: null,
         isGoogleUser: true,
       });
+      isNewUser = true;
     }
 
     const token = signUserToken(user);
@@ -157,6 +159,7 @@ const googleAuth = async (req, res, next) => {
       success: true,
       token,
       user: publicUser(user),
+      isNewUser,
     });
   } catch (err) {
     next(err);
