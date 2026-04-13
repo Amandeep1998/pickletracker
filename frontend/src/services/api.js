@@ -32,6 +32,8 @@ api.interceptors.response.use(
 export const signup = (data) => api.post('/auth/signup', data);
 export const login = (data) => api.post('/auth/login', data);
 export const loginWithGoogle = (data) => api.post('/auth/google', data);
+export const forgotPassword = (email) => api.post('/auth/forgot-password', { email });
+export const resetPassword = (token, password) => api.post('/auth/reset-password', { token, password });
 
 // Tournaments
 export const getTournaments = () => api.get('/tournaments');
