@@ -98,25 +98,27 @@ export default function Landing() {
 
       {/* ── Navbar ────────────────────────────────────────── */}
       <header className="bg-white sticky top-0 z-20 border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5 flex-shrink-0">
-            <BrandLogo size="lg" />
+          <Link to="/" className="flex-shrink-0">
+            <span className="sm:hidden"><BrandLogo size="md" /></span>
+            <span className="hidden sm:inline"><BrandLogo size="lg" /></span>
           </Link>
 
           {/* Nav actions */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               to="/login"
-              className="text-sm font-medium text-[#272702] hover:text-[#91BE4D] transition-colors px-3 py-2"
+              className="text-sm font-medium text-[#272702] hover:text-[#91BE4D] transition-colors px-2 sm:px-3 py-2"
             >
               Sign In
             </Link>
             <Link
               to="/signup"
-              className="text-sm font-bold bg-[#91BE4D] hover:bg-[#7aaa2e] text-white px-5 py-2.5 rounded-lg tracking-wide transition-colors shadow-sm shadow-green-200"
+              className="text-sm font-bold bg-[#91BE4D] hover:bg-[#7aaa2e] text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg tracking-wide transition-colors"
             >
-              Get Started
+              <span className="sm:hidden">Start</span>
+              <span className="hidden sm:inline">Get Started</span>
             </Link>
           </div>
         </div>

@@ -26,7 +26,8 @@ export default function Navbar() {
 
         {/* Brand */}
         <NavLink to="/dashboard" className="flex-shrink-0">
-          <BrandLogo size="lg" />
+          <span className="sm:hidden"><BrandLogo size="md" /></span>
+          <span className="hidden sm:inline"><BrandLogo size="lg" /></span>
         </NavLink>
 
         {/* Desktop Links */}
