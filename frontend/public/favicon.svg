@@ -1,32 +1,34 @@
-<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <radialGradient id="fg-ball" cx="38%" cy="32%" r="62%">
-      <stop offset="0%" stop-color="#D8E84E"/>
-      <stop offset="100%" stop-color="#A8C428"/>
-    </radialGradient>
-    <clipPath id="fc">
-      <ellipse cx="26" cy="34" rx="20" ry="23"/>
-    </clipPath>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1c350a"/>
+      <stop offset="100%" stop-color="#2a5010"/>
+    </linearGradient>
+    <linearGradient id="p-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2d7005"/>
+      <stop offset="100%" stop-color="#91BE4D"/>
+    </linearGradient>
+    <linearGradient id="t-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ec9937"/>
+      <stop offset="100%" stop-color="#f5b855"/>
+    </linearGradient>
   </defs>
-  <!-- Paddle face -->
-  <ellipse cx="26" cy="34" rx="20" ry="23" fill="#272702"/>
-  <!-- Paddle handle -->
-  <rect x="20" y="53" width="12" height="9" rx="3" fill="#1a1a00"/>
-  <!-- Grip accent -->
-  <rect x="20" y="55" width="12" height="2" rx="1" fill="#ec9937" opacity="0.8"/>
-  <rect x="20" y="59" width="12" height="2" rx="1" fill="#ec9937" opacity="0.8"/>
-  <!-- Trend line on paddle face -->
-  <polyline
-    points="10,46 15,40 20,43 25,35 30,38 35,28"
-    stroke="#ec9937" stroke-width="2.5" fill="none"
-    stroke-linecap="round" stroke-linejoin="round"
-    clip-path="url(#fc)"
-  />
-  <!-- Ball -->
-  <circle cx="48" cy="17" r="15" fill="url(#fg-ball)"/>
-  <circle cx="43" cy="13" r="2" fill="#1a1a00" opacity="0.28"/>
-  <circle cx="50" cy="11" r="2" fill="#1a1a00" opacity="0.28"/>
-  <circle cx="56" cy="16" r="2" fill="#1a1a00" opacity="0.28"/>
-  <circle cx="46" cy="20" r="2" fill="#1a1a00" opacity="0.28"/>
-  <circle cx="53" cy="22" r="2" fill="#1a1a00" opacity="0.28"/>
+  <!-- Background with subtle gradient -->
+  <rect width="32" height="32" rx="7" fill="url(#bg-grad)"/>
+  <!-- "P" with green gradient -->
+  <text
+    x="5" y="23"
+    font-family="system-ui, -apple-system, Arial, sans-serif"
+    font-weight="900"
+    font-size="18"
+    fill="url(#p-grad)"
+  >P</text>
+  <!-- "T" with orange gradient -->
+  <text
+    x="16" y="23"
+    font-family="system-ui, -apple-system, Arial, sans-serif"
+    font-weight="900"
+    font-size="18"
+    fill="url(#t-grad)"
+  >T</text>
 </svg>

@@ -1,6 +1,6 @@
 /**
  * PickleTracker wordmark.
- * "Pickle" = green · "Tracker" = orange/saffron
+ * Gradient sweep: deep green → brand green → saffron orange
  * size: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
  */
 const SIZES = {
@@ -14,9 +14,16 @@ const SIZES = {
 export default function BrandLogo({ size = 'md' }) {
   const sz = SIZES[size] ?? SIZES.md;
   return (
-    <span className={`font-extrabold tracking-tight leading-none select-none ${sz}`}>
-      <span className="text-[#91BE4D]">Pickle</span>
-      <span className="text-[#ec9937]">Tracker</span>
+    <span
+      className={`font-black tracking-tight leading-none select-none ${sz}`}
+      style={{
+        background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        backgroundClip: 'text',
+      }}
+    >
+      PickleTracker
     </span>
   );
 }
