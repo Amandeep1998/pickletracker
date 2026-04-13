@@ -166,7 +166,10 @@ const googleAuth = async (req, res, next) => {
 const forgotPassword = async (req, res, next) => {
   try {
     const { email } = req.body;
+    console.log('[ForgotPassword] Request received for:', email);
+
     const user = await User.findOne({ email: email?.toLowerCase().trim() });
+    console.log('[ForgotPassword] User found:', !!user, '| isGoogleUser:', user?.isGoogleUser);
 
     // Always respond with success to avoid revealing whether an email exists
     if (!user || user.isGoogleUser) {
@@ -179,6 +182,8 @@ const forgotPassword = async (req, res, next) => {
       return res.json({ success: true });
     }
 
+    console.log('[ForgotPassword] RESEND_API_KEY found, generating token...');
+
     const rawToken = crypto.randomBytes(32).toString('hex');
     const hashed = crypto.createHash('sha256').update(rawToken).digest('hex');
 
@@ -189,16 +194,20 @@ const forgotPassword = async (req, res, next) => {
     const appUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
 
+    console.log('[ForgotPassword] Token saved, sending email to:', user.email);
+
     // Respond immediately — don't make the user wait for email delivery
     res.json({ success: true });
 
     // Send email in background; roll back token if it fails
-    sendPasswordResetEmail(user.email, resetUrl).catch(async (emailErr) => {
-      console.error('[ForgotPassword] Email send failed:', emailErr.message);
-      user.resetPasswordToken = null;
-      user.resetPasswordExpires = null;
-      await user.save().catch(() => {});
-    });
+    sendPasswordResetEmail(user.email, resetUrl)
+      .then(() => console.log('[ForgotPassword] Email sent successfully to:', user.email))
+      .catch(async (emailErr) => {
+        console.error('[ForgotPassword] Email send failed:', emailErr.message);
+        user.resetPasswordToken = null;
+        user.resetPasswordExpires = null;
+        await user.save().catch(() => {});
+      });
   } catch (err) {
     next(err);
   }
