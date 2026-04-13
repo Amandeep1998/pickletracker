@@ -13,7 +13,6 @@ import Landing from './pages/Landing';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 import ResetPassword from './pages/ResetPassword';
-import Welcome from './pages/Welcome';
 
 export default function App() {
   return (
@@ -29,7 +28,6 @@ export default function App() {
 
         {/* Protected routes */}
         <Route element={<PrivateRoute />}>
-          <Route path="/welcome" element={<Welcome />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/calendar" element={<Calendar />} />

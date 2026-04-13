@@ -66,6 +66,10 @@ export default function Calendar() {
   const [addModal, setAddModal] = useState({ open: false, date: null });
   const [addError, setAddError] = useState('');
 
+  // First-time user state
+  const [isFirstTime] = useState(() => !!localStorage.getItem('pt_first_time'));
+  const [showTip, setShowTip] = useState(false);
+
   // Google Calendar
   const [calendarConnected, setCalendarConnected] = useState(isCalendarConnected);
   const [calendarLoading, setCalendarLoading] = useState(false);
@@ -210,6 +214,13 @@ export default function Calendar() {
         } catch {}
       }
       setAddModal({ open: false, date: null });
+      // First-time user: clear flag and show tip
+      if (localStorage.getItem('pt_first_time')) {
+        localStorage.removeItem('pt_first_time');
+        localStorage.setItem('pt_onboarding_done', '1');
+        setShowTip(true);
+        setTimeout(() => setShowTip(false), 8000);
+      }
       await fetchTournaments();
     } catch (err) {
       const msg = err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add tournament';
@@ -289,6 +300,30 @@ export default function Calendar() {
           </svg>
         </div>
       </div>
+
+      {/* First-time user banner */}
+      {isFirstTime && (
+        <div className="bg-gradient-to-r from-[#ec9937]/10 to-[#91BE4D]/10 border border-[#ec9937]/30 rounded-2xl px-5 py-4 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#ec9937]/20 flex items-center justify-center flex-shrink-0 text-xl">
+              👋
+            </div>
+            <div>
+              <p className="text-sm font-bold text-gray-900">Add your first tournament!</p>
+              <p className="text-xs text-gray-500 mt-0.5">Click the button to log your first pickleball event.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => { setAddModal({ open: true, date: todayStr }); setAddError(''); }}
+            className="flex items-center justify-center gap-2 bg-[#ec9937] hover:bg-[#d4831f] text-white font-bold px-5 py-2.5 rounded-xl text-sm tracking-wide transition-colors shadow-md shadow-orange-100 flex-shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Tournament
+          </button>
+        </div>
+      )}
 
       {/* Google Calendar Connect */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 mb-4">
@@ -681,6 +716,29 @@ export default function Calendar() {
               onCancel={() => setIsEditing(false)}
               loading={formLoading}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Tip toast — shown after first tournament added */}
+      {showTip && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4">
+          <div className="bg-[#272702] text-white rounded-2xl shadow-xl px-4 py-3.5 flex items-start gap-3">
+            <span className="text-lg flex-shrink-0 mt-0.5">💡</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold mb-0.5">Quick tip</p>
+              <p className="text-xs text-gray-300 leading-relaxed">
+                You can also tap any date directly on the calendar to add a tournament for that day!
+              </p>
+            </div>
+            <button
+              onClick={() => setShowTip(false)}
+              className="flex-shrink-0 text-gray-400 hover:text-white transition-colors mt-0.5"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       )}

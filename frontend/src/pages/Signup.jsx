@@ -72,7 +72,7 @@ export default function Signup() {
 
             <GoogleSignInButton
               onBegin={() => { setError(''); clearError(); }}
-              onSuccess={(isNewUser) => navigate(isNewUser ? '/welcome' : '/dashboard')}
+              onSuccess={(isNewUser) => navigate(isNewUser ? '/calendar' : '/dashboard')}
             />
 
             <div className="relative my-6">
