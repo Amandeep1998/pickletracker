@@ -173,6 +173,12 @@ const forgotPassword = async (req, res, next) => {
       return res.json({ success: true });
     }
 
+    // If email is not configured, respond immediately so the UI doesn't hang
+    if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.warn('[ForgotPassword] Email env vars not configured — skipping send');
+      return res.json({ success: true });
+    }
+
     const rawToken = crypto.randomBytes(32).toString('hex');
     const hashed = crypto.createHash('sha256').update(rawToken).digest('hex');
 
@@ -183,17 +189,16 @@ const forgotPassword = async (req, res, next) => {
     const appUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const resetUrl = `${appUrl}/reset-password?token=${rawToken}`;
 
-    try {
-      await sendPasswordResetEmail(user.email, resetUrl);
-    } catch (emailErr) {
-      // Roll back token so user can try again
+    // Respond immediately — don't make the user wait for email delivery
+    res.json({ success: true });
+
+    // Send email in background; roll back token if it fails
+    sendPasswordResetEmail(user.email, resetUrl).catch(async (emailErr) => {
+      console.error('[ForgotPassword] Email send failed:', emailErr.message);
       user.resetPasswordToken = null;
       user.resetPasswordExpires = null;
-      await user.save();
-      return next(emailErr);
-    }
-
-    res.json({ success: true });
+      await user.save().catch(() => {});
+    });
   } catch (err) {
     next(err);
   }
