@@ -1,7 +1,7 @@
 const express = require('express');
 const protect = require('../middleware/auth.middleware');
 const isAdmin = require('../middleware/admin.middleware');
-const { getUsers, getUserTournaments, toggleWhatsAppAccess } = require('../controllers/admin.controller');
+const { getUsers, getUserTournaments, toggleWhatsAppAccess, deleteUser } = require('../controllers/admin.controller');
 
 const router = express.Router();
 
@@ -11,5 +11,6 @@ router.use(protect, isAdmin);
 router.get('/users', getUsers);
 router.get('/users/:id/tournaments', getUserTournaments);
 router.put('/users/:id/whatsapp-access', toggleWhatsAppAccess);
+router.delete('/users/:id', deleteUser);
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Tournament = require('../models/Tournament');
 const Expense = require('../models/Expense');
+const WhatsAppSession = require('../models/WhatsAppSession');
 
 const getUsers = async (req, res, next) => {
   try {
@@ -147,4 +148,25 @@ const toggleWhatsAppAccess = async (req, res, next) => {
   }
 };
 
-module.exports = { getUsers, getUserTournaments, toggleWhatsAppAccess };
+const deleteUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Delete all data belonging to this user
+    await Promise.all([
+      Tournament.deleteMany({ userId: id }),
+      Expense.deleteMany({ userId: id }),
+      WhatsAppSession.deleteMany({ userId: id }),
+    ]);
+
+    await User.findByIdAndDelete(id);
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { getUsers, getUserTournaments, toggleWhatsAppAccess, deleteUser };
