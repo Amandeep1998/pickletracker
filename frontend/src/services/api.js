@@ -47,6 +47,7 @@ export const deleteExpense = (id) => api.delete(`/expenses/${id}`);
 
 // Admin
 export const getAdminUsers = () => api.get('/admin/users');
+export const getAdminUserTournaments = (userId) => api.get(`/admin/users/${userId}/tournaments`);
 
 // WhatsApp
 export const getWhatsAppStatus = () => api.get('/whatsapp/status');

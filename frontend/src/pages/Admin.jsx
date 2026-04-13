@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import { formatINR } from '../utils/format';
 import { toggleWhatsAppAccess } from '../services/api';
+import AdminUserCalendar from '../components/AdminUserCalendar';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
@@ -58,6 +59,7 @@ export default function Admin() {
   const [expandedId, setExpandedId] = useState(null);
   const [whatsappAccess, setWhatsappAccess] = useState({}); // { [userId]: boolean }
   const [whatsappToggling, setWhatsappToggling] = useState({}); // { [userId]: boolean }
+  const [calendarUser, setCalendarUser] = useState(null);
 
   // Guard: only admin can access
   useEffect(() => {
@@ -246,6 +248,17 @@ export default function Admin() {
                   <span className={`w-2 h-2 rounded-full block ${st.dot}`} />
                 </div>
 
+                {/* Calendar icon */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); setCalendarUser(u); }}
+                  className="flex-shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
+                  title="View calendar"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </button>
+
                 {/* Expand chevron */}
                 <svg
                   className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
@@ -416,6 +429,14 @@ export default function Admin() {
           <div className="text-center py-12 text-gray-400 text-sm">No users match your search.</div>
         )}
       </div>
+
+      {/* Admin calendar modal */}
+      {calendarUser && (
+        <AdminUserCalendar
+          user={calendarUser}
+          onClose={() => setCalendarUser(null)}
+        />
+      )}
     </div>
   );
 }

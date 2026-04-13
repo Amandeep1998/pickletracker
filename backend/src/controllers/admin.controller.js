@@ -122,6 +122,17 @@ const getUsers = async (req, res, next) => {
   }
 };
 
+const getUserTournaments = async (req, res, next) => {
+  try {
+    const tournaments = await Tournament.find({ userId: req.params.id })
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({ success: true, data: tournaments });
+  } catch (err) {
+    next(err);
+  }
+};
+
 const toggleWhatsAppAccess = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id).select('whatsappEnabled');
@@ -136,4 +147,4 @@ const toggleWhatsAppAccess = async (req, res, next) => {
   }
 };
 
-module.exports = { getUsers, toggleWhatsAppAccess };
+module.exports = { getUsers, getUserTournaments, toggleWhatsAppAccess };
