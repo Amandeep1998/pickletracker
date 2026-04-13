@@ -132,7 +132,7 @@ export default function WhatsAppConnect() {
           </p>
           <p className="text-xs text-gray-400 leading-tight mt-0.5">
             {status === 'connected'
-              ? `${formatDisplay(linkedPhone)} · Send "menu" to get started`
+              ? `${formatDisplay(linkedPhone)} · Check your WhatsApp for a welcome message`
               : 'Manage tournaments directly from WhatsApp'}
           </p>
         </div>
