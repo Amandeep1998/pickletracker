@@ -173,9 +173,9 @@ const forgotPassword = async (req, res, next) => {
       return res.json({ success: true });
     }
 
-    // If email is not configured, respond immediately so the UI doesn't hang
-    if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.warn('[ForgotPassword] Email env vars not configured — skipping send');
+    // If Resend API key is not configured, respond immediately so the UI doesn't hang
+    if (!process.env.RESEND_API_KEY) {
+      console.warn('[ForgotPassword] RESEND_API_KEY not configured — skipping send');
       return res.json({ success: true });
     }
 

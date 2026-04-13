@@ -1,22 +1,10 @@
-const nodemailer = require('nodemailer');
-
-function createTransport() {
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: Number(process.env.EMAIL_PORT) || 587,
-    secure: process.env.EMAIL_PORT === '465',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
-}
+const { Resend } = require('resend');
 
 async function sendPasswordResetEmail(toEmail, resetUrl) {
-  const transporter = createTransport();
+  const resend = new Resend(process.env.RESEND_API_KEY);
 
-  await transporter.sendMail({
-    from: `"PickleTracker" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+  await resend.emails.send({
+    from: process.env.EMAIL_FROM || 'PickleTracker <onboarding@resend.dev>',
     to: toEmail,
     subject: 'Reset your PickleTracker password',
     html: `
