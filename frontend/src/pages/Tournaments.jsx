@@ -231,9 +231,31 @@ export default function Tournaments() {
       {loadingList ? (
         <div className="text-center py-12 sm:py-16 text-gray-400 text-sm sm:text-base">Loading...</div>
       ) : tournaments.length === 0 ? (
-        <div className="text-center py-12 sm:py-16 text-gray-400">
-          <p className="text-base sm:text-lg">No tournaments yet.</p>
-          <p className="text-xs sm:text-sm mt-1">Add your first tournament to get started.</p>
+        <div className="flex flex-col items-center justify-center py-14 sm:py-20 px-4">
+          {/* Pickleball icon */}
+          <div className="w-20 h-20 rounded-full bg-[#f4f8e8] border-2 border-[#d6e89a] flex items-center justify-center mb-5">
+            <svg width="44" height="44" viewBox="0 0 80 80" fill="none" aria-hidden="true">
+              <circle cx="40" cy="40" r="32" fill="#C8D636" opacity="0.25" />
+              {[[28,22],[40,18],[52,22],[20,32],[32,30],[44,30],[56,32],[24,42],[36,40],[44,40],[56,42],[28,52],[40,56],[52,52]].map(([cx,cy],i)=>(
+                <circle key={i} cx={cx} cy={cy} r="3" fill="#272702" opacity="0.35"/>
+              ))}
+            </svg>
+          </div>
+          <h3 className="text-lg font-bold text-gray-800 mb-1">No tournaments yet</h3>
+          <p className="text-sm text-gray-400 text-center max-w-xs mb-6">
+            Add your first tournament to start tracking your matches, entry fees, and prize money.
+          </p>
+          <button
+            onClick={openAddModal}
+            className="bg-[#ec9937] hover:bg-[#d4831f] text-white font-bold px-6 py-3 rounded-xl text-sm tracking-wide transition-colors shadow-md shadow-orange-100"
+          >
+            + Add Your First Tournament
+          </button>
+          <p className="text-xs text-gray-400 mt-4">
+            You can also add from the{' '}
+            <NavLink to="/calendar" className="text-blue-500 font-medium hover:underline">Calendar tab</NavLink>
+            {' '}— tap any date.
+          </p>
         </div>
       ) : (
         <div className="space-y-3 sm:space-y-4">
