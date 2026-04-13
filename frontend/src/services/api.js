@@ -15,11 +15,13 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 globally — clear storage and redirect to login
+// Handle 401 globally — only redirect if user had an active session (token existed).
+// If there's no token, the 401 is a legitimate auth failure (e.g. wrong password)
+// and should be handled by the calling code, not redirected.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && localStorage.getItem('token')) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
