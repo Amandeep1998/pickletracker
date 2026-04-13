@@ -26,7 +26,7 @@ export default function Footer() {
               <BrandLogo size="lg" />
             </div>
             <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
-              India's tournament finance tracker for pickleball players. Log matches, track earnings, and grow your game.
+              India's pickleball performance journal. Log sessions, track tournaments, manage gear, and grow your game.
             </p>
           </div>
 
@@ -34,7 +34,7 @@ export default function Footer() {
           <div>
             <p className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.14em] mb-4">Explore</p>
             <ul className="space-y-2.5">
-              {[['Dashboard', '/dashboard'], ['Tournaments', '/tournaments'], ['Calendar', '/calendar']].map(([label, to]) => (
+              {[['Dashboard', '/dashboard'], ['Tournaments', '/tournaments'], ['Calendar', '/calendar'], ['Journal', '/sessions'], ['Gear', '/expenses']].map(([label, to]) => (
                 <li key={label}>
                   <Link to={to} className="text-sm text-gray-400 hover:text-[#91BE4D] transition-colors">{label}</Link>
                 </li>

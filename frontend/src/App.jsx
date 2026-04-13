@@ -15,6 +15,7 @@ import Landing from './pages/Landing';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 import ResetPassword from './pages/ResetPassword';
+import Profile from './pages/Profile';
 
 export default function App() {
   return (
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/expenses" element={<Expenses />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/admin" element={<Admin />} />
         </Route>
 

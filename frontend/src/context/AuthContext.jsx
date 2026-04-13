@@ -86,6 +86,13 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  // Call after a profile update so the stored user stays in sync
+  const refreshUser = (updatedUser) => {
+    const merged = { ...user, ...updatedUser };
+    localStorage.setItem('user', JSON.stringify(merged));
+    setUser(merged);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -97,6 +104,7 @@ export const AuthProvider = ({ children }) => {
         handleLogin,
         handleGoogleLogin,
         handleLogout,
+        refreshUser,
       }}
     >
       {children}

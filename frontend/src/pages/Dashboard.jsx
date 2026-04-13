@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import {
   BarChart,
   Bar,
@@ -30,6 +31,8 @@ const getTournamentDate = (tournament) => {
 };
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [tournaments, setTournaments] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [allSessions, setAllSessions] = useState([]);
@@ -40,7 +43,20 @@ export default function Dashboard() {
   const [filterYear, setFilterYear] = useState(String(currentYear));
   const [filterMonth, setFilterMonth] = useState('');
   const [includeTournaments, setIncludeTournaments] = useState(true);
+  const [includeCourtFees, setIncludeCourtFees] = useState(true);
   const [includeGear, setIncludeGear] = useState(false);
+
+  // Profile nudge — hidden if user already has phone+city, or if dismissed this session
+  const nudgeKey = `profileNudgeDismissed_${user?.id}`;
+  const [nudgeDismissed, setNudgeDismissed] = useState(
+    () => sessionStorage.getItem(nudgeKey) === '1'
+  );
+  const profileIncomplete = !user?.whatsappPhone || !user?.city;
+  const showNudge = profileIncomplete && !nudgeDismissed;
+  const dismissNudge = useCallback(() => {
+    sessionStorage.setItem(nudgeKey, '1');
+    setNudgeDismissed(true);
+  }, [nudgeKey]);
 
   useEffect(() => {
     // After 4 s still loading → server is cold-starting; show a friendlier message
@@ -130,8 +146,9 @@ export default function Dashboard() {
     const tournamentExpenses = includeTournaments
       ? filteredTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0)
       : 0;
-    // Court fees always come from sessions
-    const courtFeesTotal = filteredSessions.reduce((s, x) => s + (x.courtFee || 0), 0);
+    const courtFeesTotal = includeCourtFees
+      ? filteredSessions.reduce((s, x) => s + (x.courtFee || 0), 0)
+      : 0;
     const gearTotal = filteredExpenses
       .filter((e) => e.type === 'gear')
       .reduce((s, e) => s + e.amount, 0);
@@ -144,7 +161,7 @@ export default function Dashboard() {
       profit: earnings - totalExpenses,
       count: filteredTournaments.length,
     };
-  }, [filteredTournaments, filteredExpenses, filteredSessions, includeTournaments, includeGear]);
+  }, [filteredTournaments, filteredExpenses, filteredSessions, includeTournaments, includeCourtFees, includeGear]);
 
   // Monthly chart data for the selected year
   const chartData = useMemo(() => {
@@ -167,8 +184,9 @@ export default function Dashboard() {
       const tournamentExp = includeTournaments
         ? monthTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0)
         : 0;
-      // Court fees always included — they come from session logs
-      const courtFees = monthSessions.reduce((s, x) => s + (x.courtFee || 0), 0);
+      const courtFees = includeCourtFees
+        ? monthSessions.reduce((s, x) => s + (x.courtFee || 0), 0)
+        : 0;
       const gear = includeGear
         ? monthExpenses.filter((e) => e.type === 'gear').reduce((s, e) => s + e.amount, 0)
         : 0;
@@ -184,7 +202,7 @@ export default function Dashboard() {
         Profit: +(earnings - totalExp).toFixed(2),
       };
     });
-  }, [tournaments, expenses, allSessions, filterYear, includeTournaments, includeGear]);
+  }, [tournaments, expenses, allSessions, filterYear, includeTournaments, includeCourtFees, includeGear]);
 
   // Per-category profit breakdown — uses filteredTournaments so year/month filter applies
   const categoryBreakdown = useMemo(() => {
@@ -213,6 +231,59 @@ export default function Dashboard() {
       }))
       .sort((a, b) => b.profit - a.profit);
   }, [filteredTournaments]);
+
+  // Playing streak — consecutive days with at least one session (ending today or yesterday)
+  const streak = useMemo(() => {
+    if (allSessions.length === 0) return 0;
+    const uniqueDates = [...new Set(allSessions.map((s) => s.date))].sort().reverse();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let count = 0;
+    for (let i = 0; i < uniqueDates.length; i++) {
+      const expected = new Date(today);
+      expected.setDate(today.getDate() - i);
+      const expectedStr = expected.toISOString().split('T')[0];
+      if (uniqueDates[i] === expectedStr) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return count;
+  }, [allSessions]);
+
+  // This-week session count + avg rating
+  const weekStats = useMemo(() => {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    const startStr = startOfWeek.toISOString().split('T')[0];
+    const week = allSessions.filter((s) => s.date >= startStr);
+    const avg = week.length > 0
+      ? (week.reduce((s, x) => s + (x.rating || 0), 0) / week.length).toFixed(1)
+      : null;
+    return { count: week.length, avg };
+  }, [allSessions]);
+
+  // Most-recurring weakness across all sessions
+  const focusArea = useMemo(() => {
+    const freq = {};
+    allSessions.forEach((s) => {
+      (s.wentWrong || []).forEach((tag) => { freq[tag] = (freq[tag] || 0) + 1; });
+    });
+    const top = Object.entries(freq).sort((a, b) => b[1] - a[1])[0];
+    return top ? top[0] : null;
+  }, [allSessions]);
+
+  // Greeting based on time of day
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  })();
+  const firstName = user?.name?.split(' ')[0] || 'Player';
 
   const statCards = [
     {
@@ -271,23 +342,110 @@ export default function Dashboard() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {/* Hero Banner */}
-      <div className="rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-6 flex items-center justify-between overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}>
+      <div className="rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-4 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}>
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
-        <div className="relative">
-          <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">Dashboard</h1>
-          <p className="text-slate-400 text-xs sm:text-sm mt-1">Your tournament finance overview</p>
-        </div>
-        <div className="relative select-none opacity-90">
-          <svg width="72" height="72" viewBox="0 0 80 80" fill="none" aria-hidden="true">
-            <circle cx="40" cy="40" r="36" fill="#C8D636" />
-            <circle cx="40" cy="40" r="36" fill="white" opacity="0.12" />
-            {[[28,22],[40,18],[52,22],[20,32],[32,30],[44,30],[56,32],[24,42],[36,40],[44,40],[56,42],[28,52],[40,56],[52,52],[40,40]].map(([cx,cy],i)=>(
-              <circle key={i} cx={cx} cy={cy} r="2.8" fill="#272702" opacity="0.3"/>
-            ))}
-          </svg>
+        <div className="relative flex items-center justify-between">
+          <div>
+            <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight">{greeting}, {firstName}!</h1>
+            <p className="text-slate-400 text-xs sm:text-sm mt-1">
+              {streak > 0 ? `🔥 ${streak}-day streak · ` : ''}
+              {weekStats.count > 0 ? `${weekStats.count} session${weekStats.count !== 1 ? 's' : ''} this week` : 'No sessions yet this week'}
+              {weekStats.avg ? ` · avg ${weekStats.avg}/5` : ''}
+            </p>
+          </div>
+          <div className="relative select-none opacity-90 flex-shrink-0">
+            <svg width="60" height="60" viewBox="0 0 80 80" fill="none" aria-hidden="true">
+              <circle cx="40" cy="40" r="36" fill="#C8D636" />
+              <circle cx="40" cy="40" r="36" fill="white" opacity="0.12" />
+              {[[28,22],[40,18],[52,22],[20,32],[32,30],[44,30],[56,32],[24,42],[36,40],[44,40],[56,42],[28,52],[40,56],[52,52],[40,40]].map(([cx,cy],i)=>(
+                <circle key={i} cx={cx} cy={cy} r="2.8" fill="#272702" opacity="0.3"/>
+              ))}
+            </svg>
+          </div>
         </div>
       </div>
+
+      {/* Profile completion nudge */}
+      {showNudge && (
+        <div className="bg-[#f4f8e8] border border-[#91BE4D]/30 rounded-xl px-4 py-3 mb-4 flex items-start gap-3">
+          <span className="text-lg flex-shrink-0 mt-0.5">✨</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-[#272702]">Make PickleTracker work harder for you</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {!user?.whatsappPhone && !user?.city
+                ? 'Add your mobile & city — get tournament reminders and discover local events.'
+                : !user?.whatsappPhone
+                ? 'Add your mobile number to get WhatsApp reminders before your tournaments.'
+                : 'Add your city to discover tournaments happening near you.'}
+            </p>
+            <NavLink
+              to="/profile"
+              className="inline-block mt-2 text-xs font-bold text-[#4a6e10] hover:underline"
+            >
+              Complete my profile →
+            </NavLink>
+          </div>
+          <button
+            onClick={dismissNudge}
+            className="flex-shrink-0 text-gray-400 hover:text-gray-600 p-1 rounded transition-colors"
+            aria-label="Dismiss"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Quick Actions */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <button
+          onClick={() => navigate('/sessions')}
+          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-[#91BE4D]/30 bg-[#91BE4D]/5 hover:bg-[#91BE4D]/10 transition-colors text-center"
+        >
+          <span className="text-xl">🎯</span>
+          <span className="text-xs font-bold text-[#4a6e10] leading-tight">Log Session</span>
+        </button>
+        <button
+          onClick={() => navigate('/tournaments')}
+          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-[#ec9937]/30 bg-[#ec9937]/5 hover:bg-[#ec9937]/10 transition-colors text-center"
+        >
+          <span className="text-xl">🏆</span>
+          <span className="text-xs font-bold text-orange-700 leading-tight">Tournament</span>
+        </button>
+        <button
+          onClick={() => navigate('/expenses')}
+          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors text-center"
+        >
+          <span className="text-xl">🎒</span>
+          <span className="text-xs font-bold text-gray-600 leading-tight">Add Gear</span>
+        </button>
+      </div>
+
+      {/* Performance Snapshot */}
+      {allSessions.length > 0 && (
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-3 text-center">
+            <p className="text-2xl font-black" style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+              {streak}
+            </p>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">Day Streak</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-3 text-center">
+            <p className="text-2xl font-black" style={{ background: 'linear-gradient(to right, #2d7005, #ec9937)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+              {weekStats.avg ?? '—'}
+            </p>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">Week Avg</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-3 text-center">
+            <p className="text-xs font-bold text-orange-600 leading-tight truncate" title={focusArea || 'None'}>
+              {focusArea ? focusArea.split(' ').slice(0, 2).join(' ') : '—'}
+            </p>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">Focus Area</p>
+          </div>
+        </div>
+      )}
 
       {/* Recent Sessions Widget */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-md px-4 py-4 mb-6">
@@ -383,6 +541,15 @@ export default function Dashboard() {
               })}
             </p>
           </div>
+          {/* Contextual phone nudge */}
+          {!user?.whatsappPhone && (
+            <NavLink
+              to="/profile"
+              className="w-full sm:w-auto text-center text-[11px] text-[#4a6e10] bg-[#f4f8e8] border border-[#91BE4D]/25 px-3 py-1.5 rounded-lg hover:bg-[#edf5d8] transition-colors font-semibold"
+            >
+              📱 Add phone → get a reminder before this
+            </NavLink>
+          )}
         </div>
       )}
 
@@ -433,9 +600,16 @@ export default function Dashboard() {
           >
             {includeTournaments ? '✓' : '+'} Tournament
           </button>
-          <span className="text-xs px-3 py-1.5 rounded font-semibold border bg-blue-50 text-blue-600 border-blue-200 cursor-default" title="Court fees are always included from session logs">
-            🏟️ Court fees (auto)
-          </span>
+          <button
+            onClick={() => setIncludeCourtFees((v) => !v)}
+            className={`text-xs px-3 py-1.5 rounded font-semibold tracking-wide transition-colors border ${
+              includeCourtFees
+                ? 'bg-blue-500 text-white border-blue-500'
+                : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-500'
+            }`}
+          >
+            {includeCourtFees ? '✓' : '+'} Court Fees
+          </button>
           <button
             onClick={() => setIncludeGear((v) => !v)}
             className={`text-xs px-3 py-1.5 rounded font-semibold tracking-wide transition-colors border ${

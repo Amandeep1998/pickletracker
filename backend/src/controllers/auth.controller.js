@@ -24,6 +24,8 @@ function publicUser(user) {
     name: user.name,
     email: user.email,
     isGoogleUser: Boolean(user.isGoogleUser),
+    whatsappPhone: user.whatsappPhone || null,
+    city: user.city || null,
   };
 }
 
@@ -244,4 +246,46 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
-module.exports = { signup, login, googleAuth, forgotPassword, resetPassword };
+const getProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).lean();
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    res.json({ success: true, data: publicUser(user) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const updateProfile = async (req, res, next) => {
+  try {
+    const { name, city, whatsappPhone } = req.body;
+    const update = {};
+
+    if (name !== undefined) {
+      const trimmed = String(name).trim();
+      if (!trimmed) return res.status(400).json({ success: false, message: 'Name cannot be empty' });
+      update.name = trimmed;
+    }
+    if (city !== undefined) update.city = city ? String(city).trim().slice(0, 100) : null;
+    if (whatsappPhone !== undefined) {
+      if (whatsappPhone) {
+        const digits = String(whatsappPhone).replace(/\D/g, '');
+        if (digits.length < 10 || digits.length > 13) {
+          return res.status(400).json({ success: false, message: 'Enter a valid mobile number' });
+        }
+        update.whatsappPhone = digits.length === 10 ? `91${digits}` : digits;
+      } else {
+        update.whatsappPhone = null;
+      }
+    }
+
+    const user = await User.findByIdAndUpdate(req.user.id, update, { new: true, runValidators: true });
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    res.json({ success: true, data: publicUser(user) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { signup, login, googleAuth, forgotPassword, resetPassword, getProfile, updateProfile };

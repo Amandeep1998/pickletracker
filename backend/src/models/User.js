@@ -40,6 +40,12 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    city: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: [100, 'City name is too long'],
+    },
     resetPasswordToken: {
       type: String,
       default: null,

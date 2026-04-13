@@ -36,6 +36,7 @@ export default function Navbar() {
           <NavLink to="/tournaments" className={linkClass}>Tournaments</NavLink>
           <NavLink to="/calendar"    className={linkClass}>Calendar</NavLink>
           <NavLink to="/sessions"   className={linkClass}>Journal</NavLink>
+          <NavLink to="/expenses"   className={linkClass}>Gear</NavLink>
           {isAdmin && (
             <NavLink to="/admin" className={({ isActive }) =>
               `text-sm font-medium tracking-wide transition-colors ${isActive ? 'text-purple-500' : 'text-purple-400 hover:text-purple-500'}`
@@ -46,8 +47,20 @@ export default function Navbar() {
         </div>
 
         {/* Desktop User + Logout */}
-        <div className="hidden md:flex items-center gap-4 flex-shrink-0">
-          <span className="text-sm text-gray-400 font-medium">{user?.name}</span>
+        <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+          <NavLink
+            to="/profile"
+            className={({ isActive }) =>
+              `flex items-center gap-2 text-sm font-medium transition-colors px-2 py-1 rounded-lg hover:bg-gray-100 ${isActive ? 'text-[#91BE4D]' : 'text-[#272702]/60 hover:text-[#272702]'}`
+            }
+            title="Your profile"
+          >
+            <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+              style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}>
+              {user?.name?.[0]?.toUpperCase() || '?'}
+            </span>
+            <span>{user?.name?.split(' ')[0]}</span>
+          </NavLink>
           <button
             onClick={logout}
             className="text-sm px-4 py-2 hover:opacity-90 text-white rounded-lg font-semibold transition-opacity tracking-wide"

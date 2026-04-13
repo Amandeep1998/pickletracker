@@ -37,6 +37,15 @@ const IconLocation = () => (
   </svg>
 );
 
+const IconJournal = () => (
+  <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+    <rect x="5" y="3" width="18" height="22" rx="2" stroke="#91BE4D" strokeWidth="1.8"/>
+    <path d="M9 9h10M9 13h10M9 17h6" stroke="#91BE4D" strokeWidth="1.8" strokeLinecap="round"/>
+    <circle cx="21" cy="21" r="4" fill="#ec9937"/>
+    <path d="M21 19v2l1 1" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 /* ─── Pickleball ball decoration ──────────────────────────── */
 const Ball = ({ size = 60, opacity = 1 }) => (
   <svg width={size} height={size} viewBox="0 0 80 80" fill="none" aria-hidden="true" style={{ opacity }}>
@@ -57,36 +66,36 @@ const Ball = ({ size = 60, opacity = 1 }) => (
 /* ─── Features data ────────────────────────────────────────── */
 const FEATURES = [
   {
-    Icon: IconTrophy,
+    Icon: IconJournal,
     bg: 'bg-[#f4f8e8]',
-    title: 'Tournament Log',
-    desc: 'Record every tournament — categories, entry fees, prize winnings, medals. Profit calculated automatically per event.',
+    title: 'Performance Journal',
+    desc: 'Log every session — rate how you played, tag what went well and what needs work. See patterns emerge over time.',
+  },
+  {
+    Icon: IconTrophy,
+    bg: 'bg-[#fff8ee]',
+    title: 'Tournament Tracker',
+    desc: 'Record every tournament, categories, entry fees, prize winnings, and medals. Net profit calculated automatically.',
   },
   {
     Icon: IconChart,
-    bg: 'bg-[#fff8ee]',
+    bg: 'bg-[#f4f8e8]',
     title: 'Financial Dashboard',
-    desc: 'See your total earnings, net profit, and spending in one view. Monthly trends, category breakdowns, and more.',
+    desc: 'Total earnings, court fees, gear spend, and net profit — all in one view. Monthly trends and category breakdowns.',
   },
   {
     Icon: IconCalendar,
-    bg: 'bg-[#f4f8e8]',
-    title: 'Calendar View',
-    desc: 'All your tournaments laid out on a calendar. Tap any date to add or review events. Sync to Google Calendar in one click.',
-  },
-  {
-    Icon: IconLocation,
     bg: 'bg-[#fff8ee]',
-    title: 'Venue & Location',
-    desc: 'Save tournament venues with full address and map link. One tap to get directions on the day.',
+    title: 'Calendar View',
+    desc: 'Sessions and tournaments laid out by date. Tap any day to see activity. Sync tournaments to Google Calendar in one click.',
   },
 ];
 
 /* ─── Steps data ───────────────────────────────────────────── */
 const STEPS = [
   { num: '01', title: 'Sign up free', desc: 'Create your account in under a minute. No credit card, no catch.' },
-  { num: '02', title: 'Log your first tournament', desc: 'Add the tournament name, category, entry fee, and prize. Done.' },
-  { num: '03', title: 'Watch your progress', desc: 'Your dashboard fills up automatically. Profit, spending, trends — all clear.' },
+  { num: '02', title: 'Log a session or tournament', desc: 'Rate your play, tag skills, record court fees. Or add a tournament with entry fees and prizes.' },
+  { num: '03', title: 'Track your improvement', desc: 'Spot recurring weaknesses, watch your streak grow, and see exactly where your money goes.' },
 ];
 
 /* ─── Landing Page ─────────────────────────────────────────── */
@@ -145,11 +154,11 @@ export default function Landing() {
                   Built for Indian pickleball players
                 </span>
                 <h1 className="text-4xl sm:text-5xl lg:text-[3.6rem] font-extrabold text-white leading-[1.12] mb-5 tracking-[-0.01em]">
-                  Know exactly where<br />
-                  you stand as a player.
+                  Play better.<br />
+                  Track smarter.
                 </h1>
                 <p className="text-base sm:text-lg text-slate-300 leading-relaxed mb-9 max-w-lg mx-auto lg:mx-0">
-                  Log tournaments, track entry fees, record prize winnings. PickleTracker gives you a clear financial picture of your pickleball game.
+                  Log sessions, tag skills, track tournaments, and manage court fees — all in one place built for serious Indian pickleball players.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
                   <Link
@@ -194,8 +203,8 @@ export default function Landing() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-8">
               {[
                 { value: '100%', label: 'Free to use' },
-                { value: 'Multi', label: 'Category tracking' },
-                { value: 'Live', label: 'Profit dashboard' },
+                { value: 'Journal', label: 'Performance tracking' },
+                { value: 'Live', label: 'Finance dashboard' },
                 { value: 'Auto', label: 'Google Calendar sync' },
               ].map((s) => (
                 <div key={s.label} className="text-center">
@@ -297,8 +306,8 @@ export default function Landing() {
               <Ball size={32}/>
             </div>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-[#272702] tracking-tight mb-3">
-              Ready to play seriously?<br className="hidden sm:block"/>
-              <span className="text-[#91BE4D]"> Track seriously.</span>
+              Ready to level up?<br className="hidden sm:block"/>
+              <span className="text-[#91BE4D]"> Start tracking today.</span>
             </h2>
             <p className="text-gray-500 text-sm mb-8 max-w-sm mx-auto leading-relaxed">
               Free to use. No credit card. Takes about 60 seconds to set up.

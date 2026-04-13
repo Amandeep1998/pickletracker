@@ -36,6 +36,8 @@ export const login = (data) => api.post('/auth/login', data);
 export const loginWithGoogle = (data) => api.post('/auth/google', data);
 export const forgotPassword = (email) => api.post('/auth/forgot-password', { email });
 export const resetPassword = (token, password) => api.post('/auth/reset-password', { token, password });
+export const getProfile = () => api.get('/auth/profile');
+export const updateProfile = (data) => api.put('/auth/profile', data);
 
 // Tournaments
 export const getTournaments = () => api.get('/tournaments');
