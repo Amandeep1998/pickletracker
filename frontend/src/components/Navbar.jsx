@@ -16,30 +16,26 @@ export default function Navbar() {
 
   const linkClass = ({ isActive }) =>
     `text-sm font-medium tracking-wide transition-colors ${
-      isActive ? 'text-[#91BE4D]' : 'text-slate-300 hover:text-[#ec9937]'
+      isActive ? 'text-[#91BE4D]' : 'text-[#272702]/60 hover:text-[#91BE4D]'
     }`;
 
   return (
-    <nav className="bg-[#272702] sticky top-0 z-20 shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+    <nav className="bg-white sticky top-0 z-20 shadow-sm border-b border-gray-100">
+      <div className="max-w-7xl mx-auto px-5 sm:px-6 h-16 flex items-center justify-between">
+
         {/* Brand */}
-        <NavLink to="/dashboard" className="flex items-center gap-3 flex-shrink-0">
-          <img src="/logo.svg" alt="PickleTracker" className="h-9 w-9 object-contain" />
-          <div className="hidden sm:flex items-baseline gap-0.5">
-            <span className="text-lg font-bold text-[#91BE4D]">Pickle</span>
-            <span className="text-lg font-bold text-[#ec9937]">Tracker</span>
-          </div>
+        <NavLink to="/dashboard" className="flex-shrink-0">
+          <img src="/brand-logo.png" alt="PickleTracker" className="h-11 w-auto object-contain" />
         </NavLink>
 
         {/* Desktop Links */}
-        <div className="hidden md:flex items-center gap-8">
-          <NavLink to="/dashboard" className={linkClass}>Dashboard</NavLink>
+        <div className="hidden md:flex items-center gap-7">
+          <NavLink to="/dashboard"   className={linkClass}>Dashboard</NavLink>
           <NavLink to="/tournaments" className={linkClass}>Tournaments</NavLink>
-          <NavLink to="/expenses" className={linkClass}>Expenses</NavLink>
-          <NavLink to="/calendar" className={linkClass}>Calendar</NavLink>
+          <NavLink to="/calendar"    className={linkClass}>Calendar</NavLink>
           {isAdmin && (
             <NavLink to="/admin" className={({ isActive }) =>
-              `text-sm font-medium tracking-wide transition-colors ${isActive ? 'text-purple-400' : 'text-purple-300 hover:text-purple-200'}`
+              `text-sm font-medium tracking-wide transition-colors ${isActive ? 'text-purple-500' : 'text-purple-400 hover:text-purple-500'}`
             }>
               Admin
             </NavLink>
@@ -48,10 +44,10 @@ export default function Navbar() {
 
         {/* Desktop User + Logout */}
         <div className="hidden md:flex items-center gap-4 flex-shrink-0">
-          <span className="text-sm text-slate-400">{user?.name}</span>
+          <span className="text-sm text-gray-400 font-medium">{user?.name}</span>
           <button
             onClick={logout}
-            className="text-sm px-4 py-1.5 bg-[#ec9937] hover:bg-[#d4831f] text-white rounded font-semibold transition-colors tracking-wide"
+            className="text-sm px-4 py-2 bg-[#ec9937] hover:bg-[#d4831f] text-white rounded-lg font-semibold transition-colors tracking-wide"
           >
             Logout
           </button>

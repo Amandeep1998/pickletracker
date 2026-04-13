@@ -100,7 +100,7 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5 flex-shrink-0">
-            <img src="/brand-logo.png" alt="PickleTracker" className="h-10 w-auto object-contain" />
+            <img src="/brand-logo.png" alt="PickleTracker" className="h-12 w-auto object-contain" />
           </Link>
 
           {/* Nav actions */}
@@ -328,7 +328,7 @@ export default function Landing() {
 
             {/* Brand */}
             <div className="max-w-xs">
-              <img src="/brand-logo.png" alt="PickleTracker" className="h-9 w-auto object-contain mb-4 opacity-90"/>
+              <img src="/brand-logo.png" alt="PickleTracker" className="h-11 w-auto object-contain mb-4 opacity-90"/>
               <p className="text-sm text-slate-400 leading-relaxed">
                 India's tournament tracker for pickleball players. Log matches, track your money, grow your game.
               </p>

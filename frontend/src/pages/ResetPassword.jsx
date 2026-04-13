@@ -60,11 +60,7 @@ export default function ResetPassword() {
         <div className="w-full max-w-md">
           {/* Branding */}
           <div className="mb-8 text-center">
-            <img src="/logo.svg" alt="PickleTracker" className="h-20 w-20 object-contain mx-auto mb-4" />
-            <div className="flex items-baseline justify-center gap-0.5">
-              <span className="text-3xl font-bold text-[#91BE4D]">Pickle</span>
-              <span className="text-3xl font-bold text-[#ec9937]">Tracker</span>
-            </div>
+            <img src="/brand-logo.png" alt="PickleTracker" className="h-16 w-auto object-contain mx-auto mb-3" />
           </div>
 
           <div className="bg-white rounded-xl shadow-md p-8 border border-gray-100">

@@ -1,59 +1,61 @@
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+
+const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
 export default function MobileMenu() {
   const { user, handleLogout } = useAuth();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const isAdmin = user?.email === ADMIN_EMAIL;
 
   const handleLogoutClick = () => {
     handleLogout();
     setIsOpen(false);
+    navigate('/login');
   };
 
   const navLinkClass = ({ isActive }) =>
-    `block px-4 py-3 text-sm font-medium transition-colors ${
+    `block px-5 py-3 text-sm font-medium transition-colors ${
       isActive
-        ? 'text-[#91BE4D] bg-[#91BE4D]/10 border-l-4 border-[#91BE4D]'
-        : 'text-gray-700 hover:bg-[#F3F8F9] hover:text-[#ec9937]'
+        ? 'text-[#91BE4D] bg-[#91BE4D]/8 border-l-4 border-[#91BE4D]'
+        : 'text-[#272702]/70 hover:bg-gray-50 hover:text-[#91BE4D] border-l-4 border-transparent'
     }`;
 
   return (
     <>
-      {/* Hamburger Button */}
+      {/* Hamburger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden flex flex-col gap-1.5 p-2 rounded hover:bg-[#3a3a00] transition-colors"
+        className="md:hidden flex flex-col gap-1.5 p-2 rounded-lg hover:bg-gray-100 transition-colors"
         aria-label="Toggle menu"
       >
-        <span className={`h-0.5 w-6 bg-white transition-all ${isOpen ? 'rotate-45 translate-y-2' : ''}`}></span>
-        <span className={`h-0.5 w-6 bg-white transition-all ${isOpen ? 'opacity-0' : ''}`}></span>
-        <span className={`h-0.5 w-6 bg-white transition-all ${isOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
+        <span className={`h-0.5 w-6 bg-[#272702] rounded transition-all ${isOpen ? 'rotate-45 translate-y-2' : ''}`} />
+        <span className={`h-0.5 w-6 bg-[#272702] rounded transition-all ${isOpen ? 'opacity-0' : ''}`} />
+        <span className={`h-0.5 w-6 bg-[#272702] rounded transition-all ${isOpen ? '-rotate-45 -translate-y-2' : ''}`} />
       </button>
 
       {/* Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
           onClick={() => setIsOpen(false)}
-        ></div>
+        />
       )}
 
       {/* Sidebar */}
       <div
-        className={`fixed left-0 top-16 h-[calc(100dvh-64px)] w-64 bg-white shadow-lg z-50 transform transition-transform duration-300 md:hidden flex flex-col ${
+        className={`fixed left-0 top-16 h-[calc(100dvh-64px)] w-64 bg-white shadow-xl z-50 transform transition-transform duration-300 md:hidden flex flex-col border-r border-gray-100 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Header row with close button */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-          <div className="flex items-baseline gap-0.5">
-            <span className="text-base font-bold text-[#91BE4D]">Pickle</span>
-            <span className="text-base font-bold text-[#ec9937]">Tracker</span>
-          </div>
+        {/* Sidebar header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <img src="/brand-logo.png" alt="PickleTracker" className="h-9 w-auto object-contain" />
           <button
             onClick={() => setIsOpen(false)}
-            className="text-gray-400 hover:text-gray-600 p-1 rounded transition-colors"
+            className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
             aria-label="Close menu"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -62,49 +64,33 @@ export default function MobileMenu() {
           </button>
         </div>
 
-        {/* Navigation Links */}
-        <nav className="flex-1 pt-2 space-y-1 overflow-y-auto">
-          <NavLink
-            to="/dashboard"
-            className={navLinkClass}
-            onClick={() => setIsOpen(false)}
-          >
-            Dashboard
-          </NavLink>
-          <NavLink
-            to="/tournaments"
-            className={navLinkClass}
-            onClick={() => setIsOpen(false)}
-          >
-            Tournaments
-          </NavLink>
-          <NavLink
-            to="/expenses"
-            className={navLinkClass}
-            onClick={() => setIsOpen(false)}
-          >
-            Expenses
-          </NavLink>
-          <NavLink
-            to="/calendar"
-            className={navLinkClass}
-            onClick={() => setIsOpen(false)}
-          >
-            Calendar
-          </NavLink>
+        {/* Nav Links */}
+        <nav className="flex-1 pt-2 space-y-0.5 overflow-y-auto">
+          <NavLink to="/dashboard"   className={navLinkClass} onClick={() => setIsOpen(false)}>Dashboard</NavLink>
+          <NavLink to="/tournaments" className={navLinkClass} onClick={() => setIsOpen(false)}>Tournaments</NavLink>
+          <NavLink to="/calendar"    className={navLinkClass} onClick={() => setIsOpen(false)}>Calendar</NavLink>
+          {isAdmin && (
+            <NavLink to="/admin" className={({ isActive }) =>
+              `block px-5 py-3 text-sm font-medium transition-colors border-l-4 ${
+                isActive ? 'text-purple-500 bg-purple-50 border-purple-400' : 'text-purple-400 hover:bg-purple-50 hover:text-purple-500 border-transparent'
+              }`
+            } onClick={() => setIsOpen(false)}>
+              Admin
+            </NavLink>
+          )}
         </nav>
 
-        {/* User Info & Logout - Always at Bottom */}
-        <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50 p-4">
+        {/* User + Logout */}
+        <div className="flex-shrink-0 border-t border-gray-100 bg-gray-50/60 p-4">
           {user && (
             <>
-              <p className="text-xs text-gray-500 mb-2">Logged in as</p>
-              <p className="text-sm font-medium text-gray-900 mb-4 truncate">{user.name}</p>
+              <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-widest mb-1">Logged in as</p>
+              <p className="text-sm font-semibold text-[#272702] mb-4 truncate">{user.name}</p>
             </>
           )}
           <button
             onClick={handleLogoutClick}
-            className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 min-h-[40px] rounded-lg text-sm transition-colors"
+            className="w-full bg-[#ec9937] hover:bg-[#d4831f] text-white font-bold py-2.5 rounded-lg text-sm transition-colors tracking-wide"
           >
             Logout
           </button>
