@@ -79,10 +79,19 @@ export default function Login() {
               </div>
             )}
 
-            <GoogleSignInButton
-              onBegin={() => { setError(''); clearError(); }}
-              onSuccess={() => navigate('/calendar')}
-            />
+            <div className="relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                <span className="inline-flex items-center gap-1 bg-[#91BE4D] text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm whitespace-nowrap">
+                  ✦ Recommended
+                </span>
+              </div>
+              <div className="border-2 border-[#91BE4D]/40 rounded-xl pt-4 pb-2 px-2 bg-[#f4f8e8]/50">
+                <GoogleSignInButton
+                  onBegin={() => { setError(''); clearError(); }}
+                  onSuccess={() => navigate('/calendar')}
+                />
+              </div>
+            </div>
 
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
