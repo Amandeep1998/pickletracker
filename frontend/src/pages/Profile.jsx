@@ -38,6 +38,10 @@ export default function Profile() {
 
   const [loading, setLoading] = useState(true);
 
+  // Export
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+
   useEffect(() => {
     Promise.all([api.getProfile(), api.getWhatsAppStatus()])
       .then(([profRes, waRes]) => {
@@ -109,6 +113,28 @@ export default function Profile() {
       setWaError('Failed to disconnect. Please try again.');
     } finally {
       setDisconnecting(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    setExportError('');
+    try {
+      const res = await api.exportData();
+      const url = URL.createObjectURL(new Blob([res.data]));
+      const a = document.createElement('a');
+      const today = new Date();
+      const dateStamp = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+      a.href = url;
+      a.download = `pickletracker-export-${dateStamp}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setExportError('Export failed. Please try again.');
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -383,6 +409,48 @@ export default function Profile() {
                 </button>
               </form>
             )}
+          </div>
+
+          {/* Export Card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5 mt-5">
+            <div className="flex items-start gap-3 mb-3">
+              <span className="text-2xl">📥</span>
+              <div>
+                <p className="text-sm font-bold text-gray-900">Export your data</p>
+                <p className="text-xs text-gray-500 mt-0.5">Download all your tournaments, sessions, and gear as an Excel file — your personal backup.</p>
+              </div>
+            </div>
+            <div className="bg-[#f4f8e8] border border-[#91BE4D]/20 rounded-xl px-4 py-3 mb-4">
+              <p className="text-xs text-[#4a6e10] leading-relaxed">
+                The Excel file contains 4 sheets: <span className="font-semibold">Summary</span>, <span className="font-semibold">Tournaments</span>, <span className="font-semibold">Sessions</span>, and <span className="font-semibold">Gear</span> — everything you've logged, in one place.
+              </p>
+            </div>
+            {exportError && (
+              <div className="mb-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg px-3 py-2">{exportError}</div>
+            )}
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="w-full flex items-center justify-center gap-2 disabled:opacity-60 hover:opacity-90 text-white font-bold py-3 rounded-xl text-sm tracking-wide transition-opacity"
+              style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
+            >
+              {exporting ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                  </svg>
+                  Generating…
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+                  </svg>
+                  Download Excel
+                </>
+              )}
+            </button>
           </div>
         </>
       )}

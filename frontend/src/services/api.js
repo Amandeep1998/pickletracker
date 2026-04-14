@@ -62,6 +62,9 @@ export const connectWhatsApp = (data) => api.post('/whatsapp/connect', data);
 export const disconnectWhatsApp = () => api.delete('/whatsapp/connect');
 export const toggleWhatsAppAccess = (userId) => api.put(`/admin/users/${userId}/whatsapp-access`);
 
+// Export
+export const exportData = () => api.get('/export', { responseType: 'blob' });
+
 // Sessions (performance journal)
 export const getSessions = () => api.get('/sessions');
 export const createSession = (data) => api.post('/sessions', data);

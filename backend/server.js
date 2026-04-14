@@ -12,6 +12,7 @@ const aiRoutes = require('./src/routes/ai.routes');
 const documentRoutes = require('./src/routes/document.routes');
 const whatsappRoutes = require('./src/routes/whatsapp.routes');
 const sessionRoutes = require('./src/routes/session.routes');
+const exportRoutes = require('./src/routes/export.routes');
 const errorHandler = require('./src/middleware/error.middleware');
 
 const app = express();
@@ -33,6 +34,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/document', documentRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/export', exportRoutes);
 
 app.use(errorHandler);
 
