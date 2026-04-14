@@ -741,6 +741,57 @@ export default function Calendar() {
               </div>
             </div>
 
+            {/* Performance Feedback */}
+            {(selectedTournament.rating || selectedTournament.wentWell?.length > 0 || selectedTournament.wentWrong?.length > 0 || selectedTournament.notes) && (
+              <div className="bg-gray-50 rounded-xl p-3 mb-4 space-y-2.5">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Performance Feedback</p>
+
+                {selectedTournament.rating && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">
+                      {['😞','😐','🙂','😊','🤩'][selectedTournament.rating - 1]}
+                    </span>
+                    <span className="text-sm text-gray-700">
+                      {['Tough day','Average','Decent','Good','Outstanding!'][selectedTournament.rating - 1]}
+                    </span>
+                  </div>
+                )}
+
+                {selectedTournament.wentWell?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1.5">What went well</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedTournament.wentWell.map((tag) => (
+                        <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedTournament.wentWrong?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1.5">Needs work</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedTournament.wentWrong.map((tag) => (
+                        <span key={tag} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedTournament.notes && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-1">Notes</p>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedTournament.notes}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {formError && <p className="text-red-500 text-sm mb-3">{formError}</p>}
 
             <div className="flex gap-2">

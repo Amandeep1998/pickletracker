@@ -5,6 +5,22 @@ import LocationAutocomplete from './LocationAutocomplete';
 import VoiceInput from './VoiceInput';
 import DocumentInput from './DocumentInput';
 
+const SKILL_TAGS = [
+  'Serve', 'Return of serve', 'Third shot drop', 'Third shot drive',
+  'Dinking', 'Backhand', 'Forehand', 'Volleys', 'Lob', 'Reset',
+  'Poaching', 'Speed-up', 'Erne', 'Drop shot', 'Kitchen play',
+  'Transition zone', 'Movement', 'Stamina', 'Communication',
+  'Patience', 'Aggression', 'Mental focus', 'Stacking',
+];
+
+const RATINGS = [
+  { value: 1, emoji: '😫', label: 'Rough' },
+  { value: 2, emoji: '😕', label: 'Poor' },
+  { value: 3, emoji: '😐', label: 'Okay' },
+  { value: 4, emoji: '😊', label: 'Good' },
+  { value: 5, emoji: '🔥', label: 'On fire!' },
+];
+
 const EMPTY_CATEGORY = {
   categoryName: '',
   date: '',
@@ -17,6 +33,10 @@ const EMPTY_FORM = {
   name: '',
   location: null,
   categories: [{ ...EMPTY_CATEGORY }],
+  rating: null,
+  wentWell: [],
+  wentWrong: [],
+  notes: '',
 };
 
 export default function TournamentForm({ initial, onSubmit, onCancel, loading }) {
@@ -36,6 +56,10 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
           prizeAmount: cat.prizeAmount ?? '',
           entryFee: cat.entryFee ?? '',
         })),
+        rating: initial.rating || null,
+        wentWell: initial.wentWell || [],
+        wentWrong: initial.wentWrong || [],
+        notes: initial.notes || '',
       });
     }
   }, [initial]);
@@ -74,6 +98,16 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         categories: prev.categories.filter((_, i) => i !== idx),
       }));
     }
+  };
+
+  const toggleTag = (field, tag) => {
+    setForm((prev) => {
+      const current = prev[field];
+      return {
+        ...prev,
+        [field]: current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag],
+      };
+    });
   };
 
   const handleVoiceFill = (data) => {
@@ -143,6 +177,10 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         prizeAmount: Number(cat.prizeAmount) || 0,
         entryFee: Number(cat.entryFee),
       })),
+      rating: form.rating || null,
+      wentWell: form.wentWell,
+      wentWrong: form.wentWrong,
+      notes: form.notes.trim(),
     });
   };
 
@@ -363,6 +401,110 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         <span className="font-bold">
           {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalProfit)}
         </span>
+      </div>
+
+      {/* ── Performance feedback ─────────────────────────────────────────── */}
+      <div className="border-t pt-4 space-y-5">
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Performance Feedback <span className="text-gray-300 font-normal normal-case">(optional)</span></p>
+
+        {/* Rating */}
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">How did you perform overall?</p>
+          <div className="flex gap-2 sm:gap-3">
+            {RATINGS.map((r) => (
+              <button
+                key={r.value}
+                type="button"
+                onClick={() => setForm((p) => ({ ...p, rating: p.rating === r.value ? null : r.value }))}
+                className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 transition-all ${
+                  form.rating === r.value
+                    ? 'border-[#91BE4D] bg-[#91BE4D]/10 scale-105'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <span className="text-2xl">{r.emoji}</span>
+                <span className={`text-[10px] font-semibold leading-none ${form.rating === r.value ? 'text-[#4a6e10]' : 'text-gray-500'}`}>
+                  {r.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* What went well */}
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            What went well <span className="text-gray-400 font-normal normal-case">(tap to select)</span>
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {SKILL_TAGS.map((tag) => {
+              const selected = form.wentWell.includes(tag);
+              const conflict = form.wentWrong.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  disabled={conflict}
+                  onClick={() => toggleTag('wentWell', tag)}
+                  className={`text-xs px-2.5 py-1.5 rounded-full border font-medium transition-all ${
+                    selected
+                      ? 'bg-[#91BE4D] border-[#91BE4D] text-white'
+                      : conflict
+                      ? 'bg-gray-100 border-gray-200 text-gray-300 cursor-not-allowed'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-[#91BE4D] hover:text-[#4a6e10]'
+                  }`}
+                >
+                  {selected && '✓ '}{tag}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* What needs work */}
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            What needs work <span className="text-gray-400 font-normal normal-case">(tap to select)</span>
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {SKILL_TAGS.map((tag) => {
+              const selected = form.wentWrong.includes(tag);
+              const conflict = form.wentWell.includes(tag);
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  disabled={conflict}
+                  onClick={() => toggleTag('wentWrong', tag)}
+                  className={`text-xs px-2.5 py-1.5 rounded-full border font-medium transition-all ${
+                    selected
+                      ? 'bg-orange-400 border-orange-400 text-white'
+                      : conflict
+                      ? 'bg-gray-100 border-gray-200 text-gray-300 cursor-not-allowed'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-orange-300 hover:text-orange-600'
+                  }`}
+                >
+                  {selected && '✗ '}{tag}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Notes */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+            Tournament notes <span className="text-gray-400 font-normal normal-case">(optional)</span>
+          </label>
+          <textarea
+            value={form.notes}
+            onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
+            rows={3}
+            maxLength={2000}
+            placeholder="Key moments, opponents, areas to work on for next time…"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D] resize-none"
+          />
+        </div>
       </div>
 
       {/* Actions */}

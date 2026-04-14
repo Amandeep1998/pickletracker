@@ -98,6 +98,11 @@ const tournamentSchema = new mongoose.Schema(
         message: 'At least one category is required',
       },
     },
+    // Performance feedback (mirrors Session feedback fields)
+    rating:    { type: Number, min: 1, max: 5, default: null },
+    wentWell:  { type: [String], default: [] },
+    wentWrong: { type: [String], default: [] },
+    notes:     { type: String, trim: true, default: '' },
   },
   {
     timestamps: true,
