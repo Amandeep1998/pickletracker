@@ -271,10 +271,11 @@ export default function Profile() {
                   <div className="flex items-start gap-2.5">
                     <span className="text-lg leading-none mt-0.5">⚡</span>
                     <div>
-                      <p className="text-xs font-bold text-amber-900 mb-0.5">One more step to activate</p>
-                      <p className="text-xs text-amber-700 leading-relaxed">
-                        Tap the button below to open WhatsApp. A message saying <span className="font-bold">"hi"</span> will already be typed for you — just hit <span className="font-bold">Send</span> and you're done!
-                      </p>
+                      <p className="text-xs font-bold text-amber-900 mb-0.5">Two quick steps to activate</p>
+                      <ol className="text-xs text-amber-700 leading-relaxed list-none space-y-1 mt-1">
+                        <li><span className="font-bold">1.</span> Save {waBusinessNumber ? <span className="font-bold">+{waBusinessNumber}</span> : 'our number'} as a contact named <span className="font-bold">PickleTracker</span> — so our messages don't look like an unknown number.</li>
+                        <li><span className="font-bold">2.</span> Tap the button below to open WhatsApp. A message saying <span className="font-bold">"hi"</span> will already be typed — just hit <span className="font-bold">Send</span>.</li>
+                      </ol>
                     </div>
                   </div>
                   {waBusinessNumber ? (
@@ -291,7 +292,7 @@ export default function Profile() {
                     </a>
                   ) : (
                     <p className="text-xs text-amber-700 font-medium text-center">
-                      Message <span className="font-bold">hi</span> to the PickleTracker WhatsApp number to activate.
+                      Save our number as <span className="font-bold">PickleTracker</span>, then message <span className="font-bold">hi</span> to activate.
                     </p>
                   )}
                 </div>
