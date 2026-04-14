@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
-import CityAutocomplete from '../components/CityAutocomplete';
+import CitySelect from '../components/CitySelect';
 
 const INDIAN_STATES = [
   'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
@@ -352,10 +352,11 @@ export default function Profile() {
                   <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
                     City
                   </label>
-                  <CityAutocomplete
+                  <CitySelect
+                    state={waState}
                     value={waCity}
                     onChange={(val) => { setWaCity(val); setWaError(''); }}
-                    placeholder="Search your city…"
+                    disabled={!waState}
                   />
                 </div>
 
