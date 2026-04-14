@@ -598,6 +598,37 @@ const processMessage = async (waId, text) => {
   await handleMenu(session, text, waId);
 };
 
+// ── Test send (dev/debug only) ─────────────────────────────────────────────────
+
+exports.testSend = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).select('whatsappPhone name').lean();
+    const target = user?.whatsappPhone;
+    if (!target) {
+      return res.status(400).json({ ok: false, message: 'No WhatsApp number connected for this account. Connect one in Profile first.' });
+    }
+
+    const { send } = require('../services/whatsapp.service');
+    const result = await send(target, `👋 Hi *${user.name}*! This is a test message from PickleTracker.\n\nIf you can read this, your WhatsApp integration is working! 🏓`);
+
+    res.json({
+      ok: result.ok,
+      skipped: result.skipped || false,
+      status: result.status || null,
+      error: result.error || null,
+      reason: result.reason || null,
+      sentTo: `****${String(target).slice(-4)}`,
+      envCheck: {
+        hasToken: Boolean(process.env.WHATSAPP_TOKEN),
+        hasPhoneId: Boolean(process.env.WHATSAPP_PHONE_ID),
+        phoneIdValue: process.env.WHATSAPP_PHONE_ID ? `...${String(process.env.WHATSAPP_PHONE_ID).slice(-6)}` : null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ── Webhook controllers ────────────────────────────────────────────────────────
 
 exports.verify = (req, res) => {

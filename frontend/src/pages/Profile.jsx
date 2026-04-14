@@ -38,6 +38,10 @@ export default function Profile() {
 
   const [loading, setLoading] = useState(true);
 
+  // WhatsApp test send
+  const [waTesting, setWaTesting] = useState(false);
+  const [waTestResult, setWaTestResult] = useState(null); // { ok, error, envCheck }
+
   // Export
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
@@ -113,6 +117,19 @@ export default function Profile() {
       setWaError('Failed to disconnect. Please try again.');
     } finally {
       setDisconnecting(false);
+    }
+  };
+
+  const handleTestSend = async () => {
+    setWaTesting(true);
+    setWaTestResult(null);
+    try {
+      const res = await api.testWhatsAppSend();
+      setWaTestResult(res.data);
+    } catch (err) {
+      setWaTestResult({ ok: false, error: err.response?.data?.message || err.message });
+    } finally {
+      setWaTesting(false);
     }
   };
 
@@ -322,6 +339,36 @@ export default function Profile() {
                     </p>
                   )}
                 </div>
+
+                {/* Test send button */}
+                <button
+                  type="button"
+                  onClick={handleTestSend}
+                  disabled={waTesting}
+                  className="w-full border border-gray-200 rounded-xl py-2 text-xs font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 transition-colors"
+                >
+                  {waTesting ? 'Sending test…' : '🧪 Send test message to my WhatsApp'}
+                </button>
+
+                {waTestResult && (
+                  <div className={`text-xs rounded-lg px-3 py-2.5 space-y-1 ${waTestResult.ok ? 'bg-[#f4f8e8] border border-[#91BE4D]/30 text-[#4a6e10]' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+                    {waTestResult.ok ? (
+                      <p className="font-semibold">Message sent! Check your WhatsApp.</p>
+                    ) : (
+                      <>
+                        <p className="font-semibold">Send failed</p>
+                        {waTestResult.error && <p className="opacity-80">{typeof waTestResult.error === 'string' ? waTestResult.error : JSON.stringify(waTestResult.error)}</p>}
+                        {waTestResult.skipped && <p className="opacity-80">Env vars missing: WHATSAPP_TOKEN or WHATSAPP_PHONE_ID not set on the server.</p>}
+                        {waTestResult.envCheck && (
+                          <p className="opacity-70 font-mono">
+                            token={waTestResult.envCheck.hasToken ? '✓' : '✗'} &nbsp;
+                            phoneId={waTestResult.envCheck.hasPhoneId ? `✓ (…${waTestResult.envCheck.phoneIdValue?.slice(-4)})` : '✗'}
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
 
                 {waSuccess === 'connected' && (
                   <div className="text-xs text-[#4a6e10] bg-[#f4f8e8] border border-[#91BE4D]/30 rounded-lg px-3 py-2 flex items-center gap-1.5">
