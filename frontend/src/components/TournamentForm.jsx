@@ -205,21 +205,21 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         </div>
       )}
 
-      {/* AI Fill — voice or document */}
+      {/* Prefill from PDF or screenshot */}
       <div className="space-y-2 pb-1">
-        <VoiceInput onFill={handleVoiceFill} currentForm={form} />
-        <div className="flex items-center gap-2">
-          <div className="flex-1 h-px bg-gray-200" />
-          <span className="text-xs text-gray-400">or</span>
-          <div className="flex-1 h-px bg-gray-200" />
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Prefill from PDF or Screenshot</span>
         </div>
         <DocumentInput onFill={handleVoiceFill} currentForm={form} />
+        <p className="text-[11px] text-gray-400 leading-relaxed">
+          Upload a tournament invoice, ticket, or screenshot to auto-fill the form. Accuracy depends on the information available in the file.
+        </p>
       </div>
 
       {/* Divider */}
       <div className="flex items-center gap-3">
         <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-xs text-gray-400 font-medium">or fill manually</span>
+        <span className="text-xs text-gray-400 font-medium">or fill in manually</span>
         <div className="flex-1 h-px bg-gray-200" />
       </div>
 

@@ -906,6 +906,13 @@ export default function Players() {
       sessionStorage.setItem('pt_cityPrompted', '1');
       setLocationPromptOpen(false);
       showToast(`Location set to ${city}! Showing nearby players.`);
+      // Optimistically move the current user's card to the new city in the
+      // local players list so the UI updates without waiting for a full refetch.
+      setPlayers((prev) =>
+        prev.map((p) => (String(p.id) === String(res.data.data?._id || res.data.data?.id) ? { ...p, city } : p))
+      );
+      // Refetch in the background to sync any other staleness.
+      fetchPlayers();
     } catch {
       showToast('Could not save location', 'error');
     }

@@ -137,7 +137,7 @@ export default function DocumentInput({ onFill, currentForm }) {
           >
             <PdfIcon className="w-5 h-5 text-gray-400" />
             <span className="text-xs font-medium text-gray-600">Upload PDF</span>
-            <span className="text-xs text-gray-400">Invoice or ticket</span>
+            <span className="text-xs text-gray-400">Used to prefill form</span>
           </button>
 
           <button
@@ -147,7 +147,7 @@ export default function DocumentInput({ onFill, currentForm }) {
           >
             <ImageIcon className="w-5 h-5 text-gray-400" />
             <span className="text-xs font-medium text-gray-600">Upload Screenshot</span>
-            <span className="text-xs text-gray-400">JPG, PNG, WebP</span>
+            <span className="text-xs text-gray-400">Used to prefill form</span>
           </button>
 
           {error && (
@@ -155,7 +155,7 @@ export default function DocumentInput({ onFill, currentForm }) {
           )}
 
           <p className="col-span-2 text-xs text-gray-400 text-center">
-            Files are used only to fill the form and are not stored.
+            Not stored — only used to fill this form.
           </p>
         </div>
       )}
