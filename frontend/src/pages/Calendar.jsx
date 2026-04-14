@@ -615,8 +615,9 @@ export default function Calendar() {
       {/* ── Log Session Modal ── */}
       {addSessionModal.open && (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-3 gap-3">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-xl max-h-[92vh] flex flex-col overflow-hidden" style={{ maxHeight: '92svh' }}>
+            {/* Pinned header — never scrolls behind the URL bar */}
+            <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-6 pb-2 flex-shrink-0 gap-3">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">Log Session</h2>
                 {addSessionModal.date && (
@@ -632,15 +633,18 @@ export default function Calendar() {
                 </svg>
               </button>
             </div>
-            {sessionFormError && (
-              <div className="mb-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{sessionFormError}</div>
-            )}
-            <SessionForm
-              initial={sessionAddInitial}
-              onSubmit={handleAddSession}
-              onCancel={() => { setAddSessionModal({ open: false, date: null }); setSessionFormError(''); }}
-              loading={sessionFormLoading}
-            />
+            {/* Scrollable body */}
+            <div className="overflow-y-auto flex-1 px-4 sm:px-6 pb-4 sm:pb-6">
+              {sessionFormError && (
+                <div className="mb-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{sessionFormError}</div>
+              )}
+              <SessionForm
+                initial={sessionAddInitial}
+                onSubmit={handleAddSession}
+                onCancel={() => { setAddSessionModal({ open: false, date: null }); setSessionFormError(''); }}
+                loading={sessionFormLoading}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -648,8 +652,9 @@ export default function Calendar() {
       {/* ── Add Tournament Modal ── */}
       {addModal.open && (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-1 gap-3">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-2xl max-h-[92vh] flex flex-col overflow-hidden" style={{ maxHeight: '92svh' }}>
+            {/* Pinned header — never scrolls behind the URL bar */}
+            <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-6 pb-2 flex-shrink-0 gap-3">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">New Tournament</h2>
                 {addModal.date && <p className="text-xs text-gray-500 mt-0.5">{formatDate(addModal.date)}</p>}
@@ -663,15 +668,18 @@ export default function Calendar() {
                 </svg>
               </button>
             </div>
-            {addError && (
-              <div className="mb-4 mt-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{addError}</div>
-            )}
-            <TournamentForm
-              initial={addInitial}
-              onSubmit={handleAddTournament}
-              onCancel={() => { setAddModal({ open: false, date: null }); setAddError(''); }}
-              loading={formLoading}
-            />
+            {/* Scrollable body */}
+            <div className="overflow-y-auto flex-1 px-4 sm:px-6 pb-4 sm:pb-6">
+              {addError && (
+                <div className="mb-4 mt-1 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{addError}</div>
+              )}
+              <TournamentForm
+                initial={addInitial}
+                onSubmit={handleAddTournament}
+                onCancel={() => { setAddModal({ open: false, date: null }); setAddError(''); }}
+                loading={formLoading}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -679,8 +687,9 @@ export default function Calendar() {
       {/* ── Tournament Detail Modal ── */}
       {selectedTournament && !isEditing && (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
-            <div className="flex items-start justify-between mb-4 gap-3">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-2xl max-h-[92vh] flex flex-col overflow-hidden" style={{ maxHeight: '92svh' }}>
+            {/* Pinned header */}
+            <div className="flex items-start justify-between px-4 sm:px-6 pt-4 sm:pt-6 pb-3 flex-shrink-0 gap-3">
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-bold text-gray-900 break-words">{selectedTournament.name}</h2>
                 {selectedTournament.location?.name && (
@@ -709,6 +718,8 @@ export default function Calendar() {
                 </svg>
               </button>
             </div>
+            {/* Scrollable body */}
+            <div className="overflow-y-auto flex-1 px-4 sm:px-6 pb-4 sm:pb-6">
 
             <div className="space-y-2 mb-4">
               {selectedTournament.categories.map((cat, idx) => (
@@ -808,6 +819,7 @@ export default function Calendar() {
                 Close
               </button>
             </div>
+            </div> {/* end scrollable body */}
           </div>
         </div>
       )}
@@ -815,8 +827,9 @@ export default function Calendar() {
       {/* ── Edit Tournament Modal ── */}
       {selectedTournament && isEditing && (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4 gap-3">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-2xl max-h-[92vh] flex flex-col overflow-hidden" style={{ maxHeight: '92svh' }}>
+            {/* Pinned header */}
+            <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-6 pb-2 flex-shrink-0 gap-3">
               <h2 className="text-lg font-bold text-gray-900">Edit Tournament</h2>
               <button
                 onClick={() => setIsEditing(false)}
@@ -827,12 +840,15 @@ export default function Calendar() {
                 </svg>
               </button>
             </div>
-            <TournamentForm
-              initial={selectedTournament}
-              onSubmit={handleEditTournament}
-              onCancel={() => setIsEditing(false)}
-              loading={formLoading}
-            />
+            {/* Scrollable body */}
+            <div className="overflow-y-auto flex-1 px-4 sm:px-6 pb-4 sm:pb-6">
+              <TournamentForm
+                initial={selectedTournament}
+                onSubmit={handleEditTournament}
+                onCancel={() => setIsEditing(false)}
+                loading={formLoading}
+              />
+            </div>
           </div>
         </div>
       )}
