@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import PlayerCard from '../components/PlayerCard';
@@ -36,9 +37,11 @@ export default function PlayerCardPage() {
   const [loading, setLoading] = useState(true);
 
   const [form, setForm] = useState({
-    duprRating: '',
+    duprSingles: '',
+    duprDoubles: '',
     playingSince: '',
     profilePhoto: null,
+    manualAchievements: [],
   });
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -52,9 +55,11 @@ export default function PlayerCardPage() {
       .then(([profRes, tRes]) => {
         const p = profRes.data.data;
         setForm({
-          duprRating: p.duprRating ?? '',
+          duprSingles: p.duprSingles ?? p.duprRating ?? '',
+          duprDoubles: p.duprDoubles ?? '',
           playingSince: p.playingSince ?? '',
           profilePhoto: p.profilePhoto ?? null,
+          manualAchievements: Array.isArray(p.manualAchievements) ? p.manualAchievements : [],
         });
         setPhotoPreview(p.profilePhoto ?? null);
         setTournaments(tRes.data.data);
@@ -78,9 +83,12 @@ export default function PlayerCardPage() {
     setSaveSuccess(false);
     try {
       const payload = {
-        duprRating: form.duprRating !== '' ? form.duprRating : null,
+        duprSingles: form.duprSingles !== '' ? form.duprSingles : null,
+        duprDoubles: form.duprDoubles !== '' ? form.duprDoubles : null,
+        duprRating: form.duprSingles !== '' ? form.duprSingles : null,
         playingSince: form.playingSince !== '' ? form.playingSince : null,
         profilePhoto: form.profilePhoto ?? null,
+        manualAchievements: form.manualAchievements || [],
       };
       const res = await api.updateProfile(payload);
       refreshUser(res.data.data);
@@ -93,11 +101,31 @@ export default function PlayerCardPage() {
   };
 
   // Build profile object for the card
+  const manualAchievements = Array.isArray(form.manualAchievements) ? form.manualAchievements : [];
+  const mergedTournamentNames = [
+    ...new Set(
+      [
+        ...tournaments.map((t) => t.name),
+        ...manualAchievements.map((a) => a.tournamentName),
+      ]
+        .map((x) => (x || '').trim())
+        .filter(Boolean)
+    ),
+  ];
+  const copyTournamentNames = async () => {
+    try {
+      await navigator.clipboard.writeText(mergedTournamentNames.join('\n'));
+      setSaveSuccess(true);
+    } catch {
+      setSaveError('Could not copy. Please copy manually.');
+    }
+  };
+
   const cardProfile = {
     name: user?.name || '',
     city: user?.city || '',
     state: user?.state || '',
-    duprRating: form.duprRating || null,
+    duprRating: form.duprSingles || null,
     playingSince: form.playingSince || null,
     profilePhoto: photoPreview,
   };
@@ -112,11 +140,20 @@ export default function PlayerCardPage() {
       >
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
         <div className="relative">
-          <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-0.5">PickleTracker</p>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight">My Player Card</h1>
-          <p className="text-slate-400 text-xs mt-0.5">Build your card and share with friends</p>
+          <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-0.5">Community</p>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight">My Public Player Profile</h1>
+          <p className="text-slate-400 text-xs mt-0.5">Customize your card and achievements shown in Community</p>
         </div>
         <div className="relative ml-auto select-none text-4xl">🏓</div>
+      </div>
+
+      <div className="mb-4 flex justify-end">
+        <Link
+          to="/players"
+          className="text-sm font-semibold text-[#4a6e10] hover:text-[#2d7005] transition-colors"
+        >
+          ← Back to Community
+        </Link>
       </div>
 
       {loading ? (
@@ -178,22 +215,59 @@ export default function PlayerCardPage() {
                 />
               </div>
 
-              {/* DUPR Rating */}
+              {/* DUPR Ratings */}
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                    DUPR Singles <span className="text-gray-300 font-normal normal-case">(optional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    max="8"
+                    value={form.duprSingles}
+                    onChange={(e) => { setForm((f) => ({ ...f, duprSingles: e.target.value })); setSaveSuccess(false); }}
+                    placeholder="e.g. 3.75"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                    DUPR Doubles <span className="text-gray-300 font-normal normal-case">(optional)</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    max="8"
+                    value={form.duprDoubles}
+                    onChange={(e) => { setForm((f) => ({ ...f, duprDoubles: e.target.value })); setSaveSuccess(false); }}
+                    placeholder="e.g. 4.10"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                  DUPR Rating <span className="text-gray-300 font-normal normal-case">(optional)</span>
+                  Tournament names (copy friendly)
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="1"
-                  max="8"
-                  value={form.duprRating}
-                  onChange={(e) => { setForm((f) => ({ ...f, duprRating: e.target.value })); setSaveSuccess(false); }}
-                  placeholder="e.g. 3.75"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
-                />
-                <p className="text-[11px] text-gray-400 mt-1">Find your rating at dupr.com</p>
+                <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                  {mergedTournamentNames.length === 0 ? (
+                    <p className="text-xs text-gray-400">No tournament names yet.</p>
+                  ) : (
+                    <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line max-h-24 overflow-auto">
+                      {mergedTournamentNames.join('\n')}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={copyTournamentNames}
+                  className="mt-2 text-sm font-semibold text-[#4a6e10] hover:text-[#2d7005]"
+                >
+                  Copy all tournament names
+                </button>
               </div>
 
               {/* Playing since */}
@@ -209,6 +283,102 @@ export default function PlayerCardPage() {
                   <option value="">Select year…</option>
                   {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Past achievements (manual)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((f) => ({
+                        ...f,
+                        manualAchievements: [
+                          ...(f.manualAchievements || []),
+                          { tournamentName: '', categoryName: '', medal: 'Gold', date: '' },
+                        ],
+                      }))
+                    }
+                    className="text-xs font-semibold text-[#4a6e10] hover:text-[#2d7005]"
+                  >
+                    + Add old tournament
+                  </button>
+                </div>
+                {(manualAchievements || []).length === 0 ? (
+                  <p className="text-xs text-gray-400">Add your old tournaments, category, and medal.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {manualAchievements.map((row, idx) => (
+                      <div key={idx} className="grid grid-cols-12 gap-2 p-2 border border-gray-200 rounded-lg">
+                        <input
+                          className="col-span-12 sm:col-span-4 border border-gray-300 rounded px-2 py-1.5 text-xs"
+                          placeholder="Tournament name"
+                          value={row.tournamentName || ''}
+                          onChange={(e) =>
+                            setForm((f) => {
+                              const copy = [...(f.manualAchievements || [])];
+                              copy[idx] = { ...copy[idx], tournamentName: e.target.value };
+                              return { ...f, manualAchievements: copy };
+                            })
+                          }
+                        />
+                        <input
+                          className="col-span-12 sm:col-span-3 border border-gray-300 rounded px-2 py-1.5 text-xs"
+                          placeholder="Category"
+                          value={row.categoryName || ''}
+                          onChange={(e) =>
+                            setForm((f) => {
+                              const copy = [...(f.manualAchievements || [])];
+                              copy[idx] = { ...copy[idx], categoryName: e.target.value };
+                              return { ...f, manualAchievements: copy };
+                            })
+                          }
+                        />
+                        <select
+                          className="col-span-5 sm:col-span-2 border border-gray-300 rounded px-2 py-1.5 text-xs bg-white"
+                          value={row.medal || 'Gold'}
+                          onChange={(e) =>
+                            setForm((f) => {
+                              const copy = [...(f.manualAchievements || [])];
+                              copy[idx] = { ...copy[idx], medal: e.target.value };
+                              return { ...f, manualAchievements: copy };
+                            })
+                          }
+                        >
+                          <option value="Gold">Gold</option>
+                          <option value="Silver">Silver</option>
+                          <option value="Bronze">Bronze</option>
+                        </select>
+                        <input
+                          type="date"
+                          className="col-span-5 sm:col-span-2 border border-gray-300 rounded px-2 py-1.5 text-xs"
+                          value={row.date || ''}
+                          onChange={(e) =>
+                            setForm((f) => {
+                              const copy = [...(f.manualAchievements || [])];
+                              copy[idx] = { ...copy[idx], date: e.target.value };
+                              return { ...f, manualAchievements: copy };
+                            })
+                          }
+                        />
+                        <button
+                          type="button"
+                          className="col-span-2 sm:col-span-1 text-xs text-red-500 hover:text-red-700"
+                          onClick={() =>
+                            setForm((f) => ({
+                              ...f,
+                              manualAchievements: (f.manualAchievements || []).filter((_, i) => i !== idx),
+                            }))
+                          }
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {saveError && (

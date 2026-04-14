@@ -33,9 +33,12 @@ exports.getPlayers = async (req, res, next) => {
     if (state) userFilter.state = state;
     if (city) userFilter.city = { $regex: city.trim(), $options: 'i' };
     if (minDupr || maxDupr) {
-      userFilter.duprRating = {};
-      if (minDupr) userFilter.duprRating.$gte = parseFloat(minDupr);
-      if (maxDupr) userFilter.duprRating.$lte = parseFloat(maxDupr);
+      const min = minDupr ? parseFloat(minDupr) : null;
+      const max = maxDupr ? parseFloat(maxDupr) : null;
+      const range = {};
+      if (!Number.isNaN(min) && min != null) range.$gte = min;
+      if (!Number.isNaN(max) && max != null) range.$lte = max;
+      userFilter.$or = [{ duprSingles: range }, { duprRating: range }];
     }
 
     // ── Step 2: If category filter, find userIds who played it ─────────────────
@@ -52,7 +55,7 @@ exports.getPlayers = async (req, res, next) => {
 
     // ── Step 3: Fetch matching users ───────────────────────────────────────────
     const users = await User.find(userFilter)
-      .select('name city state profilePhoto duprRating playingSince createdAt')
+      .select('name city state profilePhoto duprRating duprSingles duprDoubles playingSince createdAt manualAchievements')
       .lean();
 
     if (users.length === 0) {
@@ -127,6 +130,32 @@ exports.getPlayers = async (req, res, next) => {
       };
     }
 
+    const achievementsByUser = await Tournament.aggregate([
+      { $match: { userId: { $in: userIds } } },
+      { $unwind: '$categories' },
+      {
+        $project: {
+          userId: 1,
+          tournamentName: '$name',
+          categoryName: '$categories.categoryName',
+          medal: '$categories.medal',
+          date: '$categories.date',
+        },
+      },
+    ]);
+    const autoAchievementsMap = {};
+    achievementsByUser.forEach((a) => {
+      const key = String(a.userId);
+      if (!autoAchievementsMap[key]) autoAchievementsMap[key] = [];
+      autoAchievementsMap[key].push({
+        tournamentName: a.tournamentName,
+        categoryName: a.categoryName,
+        medal: a.medal,
+        date: a.date || null,
+        source: 'tournament',
+      });
+    });
+
     // ── Step 5: Merge and shape response ───────────────────────────────────────
     const players = users.map((u) => {
       const stats = statsMap[String(u._id)] || {
@@ -144,8 +173,21 @@ exports.getPlayers = async (req, res, next) => {
         state: u.state || null,
         profilePhoto: u.profilePhoto || null,
         duprRating: u.duprRating || null,
+        duprSingles: u.duprSingles ?? u.duprRating ?? null,
+        duprDoubles: u.duprDoubles ?? null,
         playingSince: u.playingSince || null,
         memberSince: u.createdAt,
+        manualAchievements: Array.isArray(u.manualAchievements) ? u.manualAchievements : [],
+        achievements: [
+          ...(autoAchievementsMap[String(u._id)] || []),
+          ...((Array.isArray(u.manualAchievements) ? u.manualAchievements : []).map((a) => ({
+            tournamentName: a.tournamentName,
+            categoryName: a.categoryName,
+            medal: a.medal,
+            date: a.date || null,
+            source: 'manual',
+          }))),
+        ],
         ...stats,
       };
     });
@@ -178,7 +220,7 @@ exports.getPlayers = async (req, res, next) => {
 exports.getPlayer = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id)
-      .select('name city state profilePhoto duprRating playingSince createdAt')
+      .select('name city state profilePhoto duprRating duprSingles duprDoubles playingSince createdAt manualAchievements')
       .lean();
 
     if (!user) return res.status(404).json({ success: false, message: 'Player not found' });
@@ -210,6 +252,23 @@ exports.getPlayer = async (req, res, next) => {
       .sort((a, b) => (b.date || '') > (a.date || '') ? 1 : -1)
       .slice(0, 5);
 
+    const autoAchievements = tournaments.flatMap((t) =>
+      (t.categories || []).map((c) => ({
+        tournamentName: t.name,
+        categoryName: c.categoryName,
+        medal: c.medal,
+        date: c.date || null,
+        source: 'tournament',
+      }))
+    );
+    const manualAchievements = (Array.isArray(user.manualAchievements) ? user.manualAchievements : []).map((a) => ({
+      tournamentName: a.tournamentName,
+      categoryName: a.categoryName,
+      medal: a.medal,
+      date: a.date || null,
+      source: 'manual',
+    }));
+
     res.json({
       success: true,
       data: {
@@ -219,6 +278,8 @@ exports.getPlayer = async (req, res, next) => {
         state: user.state || null,
         profilePhoto: user.profilePhoto || null,
         duprRating: user.duprRating || null,
+        duprSingles: user.duprSingles ?? user.duprRating ?? null,
+        duprDoubles: user.duprDoubles ?? null,
         playingSince: user.playingSince || null,
         memberSince: user.createdAt,
         totalTournaments: tournaments.length,
@@ -226,6 +287,9 @@ exports.getPlayer = async (req, res, next) => {
         totalMedals: medals.Gold + medals.Silver + medals.Bronze,
         topCategories,
         recentMedalTournaments,
+        manualAchievements: Array.isArray(user.manualAchievements) ? user.manualAchievements : [],
+        achievements: [...autoAchievements, ...manualAchievements],
+        tournamentNames: [...new Set([...autoAchievements, ...manualAchievements].map((a) => a.tournamentName).filter(Boolean))],
       },
     });
   } catch (err) {

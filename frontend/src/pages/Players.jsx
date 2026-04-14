@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const INDIAN_STATES = [
   'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
@@ -19,6 +20,30 @@ const SORT_OPTIONS = [
 ];
 
 const MEDAL_EMOJI = { Gold: '🥇', Silver: '🥈', Bronze: '🥉' };
+const CURRENT_YEAR = new Date().getFullYear();
+const YEARS = Array.from({ length: CURRENT_YEAR - 2018 }, (_, i) => CURRENT_YEAR - i);
+
+const resizeImage = (file) =>
+  new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const SIZE = 300;
+        const canvas = document.createElement('canvas');
+        canvas.width = SIZE;
+        canvas.height = SIZE;
+        const ctx = canvas.getContext('2d');
+        const scale = Math.max(SIZE / img.width, SIZE / img.height);
+        const w = img.width * scale;
+        const h = img.height * scale;
+        ctx.drawImage(img, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
 
 function rarityLabel(totalMedals) {
   if (totalMedals >= 10) return { text: '🏆 Legend', color: '#ec9937', bg: 'rgba(236,153,55,0.15)' };
@@ -28,7 +53,7 @@ function rarityLabel(totalMedals) {
 
 // ── Mini card shown in the grid ──────────────────────────────────────────────
 function PlayerMiniCard({ player, onClick }) {
-  const { name, city, state, profilePhoto, duprRating, medals, totalMedals, topCategories } = player;
+  const { name, city, state, profilePhoto, duprSingles, duprDoubles, medals, totalMedals, topCategories } = player;
   const initials = (name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   const location = [city, state].filter(Boolean).join(', ') || 'India';
   const rarity = rarityLabel(totalMedals || 0);
@@ -61,8 +86,10 @@ function PlayerMiniCard({ player, onClick }) {
         <p className="text-white font-bold text-sm text-center leading-tight mb-0.5 line-clamp-1">{name}</p>
         <p className="text-[#91BE4D] text-[10px] font-semibold text-center">📍 {location}</p>
 
-        {duprRating && (
-          <p className="text-[#ec9937] text-[10px] font-bold mt-1">DUPR {duprRating}</p>
+        {(duprSingles || duprDoubles) && (
+          <p className="text-[#ec9937] text-[10px] font-bold mt-1">
+            {duprSingles ? `S ${duprSingles}` : ''}{duprSingles && duprDoubles ? ' · ' : ''}{duprDoubles ? `D ${duprDoubles}` : ''}
+          </p>
         )}
 
         {rarity && (
@@ -102,7 +129,7 @@ function PlayerMiniCard({ player, onClick }) {
 }
 
 // ── Player detail modal ──────────────────────────────────────────────────────
-function PlayerModal({ playerId, onClose }) {
+function PlayerModal({ playerId, onClose, onSendFriendRequest, friendState, currentUserId }) {
   const [player, setPlayer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -163,9 +190,13 @@ function PlayerModal({ playerId, onClose }) {
               </p>
 
               <div className="flex items-center gap-4 mt-3">
-                {player.duprRating && (
+                {(player.duprSingles || player.duprDoubles) && (
                   <div className="text-center">
-                    <p className="text-[#ec9937] text-sm font-black">DUPR {player.duprRating}</p>
+                    <p className="text-[#ec9937] text-sm font-black">
+                      {player.duprSingles ? `Singles ${player.duprSingles}` : ''}
+                      {player.duprSingles && player.duprDoubles ? ' · ' : ''}
+                      {player.duprDoubles ? `Doubles ${player.duprDoubles}` : ''}
+                    </p>
                   </div>
                 )}
                 {player.playingSince && (
@@ -180,6 +211,27 @@ function PlayerModal({ playerId, onClose }) {
                   style={{ color: rarity.color, background: rarity.bg, border: `1px solid ${rarity.color}40` }}>
                   {rarity.text}
                 </span>
+              )}
+
+              {!currentUserId || String(player.id) === String(currentUserId) ? null : (
+                <button
+                  type="button"
+                  onClick={() => onSendFriendRequest(player.id)}
+                  disabled={friendState !== 'none'}
+                  className={`mt-4 text-xs font-bold px-3 py-1.5 rounded-lg border ${
+                    friendState === 'friend'
+                      ? 'border-[#91BE4D] bg-[#91BE4D]/15 text-[#4a6e10]'
+                      : friendState === 'pending'
+                      ? 'border-orange-300 bg-orange-50 text-orange-700'
+                      : 'border-white/20 bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                >
+                  {friendState === 'friend'
+                    ? 'Friends'
+                    : friendState === 'pending'
+                    ? 'Request pending'
+                    : 'Add friend'}
+                </button>
               )}
             </div>
 
@@ -247,8 +299,183 @@ function PlayerModal({ playerId, onClose }) {
   );
 }
 
+function EditMyCommunityProfileModal({ onClose, onSaved }) {
+  const fileInputRef = useRef(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({
+    duprSingles: '',
+    duprDoubles: '',
+    playingSince: '',
+    profilePhoto: null,
+    manualAchievements: [],
+  });
+
+  useEffect(() => {
+    Promise.all([api.getProfile(), api.getTournaments()])
+      .then(([profileRes, tournamentsRes]) => {
+        const p = profileRes.data.data || {};
+        const t = tournamentsRes.data.data || [];
+        const existingManual = Array.isArray(p.manualAchievements) ? p.manualAchievements : [];
+        const names = [...new Set([...t.map((x) => x.name), ...existingManual.map((x) => x.tournamentName)].filter(Boolean))];
+        setForm({
+          duprSingles: p.duprSingles ?? p.duprRating ?? '',
+          duprDoubles: p.duprDoubles ?? '',
+          playingSince: p.playingSince ?? '',
+          profilePhoto: p.profilePhoto ?? null,
+          manualAchievements: existingManual,
+          tournamentNames: names,
+        });
+      })
+      .catch(() => setError('Could not load your profile.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const addAchievement = () =>
+    setForm((f) => ({
+      ...f,
+      manualAchievements: [...(f.manualAchievements || []), { tournamentName: '', categoryName: '', medal: 'Gold', date: '' }],
+    }));
+
+  const save = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      await api.updateProfile({
+        duprSingles: form.duprSingles || null,
+        duprDoubles: form.duprDoubles || null,
+        duprRating: form.duprSingles || null,
+        playingSince: form.playingSince || null,
+        profilePhoto: form.profilePhoto || null,
+        manualAchievements: form.manualAchievements || [],
+      });
+      onSaved?.();
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not update profile');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const copyTournamentNames = async () => {
+    try {
+      await navigator.clipboard.writeText((form.tournamentNames || []).join('\n'));
+    } catch {
+      setError('Could not copy tournament names.');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50" />
+      <div
+        className="relative bg-white w-full sm:max-w-2xl sm:rounded-2xl rounded-t-2xl max-h-[90dvh] overflow-y-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Community</p>
+            <h2 className="text-lg font-bold text-gray-900">Update your player card</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">✕</button>
+        </div>
+
+        {loading ? (
+          <div className="p-6 text-sm text-gray-400">Loading…</div>
+        ) : (
+          <div className="p-5 space-y-4">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">DUPR Singles</label>
+                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.duprSingles} onChange={(e) => setForm((f) => ({ ...f, duprSingles: e.target.value }))} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">DUPR Doubles</label>
+                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" value={form.duprDoubles} onChange={(e) => setForm((f) => ({ ...f, duprDoubles: e.target.value }))} />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Playing since</label>
+              <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white" value={form.playingSince} onChange={(e) => setForm((f) => ({ ...f, playingSince: e.target.value }))}>
+                <option value="">Select year…</option>
+                {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Profile photo</label>
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center border border-gray-200">
+                  {form.profilePhoto ? <img src={form.profilePhoto} alt="profile" className="w-full h-full object-cover" /> : <span className="text-xs text-gray-400">None</span>}
+                </div>
+                <button type="button" onClick={() => fileInputRef.current?.click()} className="text-sm font-semibold text-[#4a6e10]">Upload / Change</button>
+                {form.profilePhoto && <button type="button" onClick={() => setForm((f) => ({ ...f, profilePhoto: null }))} className="text-xs text-gray-500 hover:text-red-500">Remove</button>}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const dataUrl = await resizeImage(file);
+                  setForm((f) => ({ ...f, profilePhoto: dataUrl }));
+                }}
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Old tournament achievements</label>
+                <button type="button" onClick={addAchievement} className="text-xs font-semibold text-[#4a6e10]">+ Add</button>
+              </div>
+              <div className="space-y-2">
+                {(form.manualAchievements || []).map((row, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-2 p-2 border border-gray-200 rounded-lg">
+                    <input className="col-span-12 sm:col-span-4 border border-gray-300 rounded px-2 py-1.5 text-xs" placeholder="Tournament" value={row.tournamentName || ''} onChange={(e) => setForm((f) => { const copy = [...(f.manualAchievements || [])]; copy[idx] = { ...copy[idx], tournamentName: e.target.value }; return { ...f, manualAchievements: copy }; })} />
+                    <input className="col-span-12 sm:col-span-3 border border-gray-300 rounded px-2 py-1.5 text-xs" placeholder="Category" value={row.categoryName || ''} onChange={(e) => setForm((f) => { const copy = [...(f.manualAchievements || [])]; copy[idx] = { ...copy[idx], categoryName: e.target.value }; return { ...f, manualAchievements: copy }; })} />
+                    <select className="col-span-5 sm:col-span-2 border border-gray-300 rounded px-2 py-1.5 text-xs bg-white" value={row.medal || 'Gold'} onChange={(e) => setForm((f) => { const copy = [...(f.manualAchievements || [])]; copy[idx] = { ...copy[idx], medal: e.target.value }; return { ...f, manualAchievements: copy }; })}>
+                      <option value="Gold">Gold</option>
+                      <option value="Silver">Silver</option>
+                      <option value="Bronze">Bronze</option>
+                    </select>
+                    <input type="date" className="col-span-5 sm:col-span-2 border border-gray-300 rounded px-2 py-1.5 text-xs" value={row.date || ''} onChange={(e) => setForm((f) => { const copy = [...(f.manualAchievements || [])]; copy[idx] = { ...copy[idx], date: e.target.value }; return { ...f, manualAchievements: copy }; })} />
+                    <button type="button" className="col-span-2 sm:col-span-1 text-xs text-red-500" onClick={() => setForm((f) => ({ ...f, manualAchievements: (f.manualAchievements || []).filter((_, i) => i !== idx) }))}>✕</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Tournament names</label>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs text-gray-600 max-h-24 overflow-auto whitespace-pre-line">
+                {(form.tournamentNames || []).join('\n') || 'No tournaments yet.'}
+              </div>
+              <button type="button" onClick={copyTournamentNames} className="mt-2 text-xs font-semibold text-[#4a6e10]">Copy all tournament names</button>
+            </div>
+
+            {error ? <p className="text-xs text-red-500">{error}</p> : null}
+
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={onClose} className="px-3 py-2 text-sm border border-gray-300 rounded-lg">Cancel</button>
+              <button type="button" onClick={save} disabled={saving} className="px-3 py-2 text-sm text-white rounded-lg bg-[#4a6e10] disabled:opacity-50">
+                {saving ? 'Saving…' : 'Save profile'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main Players page ────────────────────────────────────────────────────────
 export default function Players() {
+  const { user } = useAuth();
   const [players, setPlayers] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -256,6 +483,10 @@ export default function Players() {
   const [error, setError] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [friendRequests, setFriendRequests] = useState({ incoming: [], outgoing: [] });
+  const [friends, setFriends] = useState([]);
+  const [friendActionMsg, setFriendActionMsg] = useState('');
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
   const [filters, setFilters] = useState({
     search: '',
@@ -301,10 +532,24 @@ export default function Players() {
     }
   }, []);
 
+  const fetchFriendData = useCallback(async () => {
+    try {
+      const [reqRes, friendsRes] = await Promise.all([api.getFriendRequests(), api.getFriends()]);
+      setFriendRequests(reqRes.data.data || { incoming: [], outgoing: [] });
+      setFriends(friendsRes.data.data || []);
+    } catch {
+      // keep page usable even if friend APIs fail
+    }
+  }, []);
+
   // Fetch on filter or page change
   useEffect(() => {
     fetchPlayers(page, filters, debouncedSearch);
   }, [fetchPlayers, page, filters.state, filters.minDupr, filters.maxDupr, filters.category, filters.sort, debouncedSearch]);
+
+  useEffect(() => {
+    fetchFriendData();
+  }, [fetchFriendData]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -314,6 +559,56 @@ export default function Players() {
   const totalPages = Math.ceil(total / 24);
   const activeFilterCount = [filters.state, filters.minDupr, filters.maxDupr, filters.category]
     .filter(Boolean).length;
+
+  const friendStatusByUserId = useMemo(() => {
+    const map = {};
+    friends.forEach((f) => {
+      map[String(f.id)] = 'friend';
+    });
+    (friendRequests.incoming || []).forEach((r) => {
+      map[String(r.user.id)] = 'incoming';
+    });
+    (friendRequests.outgoing || []).forEach((r) => {
+      map[String(r.user.id)] = 'pending';
+    });
+    return map;
+  }, [friendRequests, friends]);
+
+  const handleSendFriendRequest = async (playerId) => {
+    try {
+      await api.sendFriendRequest(playerId);
+      setFriendActionMsg('Friend request sent.');
+      await fetchFriendData();
+    } catch (err) {
+      setFriendActionMsg(err.response?.data?.message || 'Could not send friend request');
+    }
+  };
+
+  const handleAcceptRequest = async (requestId) => {
+    const consent = window.confirm(
+      'If you accept this friend request, this friend can view your basic profile and schedule calendar.\n\n' +
+      'Your private financial information, expenses, entry fees, and earnings will NOT be shared.\n\n' +
+      'Do you want to accept and share schedule visibility?'
+    );
+    if (!consent) return;
+    try {
+      await api.acceptFriendRequest(requestId);
+      setFriendActionMsg('Friend request accepted. Calendar sharing is now active for both of you.');
+      await fetchFriendData();
+    } catch (err) {
+      setFriendActionMsg(err.response?.data?.message || 'Could not accept request');
+    }
+  };
+
+  const handleRejectRequest = async (requestId) => {
+    try {
+      await api.rejectFriendRequest(requestId);
+      setFriendActionMsg('Friend request declined.');
+      await fetchFriendData();
+    } catch (err) {
+      setFriendActionMsg(err.response?.data?.message || 'Could not reject request');
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
@@ -334,6 +629,49 @@ export default function Players() {
           <div className="ml-auto text-4xl select-none">🏓</div>
         </div>
       </div>
+
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setShowEditProfile(true)}
+          className="text-sm font-semibold text-[#4a6e10] hover:text-[#2d7005]"
+        >
+          Update my card/profile
+        </button>
+        {friendActionMsg ? <p className="text-xs text-gray-500">{friendActionMsg}</p> : null}
+      </div>
+
+      {(friendRequests.incoming || []).length > 0 && (
+        <div className="mb-5 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Incoming Friend Requests</p>
+          <div className="space-y-2">
+            {friendRequests.incoming.map((r) => (
+              <div key={r.id} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-gray-50 border border-gray-100">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800">{r.user?.name || 'Player'}</p>
+                  <p className="text-xs text-gray-500">{[r.user?.city, r.user?.state].filter(Boolean).join(', ') || 'India'}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleAcceptRequest(r.id)}
+                    className="text-xs font-semibold px-3 py-1.5 rounded bg-[#91BE4D]/20 text-[#4a6e10] hover:bg-[#91BE4D]/30"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRejectRequest(r.id)}
+                    className="text-xs font-semibold px-3 py-1.5 rounded bg-red-50 text-red-600 hover:bg-red-100"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Search + filter bar */}
       <div className="mb-5 space-y-3">
@@ -510,7 +848,22 @@ export default function Players() {
 
       {/* Player detail modal */}
       {selectedId && (
-        <PlayerModal playerId={selectedId} onClose={() => setSelectedId(null)} />
+        <PlayerModal
+          playerId={selectedId}
+          onClose={() => setSelectedId(null)}
+          onSendFriendRequest={handleSendFriendRequest}
+          friendState={friendStatusByUserId[String(selectedId)] || 'none'}
+          currentUserId={user?.id}
+        />
+      )}
+      {showEditProfile && (
+        <EditMyCommunityProfileModal
+          onClose={() => setShowEditProfile(false)}
+          onSaved={() => {
+            fetchPlayers(page, filters, debouncedSearch);
+            setFriendActionMsg('Your community profile has been updated.');
+          }}
+        />
       )}
     </div>
   );

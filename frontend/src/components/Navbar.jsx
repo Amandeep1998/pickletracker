@@ -37,7 +37,6 @@ export default function Navbar() {
           <NavLink to="/calendar"    className={linkClass}>Calendar</NavLink>
           <NavLink to="/sessions"   className={linkClass}>Journal</NavLink>
           <NavLink to="/expenses"   className={linkClass}>Gear</NavLink>
-          <NavLink to="/my-card"    className={linkClass}>My Card</NavLink>
           <NavLink to="/players"    className={linkClass}>Community</NavLink>
           {isAdmin && (
             <NavLink to="/admin" className={({ isActive }) =>

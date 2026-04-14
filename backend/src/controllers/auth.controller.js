@@ -19,6 +19,8 @@ function signUserToken(user) {
 }
 
 function publicUser(user) {
+  const singles = user.duprSingles ?? user.duprRating ?? null;
+  const doubles = user.duprDoubles ?? null;
   return {
     id: user._id,
     name: user.name,
@@ -28,8 +30,11 @@ function publicUser(user) {
     city: user.city || null,
     state: user.state || null,
     duprRating: user.duprRating || null,
+    duprSingles: singles,
+    duprDoubles: doubles,
     playingSince: user.playingSince || null,
     profilePhoto: user.profilePhoto || null,
+    manualAchievements: Array.isArray(user.manualAchievements) ? user.manualAchievements : [],
   };
 }
 
@@ -272,16 +277,34 @@ const updateProfile = async (req, res, next) => {
     }
     if (city !== undefined) update.city = city ? String(city).trim().slice(0, 100) : null;
     if (req.body.state !== undefined) update.state = req.body.state ? String(req.body.state).trim().slice(0, 100) : null;
-    if (req.body.duprRating !== undefined) {
-      const r = parseFloat(req.body.duprRating);
-      update.duprRating = (!isNaN(r) && r >= 1 && r <= 8) ? Math.round(r * 100) / 100 : null;
-    }
+    const normalizeRating = (value) => {
+      const r = parseFloat(value);
+      return !isNaN(r) && r >= 1 && r <= 8 ? Math.round(r * 100) / 100 : null;
+    };
+    if (req.body.duprRating !== undefined) update.duprRating = normalizeRating(req.body.duprRating);
+    if (req.body.duprSingles !== undefined) update.duprSingles = normalizeRating(req.body.duprSingles);
+    if (req.body.duprDoubles !== undefined) update.duprDoubles = normalizeRating(req.body.duprDoubles);
     if (req.body.playingSince !== undefined) {
       const y = parseInt(req.body.playingSince);
       update.playingSince = (!isNaN(y) && y >= 2000 && y <= new Date().getFullYear()) ? y : null;
     }
     if (req.body.profilePhoto !== undefined) {
       update.profilePhoto = req.body.profilePhoto || null;
+    }
+    if (req.body.manualAchievements !== undefined) {
+      if (!Array.isArray(req.body.manualAchievements)) {
+        return res.status(400).json({ success: false, message: 'manualAchievements must be an array' });
+      }
+      const cleaned = req.body.manualAchievements
+        .slice(0, 100)
+        .map((a) => ({
+          tournamentName: String(a.tournamentName || '').trim().slice(0, 200),
+          categoryName: String(a.categoryName || '').trim().slice(0, 200),
+          medal: a.medal,
+          date: a.date ? String(a.date).slice(0, 10) : null,
+        }))
+        .filter((a) => a.tournamentName && a.categoryName && ['Gold', 'Silver', 'Bronze'].includes(a.medal));
+      update.manualAchievements = cleaned;
     }
     if (whatsappPhone !== undefined) {
       if (whatsappPhone) {

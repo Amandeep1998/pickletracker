@@ -64,8 +64,45 @@ export default function Calendar() {
   const [addSessionModal, setAddSessionModal] = useState({ open: false, date: null });
   const [sessionFormLoading, setSessionFormLoading] = useState(false);
   const [sessionFormError, setSessionFormError] = useState('');
+  const [friends, setFriends] = useState([]);
+  const [friendId, setFriendId] = useState('');
+  const [friendEvents, setFriendEvents] = useState([]);
+  const [friendLoading, setFriendLoading] = useState(false);
+  const [friendError, setFriendError] = useState('');
 
   useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => {
+    api
+      .getFriends()
+      .then((res) => {
+        const list = res.data.data || [];
+        setFriends(list);
+      })
+      .catch(() => {
+        // keep calendar usable if friends API is unavailable
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!friendId) {
+      setFriendEvents([]);
+      setFriendError('');
+      return;
+    }
+    setFriendLoading(true);
+    setFriendError('');
+    api
+      .getFriendSchedule(friendId)
+      .then((res) => {
+        setFriendEvents(res.data.data || []);
+      })
+      .catch((err) => {
+        setFriendEvents([]);
+        setFriendError(err.response?.data?.message || 'Could not load friend schedule');
+      })
+      .finally(() => setFriendLoading(false));
+  }, [friendId]);
 
   const fetchTournaments = async () => {
     const res = await api.getTournaments();
@@ -292,6 +329,47 @@ export default function Calendar() {
             <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">{s.label}</p>
           </div>
         ))}
+      </div>
+
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Friends schedules</p>
+            <p className="text-xs text-gray-400 mt-1">
+              Only schedule/basic details are shared with accepted friends. Expenses and entry fees stay private.
+            </p>
+          </div>
+          <select
+            value={friendId}
+            onChange={(e) => setFriendId(e.target.value)}
+            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#91BE4D]"
+          >
+            <option value="">Select a friend</option>
+            {friends.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        {friendLoading ? (
+          <p className="text-xs text-gray-400 mt-3">Loading friend schedule…</p>
+        ) : friendError ? (
+          <p className="text-xs text-red-500 mt-3">{friendError}</p>
+        ) : friendId && friendEvents.length === 0 ? (
+          <p className="text-xs text-gray-400 mt-3">No upcoming schedule items to show.</p>
+        ) : friendEvents.length > 0 ? (
+          <div className="mt-3 space-y-2 max-h-40 overflow-auto">
+            {friendEvents.slice(0, 20).map((e, idx) => (
+              <div key={`${e.kind}-${e.date}-${idx}`} className="text-xs p-2 rounded border border-gray-100 bg-gray-50">
+                <p className="font-semibold text-gray-700">{e.title}</p>
+                <p className="text-gray-500">
+                  {e.date} · {e.kind === 'tournament' ? (e.categoryName || 'Tournament') : (e.sessionType || 'Session')}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {/* ── Calendar Card ── */}

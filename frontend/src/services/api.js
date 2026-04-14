@@ -74,6 +74,12 @@ export const deleteSession = (id) => api.delete(`/sessions/${id}`);
 // Players / Community
 export const getPlayers = (params) => api.get('/players', { params });
 export const getPlayer = (id) => api.get(`/players/${id}`);
+export const sendFriendRequest = (recipientId) => api.post('/friends/requests', { recipientId });
+export const getFriendRequests = () => api.get('/friends/requests');
+export const acceptFriendRequest = (id) => api.post(`/friends/requests/${id}/accept`);
+export const rejectFriendRequest = (id) => api.post(`/friends/requests/${id}/reject`);
+export const getFriends = () => api.get('/friends');
+export const getFriendSchedule = (friendId) => api.get(`/friends/${friendId}/schedule`);
 
 // AI — voice
 export const parseTournamentVoice = (transcript, currentForm) =>

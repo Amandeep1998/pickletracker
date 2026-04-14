@@ -1,5 +1,33 @@
 const mongoose = require('mongoose');
 
+const manualAchievementSchema = new mongoose.Schema(
+  {
+    tournamentName: {
+      type: String,
+      required: [true, 'Tournament name is required'],
+      trim: true,
+      maxlength: [200, 'Tournament name is too long'],
+    },
+    categoryName: {
+      type: String,
+      required: [true, 'Category is required'],
+      trim: true,
+      maxlength: [200, 'Category is too long'],
+    },
+    medal: {
+      type: String,
+      required: [true, 'Medal is required'],
+      enum: ['Gold', 'Silver', 'Bronze'],
+    },
+    date: {
+      type: String,
+      default: null,
+      match: [/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'],
+    },
+  },
+  { _id: false }
+);
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -58,6 +86,18 @@ const userSchema = new mongoose.Schema(
       min: [1, 'DUPR rating must be between 1 and 8'],
       max: [8, 'DUPR rating must be between 1 and 8'],
     },
+    duprSingles: {
+      type: Number,
+      default: null,
+      min: [1, 'DUPR singles rating must be between 1 and 8'],
+      max: [8, 'DUPR singles rating must be between 1 and 8'],
+    },
+    duprDoubles: {
+      type: Number,
+      default: null,
+      min: [1, 'DUPR doubles rating must be between 1 and 8'],
+      max: [8, 'DUPR doubles rating must be between 1 and 8'],
+    },
     playingSince: {
       type: Number,
       default: null,
@@ -65,6 +105,10 @@ const userSchema = new mongoose.Schema(
     profilePhoto: {
       type: String, // base64 data URL
       default: null,
+    },
+    manualAchievements: {
+      type: [manualAchievementSchema],
+      default: [],
     },
     resetPasswordToken: {
       type: String,
