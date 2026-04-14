@@ -4,6 +4,13 @@ const Tournament = require('../models/Tournament');
 const Session = require('../models/Session');
 const { send } = require('../services/whatsapp.service');
 
+const maskPhone = (value) => {
+  const s = String(value || '');
+  if (!s) return null;
+  if (s.length <= 4) return '****';
+  return `${'*'.repeat(Math.max(0, s.length - 4))}${s.slice(-4)}`;
+};
+
 // ── Formatting helpers ─────────────────────────────────────────────────────────
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -331,6 +338,46 @@ exports.getStatus = async (req, res, next) => {
   }
 };
 
+exports.getDebug = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id).select('_id email whatsappPhone').lean();
+    const session = user?.whatsappPhone
+      ? await WhatsAppSession.findOne({ waId: user.whatsappPhone }).select('waId userId state updatedAt').lean()
+      : null;
+    const phoneOwner = user?.whatsappPhone
+      ? await User.findOne({ whatsappPhone: user.whatsappPhone }).select('_id email').lean()
+      : null;
+
+    res.json({
+      success: true,
+      config: {
+        hasToken: Boolean(process.env.WHATSAPP_TOKEN),
+        hasPhoneId: Boolean(process.env.WHATSAPP_PHONE_ID),
+        hasVerifyToken: Boolean(process.env.WHATSAPP_VERIFY_TOKEN),
+      },
+      user: {
+        id: user?._id || null,
+        email: user?.email || null,
+        whatsappPhoneMasked: maskPhone(user?.whatsappPhone),
+      },
+      session: session
+        ? {
+            waIdMasked: maskPhone(session.waId),
+            userId: session.userId || null,
+            state: session.state,
+            updatedAt: session.updatedAt,
+            linkedToCurrentUser: String(session.userId) === String(req.user.id),
+          }
+        : null,
+      phoneOwner: phoneOwner
+        ? { userId: phoneOwner._id, email: phoneOwner.email, isCurrentUser: String(phoneOwner._id) === String(req.user.id) }
+        : null,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.connect = async (req, res, next) => {
   try {
     const waId = normalisePhone(req.body.phone || '');
@@ -492,28 +539,33 @@ exports.triggerInsights = async (req, res, next) => {
 const GLOBAL_COMMANDS = new Set(['menu', 'cancel', 'hi', 'hello', 'start', '/start']);
 
 const processMessage = async (waId, text) => {
+  console.log(`[WA] Incoming text from ${maskPhone(waId)}: "${text}"`);
   let session = await WhatsAppSession.findOne({ waId });
 
   if (!session) {
     const linkedUser = await User.findOne({ whatsappPhone: waId }).select('_id name').lean();
     if (linkedUser) {
+      console.log(`[WA] No session found; auto-linking by whatsappPhone for user ${linkedUser._id}`);
       session = await WhatsAppSession.create({
         waId,
         userId: linkedUser._id,
         state: 'MENU',
         context: {},
       });
-      await send(waId,
+      const sendRes = await send(waId,
         `👋 Hi *${linkedUser.name}*! Welcome to PickleTracker on WhatsApp! 🏓\n\n` +
         MENU_MSG
       );
+      console.log('[WA] Welcome message send result:', sendRes);
       return;
     }
 
-    await send(waId,
+    console.log('[WA] No session and no linked user found for incoming waId');
+    const sendRes = await send(waId,
       `👋 Welcome to *PickleTracker*! 🏓\n\n` +
       `To connect WhatsApp, please visit your profile on pickletracker.in and enter your phone number there.`
     );
+    console.log('[WA] Not-linked response send result:', sendRes);
     return;
   }
 
@@ -523,18 +575,21 @@ const processMessage = async (waId, text) => {
   if (GLOBAL_COMMANDS.has(t)) {
     if (!session.userId) {
       await session.save();
-      await send(waId, `Please connect your WhatsApp from the PickleTracker app at pickletracker.in`);
+      const sendRes = await send(waId, `Please connect your WhatsApp from the PickleTracker app at pickletracker.in`);
+      console.log('[WA] Session without user; connect prompt send result:', sendRes);
       return;
     }
     session.state = 'MENU';
     session.context = {};
     await session.save();
-    await send(waId, MENU_MSG);
+    const sendRes = await send(waId, MENU_MSG);
+    console.log('[WA] Global command menu send result:', sendRes);
     return;
   }
 
   if (!session.userId) {
-    await send(waId, `Please connect your WhatsApp from the PickleTracker app at pickletracker.in`);
+    const sendRes = await send(waId, `Please connect your WhatsApp from the PickleTracker app at pickletracker.in`);
+    console.log('[WA] Session user missing; connect prompt send result:', sendRes);
     return;
   }
 
@@ -561,11 +616,21 @@ exports.webhook = async (req, res) => {
 
   try {
     const message = req.body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-    if (!message || message.type !== 'text') return;
+    if (!message) {
+      console.log('[WA webhook] No message payload');
+      return;
+    }
+    if (message.type !== 'text') {
+      console.log(`[WA webhook] Ignored non-text message type: ${message.type}`);
+      return;
+    }
 
     const waId = message.from;
     const text = message.text?.body?.trim();
-    if (!waId || !text) return;
+    if (!waId || !text) {
+      console.log('[WA webhook] Missing sender id or text body');
+      return;
+    }
 
     await processMessage(waId, text);
   } catch (err) {

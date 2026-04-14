@@ -7,7 +7,7 @@ const GRAPH_URL = 'https://graph.facebook.com/v19.0';
 const send = async (to, body) => {
   if (!process.env.WHATSAPP_TOKEN || !process.env.WHATSAPP_PHONE_ID) {
     console.warn('[WhatsApp] WHATSAPP_TOKEN or WHATSAPP_PHONE_ID not set — skipping send');
-    return;
+    return { ok: false, skipped: true, reason: 'missing_env' };
   }
 
   try {
@@ -28,9 +28,12 @@ const send = async (to, body) => {
     if (!res.ok) {
       const err = await res.text();
       console.error(`[WhatsApp] Send to ${to} failed (${res.status}):`, err);
+      return { ok: false, skipped: false, status: res.status, error: err };
     }
+    return { ok: true, skipped: false, status: res.status };
   } catch (err) {
     console.error(`[WhatsApp] Network error sending to ${to}:`, err.message);
+    return { ok: false, skipped: false, reason: 'network', error: err.message };
   }
 };
 
