@@ -31,4 +31,29 @@ async function sendPasswordResetEmail(toEmail, resetUrl) {
   });
 }
 
-module.exports = { sendPasswordResetEmail };
+async function sendNotificationEmail({ to, subject, html }) {
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[Email] RESEND_API_KEY not set — skipping notification send');
+    return { ok: false, skipped: true };
+  }
+  try {
+    const { data, error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'PickleTracker <notifications@pickletracker.in>',
+      to,
+      subject,
+      html,
+    });
+    if (error) {
+      console.error('[Email] Send failed:', error);
+      return { ok: false, error };
+    }
+    console.log(`[Email] Sent "${subject}" to ${to}, id: ${data.id}`);
+    return { ok: true, id: data.id };
+  } catch (err) {
+    console.error('[Email] Exception:', err.message);
+    return { ok: false, error: err.message };
+  }
+}
+
+module.exports = { sendPasswordResetEmail, sendNotificationEmail };

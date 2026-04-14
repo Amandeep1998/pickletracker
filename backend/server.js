@@ -14,6 +14,7 @@ const whatsappRoutes = require('./src/routes/whatsapp.routes');
 const sessionRoutes = require('./src/routes/session.routes');
 const exportRoutes = require('./src/routes/export.routes');
 const playersRoutes = require('./src/routes/players.routes');
+const notificationsRoutes = require('./src/routes/notifications.routes');
 const friendshipRoutes = require('./src/routes/friendship.routes');
 const errorHandler = require('./src/middleware/error.middleware');
 
@@ -39,6 +40,7 @@ app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/players', playersRoutes);
+app.use('/api/notifications', notificationsRoutes);
 app.use('/api/friends', friendshipRoutes);
 
 app.use(errorHandler);

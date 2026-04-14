@@ -110,6 +110,10 @@ const userSchema = new mongoose.Schema(
       type: [manualAchievementSchema],
       default: [],
     },
+    emailReminders: {
+      type: Boolean,
+      default: true,
+    },
     resetPasswordToken: {
       type: String,
       default: null,

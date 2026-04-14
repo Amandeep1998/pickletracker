@@ -56,12 +56,13 @@ export const getAdminUsers = () => api.get('/admin/users');
 export const getAdminUserTournaments = (userId) => api.get(`/admin/users/${userId}/tournaments`);
 export const deleteAdminUser = (userId) => api.delete(`/admin/users/${userId}`);
 
-// WhatsApp
-export const getWhatsAppStatus = () => api.get('/whatsapp/status');
-export const connectWhatsApp = (data) => api.post('/whatsapp/connect', data);
-export const disconnectWhatsApp = () => api.delete('/whatsapp/connect');
+// Email notifications
+export const getEmailPrefs = () => api.get('/notifications/prefs');
+export const updateEmailPrefs = (data) => api.put('/notifications/prefs', data);
+export const sendTestEmail = () => api.post('/notifications/test');
+
+// Admin
 export const toggleWhatsAppAccess = (userId) => api.put(`/admin/users/${userId}/whatsapp-access`);
-export const testWhatsAppSend = () => api.post('/whatsapp/test-send');
 
 // Export
 export const exportData = () => api.get('/export', { responseType: 'blob' });
