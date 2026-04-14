@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import LocationModal from '../components/LocationModal';
 
 // ── Coordinates for major Indian cities (for distance sorting) ───────────────
@@ -682,6 +683,7 @@ function FriendsSection({ friends, onViewCalendar, onRemoveFriend }) {
 // ── Main Players page ────────────────────────────────────────────────────────
 export default function Players() {
   const { user, refreshUser } = useAuth();
+  const socket = useSocket();
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -728,22 +730,36 @@ export default function Players() {
   const fetchFriendData = useCallback(async () => {
     try {
       const [reqRes, friendsRes] = await Promise.all([api.getFriendRequests(), api.getFriends()]);
-      setFriendRequests(reqRes.data.data || { incoming: [], outgoing: [] });
-      setFriends(friendsRes.data.data || []);
+      const data = reqRes.data.data || { incoming: [], outgoing: [] };
+      const friendsList = friendsRes.data.data || [];
+      setFriendRequests(data);
+      setFriends(friendsList);
+      // Clear optimistic pending IDs that the server now tracks authoritatively —
+      // prevents stale "Requested" buttons after a request is accepted or cancelled.
+      const outgoingIds = new Set(data.outgoing.map((r) => String(r.user?.id)));
+      const friendIds = new Set(friendsList.map((f) => String(f.id)));
+      setPendingFriendIds((prev) => {
+        const next = new Set([...prev].filter((id) => outgoingIds.has(id) || friendIds.has(id)));
+        return next.size === prev.size ? prev : next;
+      });
     } catch { /* keep page usable */ }
   }, []);
 
   useEffect(() => { fetchPlayers(); }, [fetchPlayers]);
   useEffect(() => { fetchFriendData(); }, [fetchFriendData]);
+
+  // Real-time friend updates via socket — no polling needed
   useEffect(() => {
-    const onFocus = () => { fetchFriendData(); };
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [fetchFriendData]);
-  useEffect(() => {
-    const timer = setInterval(() => { fetchFriendData(); }, 15000);
-    return () => clearInterval(timer);
-  }, [fetchFriendData]);
+    if (!socket) return;
+    // friend:refresh is emitted by the server after any friend action
+    socket.on('friend:refresh', fetchFriendData);
+    // Re-sync on reconnect to catch any events missed during disconnection
+    socket.on('connect', fetchFriendData);
+    return () => {
+      socket.off('friend:refresh', fetchFriendData);
+      socket.off('connect', fetchFriendData);
+    };
+  }, [socket, fetchFriendData]);
 
   const incomingCount = (friendRequests.incoming || []).length;
   useEffect(() => {

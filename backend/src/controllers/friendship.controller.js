@@ -3,6 +3,7 @@ const Friendship = require('../models/Friendship');
 const User = require('../models/User');
 const Tournament = require('../models/Tournament');
 const Session = require('../models/Session');
+const socketManager = require('../socket/socketManager');
 
 function isObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id);
@@ -55,10 +56,13 @@ const sendFriendRequest = async (req, res, next) => {
       existing.recipientId = recipientId;
       existing.status = 'pending';
       await existing.save();
+      socketManager.emitToUser(recipientId, 'friend:refresh', {});
       return res.status(200).json({ success: true, data: existing });
     }
 
     const friendship = await Friendship.create({ requesterId, recipientId, status: 'pending' });
+    // Notify recipient in real time
+    socketManager.emitToUser(recipientId, 'friend:refresh', {});
     return res.status(201).json({ success: true, data: friendship });
   } catch (err) {
     next(err);
@@ -123,6 +127,8 @@ const acceptFriendRequest = async (req, res, next) => {
     if (!row) return res.status(404).json({ success: false, message: 'Friend request not found' });
     row.status = 'accepted';
     await row.save();
+    // Notify the original requester that their request was accepted
+    socketManager.emitToUser(String(row.requesterId), 'friend:refresh', {});
     res.json({ success: true, data: row });
   } catch (err) {
     next(err);
@@ -137,6 +143,8 @@ const rejectFriendRequest = async (req, res, next) => {
     if (!row) return res.status(404).json({ success: false, message: 'Friend request not found' });
     row.status = 'rejected';
     await row.save();
+    // Notify the original requester that their request was declined
+    socketManager.emitToUser(String(row.requesterId), 'friend:refresh', {});
     res.json({ success: true, data: row });
   } catch (err) {
     next(err);
@@ -149,6 +157,8 @@ const cancelOutgoingFriendRequest = async (req, res, next) => {
     const { id } = req.params;
     const row = await Friendship.findOneAndDelete({ _id: id, requesterId: userId, status: 'pending' });
     if (!row) return res.status(404).json({ success: false, message: 'Outgoing friend request not found' });
+    // Notify recipient that the pending request they received is gone
+    socketManager.emitToUser(String(row.recipientId), 'friend:refresh', {});
     res.json({ success: true });
   } catch (err) {
     next(err);
@@ -250,6 +260,9 @@ const removeFriend = async (req, res, next) => {
       ],
     });
     if (!deleted) return res.status(404).json({ success: false, message: 'Friend connection not found' });
+    // Notify the other party that they were removed
+    const otherId = idsEqual(deleted.requesterId, userId) ? deleted.recipientId : deleted.requesterId;
+    socketManager.emitToUser(String(otherId), 'friend:refresh', {});
     res.json({ success: true });
   } catch (err) {
     next(err);

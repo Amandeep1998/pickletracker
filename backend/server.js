@@ -1,9 +1,13 @@
 require('dotenv').config();
+const http = require('http');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
 
 const connectDB = require('./src/config/db');
+const socketManager = require('./src/socket/socketManager');
 const authRoutes = require('./src/routes/auth.routes');
 const tournamentRoutes = require('./src/routes/tournament.routes');
 const expenseRoutes = require('./src/routes/expense.routes');
@@ -19,7 +23,37 @@ const friendshipRoutes = require('./src/routes/friendship.routes');
 const errorHandler = require('./src/middleware/error.middleware');
 
 const app = express();
+const server = http.createServer(app);
 
+// ── Socket.io setup ──────────────────────────────────────────────────────────
+const io = new Server(server, {
+  cors: { origin: '*', methods: ['GET', 'POST'] },
+  transports: ['websocket', 'polling'],
+});
+
+socketManager.init(io);
+
+// JWT auth for socket connections
+io.use((socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+    if (!token) return next(new Error('Authentication required'));
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = decoded.id;
+    next();
+  } catch {
+    next(new Error('Invalid token'));
+  }
+});
+
+io.on('connection', (socket) => {
+  socketManager.register(socket.userId, socket.id);
+  socket.on('disconnect', () => {
+    socketManager.unregister(socket.userId, socket.id);
+  });
+});
+
+// ── HTTP middleware ──────────────────────────────────────────────────────────
 app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '600kb' })); // increased for base64 profile photo uploads
@@ -48,7 +82,7 @@ app.use(errorHandler);
 if (require.main === module) {
   connectDB().then(() => {
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
   });
 }
 

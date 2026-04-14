@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { SocketProvider } from './context/SocketContext';
 import PrivateRoute from './components/PrivateRoute';
 import ScrollToTop from './components/ScrollToTop';
 import Login from './pages/Login';
@@ -21,6 +22,7 @@ import Players from './pages/Players';
 export default function App() {
   return (
     <AuthProvider>
+      <SocketProvider>
       <ScrollToTop />
       <Routes>
         {/* Public routes */}
@@ -46,6 +48,7 @@ export default function App() {
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </SocketProvider>
     </AuthProvider>
   );
 }
