@@ -110,8 +110,8 @@ const listFriendRequests = async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        incoming: incoming.map((r) => normalize(r, 'incoming')),
-        outgoing: outgoing.map((r) => normalize(r, 'outgoing')),
+        incoming: incoming.filter((r) => r.requesterId).map((r) => normalize(r, 'incoming')),
+        outgoing: outgoing.filter((r) => r.recipientId).map((r) => normalize(r, 'outgoing')),
       },
     });
   } catch (err) {
@@ -177,18 +177,21 @@ const listFriends = async (req, res, next) => {
       .sort({ updatedAt: -1 })
       .lean();
 
-    const friends = links.map((row) => {
-      const friend = idsEqual(row.requesterId._id, userId) ? row.recipientId : row.requesterId;
-      return {
-        friendshipId: row._id,
-        id: friend._id,
-        name: friend.name,
-        email: friend.email,
-        profilePhoto: friend.profilePhoto || null,
-        city: friend.city || null,
-        state: friend.state || null,
-      };
-    });
+    const friends = links
+      // Guard against orphaned friendships where one user account was deleted
+      .filter((row) => row.requesterId && row.recipientId)
+      .map((row) => {
+        const friend = idsEqual(row.requesterId._id, userId) ? row.recipientId : row.requesterId;
+        return {
+          friendshipId: row._id,
+          id: friend._id,
+          name: friend.name,
+          email: friend.email,
+          profilePhoto: friend.profilePhoto || null,
+          city: friend.city || null,
+          state: friend.state || null,
+        };
+      });
 
     res.json({ success: true, data: friends });
   } catch (err) {
