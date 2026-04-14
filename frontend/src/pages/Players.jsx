@@ -61,25 +61,18 @@ function haversine(a, b) {
   return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
-// ── Reverse geocode lat/lng → city name (Nominatim) ──────────────────────────
-async function reverseGeocode(lat, lng) {
-  const res = await fetch(
-    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-    { headers: { 'Accept-Language': 'en-US,en' } }
-  );
-  const data = await res.json();
-  const addr = data.address || {};
-  return addr.city || addr.town || addr.municipality || addr.county || null;
-}
-
-// Match geocoded city name to our known city list (fuzzy)
-function matchToKnownCity(raw) {
-  if (!raw) return null;
-  const lower = raw.toLowerCase().trim();
-  const exact = ALL_CITIES.find((c) => c.toLowerCase() === lower);
-  if (exact) return exact;
-  const contains = ALL_CITIES.find((c) => lower.includes(c.toLowerCase()) || c.toLowerCase().includes(lower));
-  return contains || raw;
+// ── Find nearest major city from GPS coords using Haversine ─────────────────
+// More reliable than parsing Nominatim strings (avoids returning sub-districts,
+// talukas, or obscure locality names instead of the actual city).
+function reverseGeocode(lat, lng) {
+  const pos = { lat, lng };
+  let nearest = null;
+  let minDist = Infinity;
+  for (const [city, coords] of Object.entries(CITY_COORDS)) {
+    const d = haversine(pos, coords);
+    if (d < minDist) { minDist = d; nearest = city; }
+  }
+  return nearest; // always returns a known major city name
 }
 
 const SORT_OPTIONS = [
@@ -145,7 +138,7 @@ function LocationPromptModal({ onSave, onSkip }) {
   const dropdownRef = useRef(null);
 
   const filteredCities = manualQuery.trim().length >= 1
-    ? ALL_CITIES.filter((c) => c.toLowerCase().includes(manualQuery.toLowerCase())).slice(0, 8)
+    ? ALL_CITIES.filter((c) => c.toLowerCase().includes(manualQuery.toLowerCase()))
     : [];
 
   // Close dropdown on outside click
@@ -166,10 +159,9 @@ function LocationPromptModal({ onSave, onSkip }) {
     setMode('detecting');
     setError('');
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
+      (pos) => {
         try {
-          const raw = await reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-          const city = matchToKnownCity(raw);
+          const city = reverseGeocode(pos.coords.latitude, pos.coords.longitude);
           if (city) {
             setDetectedCity(city);
             setMode('confirm');
@@ -178,7 +170,7 @@ function LocationPromptModal({ onSave, onSkip }) {
             setMode('manual');
           }
         } catch {
-          setError('Could not fetch your city. Please enter it manually.');
+          setError('Could not detect your city. Please enter it manually.');
           setMode('manual');
         }
       },

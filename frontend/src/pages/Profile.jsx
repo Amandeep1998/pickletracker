@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
-import CitySelect from '../components/CitySelect';
+import CITIES_BY_STATE from '../data/indianCities';
+
+const ALL_CITIES = [...new Set(Object.values(CITIES_BY_STATE).flat())].sort();
 
 const resizeImage = (file) =>
   new Promise((resolve) => {
@@ -23,15 +25,6 @@ const resizeImage = (file) =>
     reader.readAsDataURL(file);
   });
 
-const INDIAN_STATES = [
-  'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
-  'Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh',
-  'Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan',
-  'Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
-  'Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu',
-  'Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry',
-];
-
 export default function Profile() {
   const { user, refreshUser } = useAuth();
   const fileInputRef = useRef(null);
@@ -48,8 +41,9 @@ export default function Profile() {
 
   // Location & contact (all optional)
   const [locPhone, setLocPhone] = useState('');
-  const [locState, setLocState] = useState('');
   const [locCity, setLocCity] = useState('');
+  const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
+  const cityDropdownRef = useRef(null);
   const [locSaving, setLocSaving] = useState(false);
   const [locSaved, setLocSaved] = useState(false);
 
@@ -69,11 +63,21 @@ export default function Profile() {
           const digits = String(p.whatsappPhone);
           setLocPhone(digits.startsWith('91') ? digits.slice(2) : digits);
         }
-        if (p.state) setLocState(p.state);
         if (p.city) setLocCity(p.city);
       })
       .catch(() => setSaveError('Could not load profile.'))
       .finally(() => setLoading(false));
+  }, []);
+
+  // Close city dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (cityDropdownRef.current && !cityDropdownRef.current.contains(e.target)) {
+        setCityDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const handlePhotoChange = async (e) => {
@@ -126,7 +130,7 @@ export default function Profile() {
     setLocSaved(false);
     try {
       const payload = {
-        state: locState || null,
+        state: null,
         city: locCity || null,
         whatsappPhone: locPhone.trim() || null,
       };
@@ -167,7 +171,6 @@ export default function Profile() {
   // Profile completion
   const completionItems = [
     { label: 'Name', done: !!name.trim() },
-    { label: 'State', done: !!locState },
     { label: 'City', done: !!locCity },
   ];
   const completedCount = completionItems.filter((i) => i.done).length;
@@ -333,29 +336,37 @@ export default function Profile() {
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                  State <span className="text-gray-300 font-normal normal-case">(optional)</span>
-                </label>
-                <select
-                  value={locState}
-                  onChange={(e) => { setLocState(e.target.value); setLocCity(''); }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D] bg-white"
-                >
-                  <option value="">Select state…</option>
-                  {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
+              <div ref={cityDropdownRef} className="relative">
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
                   City <span className="text-gray-300 font-normal normal-case">(optional)</span>
                 </label>
-                <CitySelect
-                  state={locState}
+                <input
+                  type="text"
                   value={locCity}
-                  onChange={setLocCity}
-                  disabled={!locState}
+                  onChange={(e) => { setLocCity(e.target.value); setCityDropdownOpen(true); }}
+                  onFocus={() => setCityDropdownOpen(true)}
+                  placeholder="Search city…"
+                  autoComplete="off"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
                 />
+                {cityDropdownOpen && locCity.trim().length >= 1 && (() => {
+                  const matches = ALL_CITIES.filter((c) =>
+                    c.toLowerCase().includes(locCity.trim().toLowerCase())
+                  );
+                  return matches.length > 0 ? (
+                    <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-52 overflow-y-auto">
+                      {matches.map((c) => (
+                        <li
+                          key={c}
+                          onMouseDown={() => { setLocCity(c); setCityDropdownOpen(false); }}
+                          className={`px-3 py-2 text-sm cursor-pointer transition-colors ${c === locCity ? 'bg-[#f4f8e8] text-[#4a6e10] font-semibold' : 'text-gray-700 hover:bg-[#f4f8e8]'}`}
+                        >
+                          {c}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null;
+                })()}
               </div>
               {locSaved && (
                 <div className="bg-[#f4f8e8] border border-[#91BE4D]/30 text-[#4a6e10] text-sm rounded-lg px-4 py-2.5 flex items-center gap-2">
