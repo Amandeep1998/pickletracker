@@ -1,18 +1,30 @@
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import * as api from '../services/api';
 import MobileMenu from './MobileMenu';
 import BrandLogo from './BrandLogo';
+import LocationModal from './LocationModal';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
 export default function Navbar() {
-  const { user, handleLogout } = useAuth();
+  const { user, handleLogout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const isAdmin = user?.email === ADMIN_EMAIL;
+  const [locationOpen, setLocationOpen] = useState(false);
 
   const logout = () => {
     handleLogout();
     navigate('/login');
+  };
+
+  const handleLocationSave = async (city) => {
+    try {
+      const res = await api.updateProfile({ city });
+      refreshUser(res.data.data);
+    } catch { /* ignore */ }
+    setLocationOpen(false);
   };
 
   const linkClass = ({ isActive }) =>
@@ -49,6 +61,22 @@ export default function Navbar() {
 
         {/* Desktop User + Logout */}
         <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+          {/* City chip */}
+          <button
+            onClick={() => setLocationOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 hover:border-[#91BE4D] hover:bg-[#f4f8e8] transition-colors text-xs font-semibold text-gray-500 hover:text-[#4a6e10] max-w-[140px]"
+            title={user?.city ? 'Change location' : 'Set your location'}
+          >
+            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span className="truncate">{user?.city || 'Set location'}</span>
+            <svg className="w-3 h-3 flex-shrink-0 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
           <NavLink
             to="/profile"
             className={({ isActive }) =>
@@ -72,8 +100,16 @@ export default function Navbar() {
         </div>
 
         {/* Mobile Menu */}
-        <MobileMenu />
+        <MobileMenu onOpenLocationModal={() => setLocationOpen(true)} />
       </div>
+
+      {/* Location modal */}
+      {locationOpen && (
+        <LocationModal
+          onSave={handleLocationSave}
+          onSkip={() => setLocationOpen(false)}
+        />
+      )}
     </nav>
   );
 }

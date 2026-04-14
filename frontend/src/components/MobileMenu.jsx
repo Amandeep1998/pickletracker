@@ -5,7 +5,7 @@ import BrandLogo from './BrandLogo';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
-export default function MobileMenu() {
+export default function MobileMenu({ onOpenLocationModal }) {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
@@ -86,13 +86,29 @@ export default function MobileMenu() {
         </nav>
 
         {/* User + Logout */}
-        <div className="flex-shrink-0 border-t border-gray-100 bg-gray-50/60 p-4">
+        <div className="flex-shrink-0 border-t border-gray-100 bg-gray-50/60 p-4 space-y-3">
           {user && (
             <>
               <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-widest mb-1">Logged in as</p>
-              <p className="text-sm font-semibold text-[#272702] mb-4 truncate">{user.name}</p>
+              <p className="text-sm font-semibold text-[#272702] truncate">{user.name}</p>
             </>
           )}
+          {/* City chip */}
+          <button
+            onClick={() => { setIsOpen(false); onOpenLocationModal?.(); }}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:border-[#91BE4D] hover:bg-[#f4f8e8] transition-colors text-left"
+          >
+            <svg className="w-4 h-4 text-[#4a6e10] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span className="flex-1 text-sm font-semibold text-gray-700 truncate">
+              {user?.city || 'Set your location'}
+            </span>
+            <span className="text-xs text-[#91BE4D] font-semibold flex-shrink-0">
+              {user?.city ? 'Change' : 'Set'}
+            </span>
+          </button>
           <button
             onClick={handleLogoutClick}
             className="w-full hover:opacity-90 text-white font-bold py-2.5 rounded-lg text-sm transition-opacity tracking-wide"

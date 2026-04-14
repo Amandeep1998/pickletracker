@@ -1,10 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as api from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import CITIES_BY_STATE from '../data/indianCities';
-
-// ── Flat list of all cities (for autocomplete) ───────────────────────────────
-const ALL_CITIES = [...new Set(Object.values(CITIES_BY_STATE).flat())].sort();
+import LocationModal from '../components/LocationModal';
 
 // ── Coordinates for major Indian cities (for distance sorting) ───────────────
 const CITY_COORDS = {
@@ -61,19 +58,6 @@ function haversine(a, b) {
   return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
-// ── Find nearest major city from GPS coords using Haversine ─────────────────
-// More reliable than parsing Nominatim strings (avoids returning sub-districts,
-// talukas, or obscure locality names instead of the actual city).
-function reverseGeocode(lat, lng) {
-  const pos = { lat, lng };
-  let nearest = null;
-  let minDist = Infinity;
-  for (const [city, coords] of Object.entries(CITY_COORDS)) {
-    const d = haversine(pos, coords);
-    if (d < minDist) { minDist = d; nearest = city; }
-  }
-  return nearest; // always returns a known major city name
-}
 
 const SORT_OPTIONS = [
   { value: 'medals',      label: 'Most Medals' },
@@ -126,220 +110,7 @@ function toDateStr(year, month, day) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-// ── Location prompt modal ────────────────────────────────────────────────────
-function LocationPromptModal({ onSave, onSkip }) {
-  const [mode, setMode] = useState('choose'); // 'choose' | 'detecting' | 'confirm' | 'manual'
-  const [detectedCity, setDetectedCity] = useState('');
-  const [manualQuery, setManualQuery] = useState('');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const inputRef = useRef(null);
-  const dropdownRef = useRef(null);
 
-  const filteredCities = manualQuery.trim().length >= 1
-    ? ALL_CITIES.filter((c) => c.toLowerCase().includes(manualQuery.toLowerCase()))
-    : [];
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const handleAutoDetect = () => {
-    if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser.');
-      setMode('manual');
-      return;
-    }
-    setMode('detecting');
-    setError('');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        try {
-          const city = reverseGeocode(pos.coords.latitude, pos.coords.longitude);
-          if (city) {
-            setDetectedCity(city);
-            setMode('confirm');
-          } else {
-            setError('Could not detect your city. Please enter it manually.');
-            setMode('manual');
-          }
-        } catch {
-          setError('Could not detect your city. Please enter it manually.');
-          setMode('manual');
-        }
-      },
-      () => {
-        setError('Location access denied. Please enter your city manually.');
-        setMode('manual');
-      },
-      { timeout: 10000 }
-    );
-  };
-
-  const handleSave = async (city) => {
-    if (!city) return;
-    setSaving(true);
-    await onSave(city);
-    setSaving(false);
-  };
-
-  return (
-    <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onSkip} />
-      <div className="relative bg-white w-full sm:max-w-sm sm:rounded-2xl rounded-t-2xl shadow-2xl"
-        onClick={(e) => e.stopPropagation()}>
-
-        {/* Handle */}
-        <div className="sm:hidden flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-gray-200 rounded-full" />
-        </div>
-
-        {/* Header */}
-        <div className="px-6 pt-5 pb-4 border-b border-gray-100 flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#f4f8e8] flex items-center justify-center text-xl flex-shrink-0">📍</div>
-          <div>
-            <p className="font-bold text-gray-900">Where are you based?</p>
-            <p className="text-xs text-gray-400 mt-0.5">See nearby players and get a personalised community view</p>
-          </div>
-          <button onClick={onSkip} className="ml-auto text-gray-300 hover:text-gray-500 flex-shrink-0 mt-0.5">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="px-6 py-5">
-          {/* Choose mode */}
-          {mode === 'choose' && (
-            <div className="space-y-3">
-              <button onClick={handleAutoDetect}
-                className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-[#91BE4D]/30 bg-[#f4f8e8] hover:border-[#91BE4D] transition-colors text-left group">
-                <div className="w-9 h-9 rounded-lg bg-[#91BE4D]/20 flex items-center justify-center flex-shrink-0 group-hover:bg-[#91BE4D]/30 transition-colors">
-                  <svg className="w-5 h-5 text-[#4a6e10]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900">Auto-detect my location</p>
-                  <p className="text-xs text-gray-400">Uses your device GPS</p>
-                </div>
-              </button>
-
-              <button onClick={() => setMode('manual')}
-                className="w-full flex items-center gap-3 p-4 rounded-xl border-2 border-gray-200 bg-white hover:border-gray-300 transition-colors text-left group">
-                <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 group-hover:bg-gray-200 transition-colors">
-                  <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900">Enter city manually</p>
-                  <p className="text-xs text-gray-400">Search and select your city</p>
-                </div>
-              </button>
-
-              <button onClick={onSkip} className="w-full text-center text-xs text-gray-400 hover:text-gray-600 py-2 transition-colors">
-                Skip for now
-              </button>
-            </div>
-          )}
-
-          {/* Detecting */}
-          {mode === 'detecting' && (
-            <div className="py-8 flex flex-col items-center gap-3">
-              <svg className="w-8 h-8 text-[#91BE4D] animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-              </svg>
-              <p className="text-sm text-gray-500">Detecting your location…</p>
-            </div>
-          )}
-
-          {/* Confirm detected city */}
-          {mode === 'confirm' && (
-            <div className="space-y-4">
-              <div className="bg-[#f4f8e8] border border-[#91BE4D]/30 rounded-xl px-4 py-3 flex items-center gap-3">
-                <span className="text-2xl">📍</span>
-                <div>
-                  <p className="text-xs text-gray-500">Detected city</p>
-                  <p className="text-base font-bold text-gray-900">{detectedCity}</p>
-                </div>
-              </div>
-              <p className="text-xs text-gray-400">Is this correct?</p>
-              <div className="flex gap-2">
-                <button onClick={() => setMode('manual')}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors">
-                  Change
-                </button>
-                <button onClick={() => handleSave(detectedCity)} disabled={saving}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-60 transition-opacity flex items-center justify-center gap-2"
-                  style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}>
-                  {saving
-                    ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Saving…</>
-                    : 'Yes, confirm'
-                  }
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Manual entry */}
-          {mode === 'manual' && (
-            <div className="space-y-4">
-              {error && <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{error}</p>}
-              <div ref={dropdownRef} className="relative">
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Your city</label>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={manualQuery}
-                  onChange={(e) => { setManualQuery(e.target.value); setDropdownOpen(true); }}
-                  onFocus={() => setDropdownOpen(true)}
-                  placeholder="Search city…"
-                  autoComplete="off"
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
-                />
-                {dropdownOpen && filteredCities.length > 0 && (
-                  <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-44 overflow-y-auto">
-                    {filteredCities.map((c) => (
-                      <li key={c} onMouseDown={() => { setManualQuery(c); setDropdownOpen(false); }}
-                        className="px-3 py-2 text-sm text-gray-700 hover:bg-[#f4f8e8] cursor-pointer">
-                        {c}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <button onClick={onSkip}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50 transition-colors">
-                  Skip
-                </button>
-                <button
-                  onClick={() => handleSave(manualQuery.trim())}
-                  disabled={!manualQuery.trim() || saving}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2"
-                  style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}>
-                  {saving
-                    ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Saving…</>
-                    : 'Save & continue'
-                  }
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ── Toast notification ───────────────────────────────────────────────────────
 function Toast({ message, type = 'success', onDismiss }) {
@@ -903,10 +674,14 @@ export default function Players() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const searchTimer = useRef(null);
 
-  // Show location prompt if user has no city and hasn't dismissed it
+  // Show location prompt if user has no city.
+  // sessionStorage flag prevents re-showing after an explicit Skip in the same tab session.
   useEffect(() => {
     if (!user?.city && !sessionStorage.getItem('pt_cityPrompted')) {
       setLocationPromptOpen(true);
+    } else if (user?.city) {
+      // City is now set — clear any suppression flag so future blank-city visits show the prompt
+      sessionStorage.removeItem('pt_cityPrompted');
     }
   }, [user?.city]);
 
@@ -1201,7 +976,7 @@ export default function Players() {
         <FriendCalendarModal friend={friendCalendarTarget} onClose={() => setFriendCalendarTarget(null)} />
       )}
       {locationPromptOpen && (
-        <LocationPromptModal onSave={handleLocationSave} onSkip={handleLocationSkip} />
+        <LocationModal onSave={handleLocationSave} onSkip={handleLocationSkip} />
       )}
       {toast && <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />}
     </div>
