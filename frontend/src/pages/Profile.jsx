@@ -30,6 +30,7 @@ export default function Profile() {
   const [waCity, setWaCity] = useState('');
   const [waConnected, setWaConnected] = useState(false);
   const [waPhone, setWaPhone] = useState(null);
+  const [waBusinessNumber, setWaBusinessNumber] = useState(null);
   const [waLoading, setWaLoading] = useState(false);
   const [waError, setWaError] = useState('');
   const [waSuccess, setWaSuccess] = useState('');
@@ -45,6 +46,7 @@ export default function Profile() {
         const wa = waRes.data;
         setWaConnected(wa.connected);
         setWaPhone(wa.phone);
+        if (wa.businessNumber) setWaBusinessNumber(wa.businessNumber);
         if (p.state) setWaState(p.state);
         if (p.city) setWaCity(p.city);
       })
@@ -78,10 +80,11 @@ export default function Profile() {
     setWaError('');
     setWaSuccess('');
     try {
-      await api.connectWhatsApp({ phone: phone.trim(), state: waState, city: waCity.trim() });
+      const res2 = await api.connectWhatsApp({ phone: phone.trim(), state: waState, city: waCity.trim() });
       setWaConnected(true);
       setWaPhone(`91${phone.replace(/\D/g, '').slice(-10)}`);
-      setWaSuccess('WhatsApp connected! Check your phone for a welcome message.');
+      if (res2.data?.businessNumber) setWaBusinessNumber(res2.data.businessNumber);
+      setWaSuccess('connected');
       // Also update profile so user state/city persist
       const res = await api.updateProfile({ state: waState, city: waCity.trim() });
       refreshUser(res.data.data);
@@ -262,8 +265,26 @@ export default function Profile() {
                     {disconnecting ? 'Disconnecting…' : 'Disconnect'}
                   </button>
                 </div>
-                {waSuccess && (
-                  <div className="text-xs text-[#4a6e10] bg-[#f4f8e8] border border-[#91BE4D]/30 rounded-lg px-3 py-2">{waSuccess}</div>
+
+                {/* Activation instruction */}
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                  <p className="text-xs font-semibold text-amber-800 mb-1">One more step to activate</p>
+                  <p className="text-xs text-amber-700 leading-relaxed">
+                    Send <span className="font-bold">hi</span> to our WhatsApp number
+                    {waBusinessNumber
+                      ? <> — <a href={`https://wa.me/${waBusinessNumber}`} target="_blank" rel="noopener noreferrer" className="font-bold underline">+{waBusinessNumber}</a></>
+                      : ' (check the app for the number)'}
+                    {' '}to activate your connection. We'll reply with a confirmation and you're all set!
+                  </p>
+                </div>
+
+                {waSuccess === 'connected' && (
+                  <div className="text-xs text-[#4a6e10] bg-[#f4f8e8] border border-[#91BE4D]/30 rounded-lg px-3 py-2 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Number saved! Follow the step above to activate.
+                  </div>
                 )}
                 {waError && (
                   <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{waError}</div>

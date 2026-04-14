@@ -109,6 +109,7 @@ exports.getStatus = async (req, res, next) => {
       enabled: !!user?.whatsappEnabled,
       connected: !!user?.whatsappPhone,
       phone: user?.whatsappPhone || null,
+      businessNumber: process.env.WHATSAPP_BUSINESS_NUMBER || null,
     });
   } catch (err) {
     next(err);
@@ -135,24 +136,18 @@ exports.connect = async (req, res, next) => {
     // Link number (and optionally city/state) on the User record
     await User.findByIdAndUpdate(req.user.id, updateFields);
 
-    // Create fresh session
+    // Create fresh session so it's ready when the user messages us
     await WhatsAppSession.findOneAndUpdate(
       { waId },
       { waId, userId: req.user.id, state: 'MENU', context: {}, updatedAt: new Date() },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    // Send welcome message
-    const user = await User.findById(req.user.id).select('name').lean();
-    await send(waId,
-      `👋 Hi *${user.name}*! Welcome to PickleTracker on WhatsApp! 🏓\n\n` +
-      `You'll now receive:\n` +
-      `• Tournament reminders the day before your events\n` +
-      `• Weekly performance insights\n\n` +
-      MENU_MSG
-    );
-
-    res.json({ success: true });
+    // Note: we do NOT send an outbound message here.
+    // WhatsApp Business API only allows free-form text in reply to a user-initiated
+    // message within 24 hours. The user needs to message us first (any text like "hi")
+    // and our webhook will auto-restore their session and greet them.
+    res.json({ success: true, businessNumber: process.env.WHATSAPP_BUSINESS_NUMBER || null });
   } catch (err) {
     next(err);
   }
