@@ -622,7 +622,7 @@ function EditMyCommunityProfileModal({ onClose, onSaved }) {
 }
 
 // ── Friends section ──────────────────────────────────────────────────────────
-function FriendsSection({ friends, onViewCalendar }) {
+function FriendsSection({ friends, onViewCalendar, onRemoveFriend }) {
   if (friends.length === 0) return null;
   return (
     <div className="mb-6">
@@ -655,6 +655,12 @@ function FriendsSection({ friends, onViewCalendar }) {
                 <button onClick={() => onViewCalendar(f)} className="w-full flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-xl transition-opacity hover:opacity-90 text-white" style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}>
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                   View Calendar
+                </button>
+                <button
+                  onClick={() => onRemoveFriend(f)}
+                  className="w-full mt-2 text-xs font-semibold py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  Remove Friend
                 </button>
               </div>
             </div>
@@ -829,6 +835,28 @@ export default function Players() {
     } catch { showToast('Could not decline request', 'error'); }
   };
 
+  const handleCancelOutgoingRequest = async (requestId) => {
+    try {
+      await api.cancelFriendRequest(requestId);
+      showToast('Friend request cancelled.');
+      await fetchFriendData();
+    } catch {
+      showToast('Could not cancel request', 'error');
+    }
+  };
+
+  const handleRemoveFriend = async (friend) => {
+    const ok = window.confirm(`Remove ${friend.name} from friends? You will no longer share schedule access.`);
+    if (!ok) return;
+    try {
+      await api.removeFriend(friend.id);
+      showToast(`${friend.name} removed from friends.`);
+      await fetchFriendData();
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Could not remove friend', 'error');
+    }
+  };
+
   const handleLocationSave = async (city) => {
     try {
       const res = await api.updateProfile({ city });
@@ -925,11 +953,37 @@ export default function Players() {
               ))}
             </div>
           )}
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
+              Sent Requests <span className="text-[#4a6e10] ml-1">{(friendRequests.outgoing || []).length}</span>
+            </p>
+            {(friendRequests.outgoing || []).length === 0 ? (
+              <p className="text-sm text-gray-400">No outgoing requests.</p>
+            ) : (
+              <div className="space-y-2">
+                {friendRequests.outgoing.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-orange-50 border border-orange-200">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">{r.user?.name || 'Player'}</p>
+                      <p className="text-xs text-gray-500">{r.user?.city || 'India'}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCancelOutgoingRequest(r.id)}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-orange-300 text-orange-700 hover:bg-orange-100 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* Friends section */}
-      <FriendsSection friends={friends} onViewCalendar={setFriendCalendarTarget} />
+      <FriendsSection friends={friends} onViewCalendar={setFriendCalendarTarget} onRemoveFriend={handleRemoveFriend} />
 
       {/* Search */}
       <div className="mb-6 relative">

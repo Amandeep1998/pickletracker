@@ -80,8 +80,10 @@ export const sendFriendRequest = (recipientId) => api.post('/friends/requests', 
 export const getFriendRequests = () => api.get('/friends/requests');
 export const acceptFriendRequest = (id) => api.post(`/friends/requests/${id}/accept`);
 export const rejectFriendRequest = (id) => api.post(`/friends/requests/${id}/reject`);
+export const cancelFriendRequest = (id) => api.delete(`/friends/requests/${id}`);
 export const getFriends = () => api.get('/friends');
 export const getFriendSchedule = (friendId) => api.get(`/friends/${friendId}/schedule`);
+export const removeFriend = (friendId) => api.delete(`/friends/${friendId}`);
 
 // AI — voice
 export const parseTournamentVoice = (transcript, currentForm) =>

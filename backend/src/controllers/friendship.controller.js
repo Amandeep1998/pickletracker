@@ -143,6 +143,18 @@ const rejectFriendRequest = async (req, res, next) => {
   }
 };
 
+const cancelOutgoingFriendRequest = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const row = await Friendship.findOneAndDelete({ _id: id, requesterId: userId, status: 'pending' });
+    if (!row) return res.status(404).json({ success: false, message: 'Outgoing friend request not found' });
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
 const listFriends = async (req, res, next) => {
   try {
     const userId = req.user.id;
@@ -223,11 +235,34 @@ const getFriendSchedule = async (req, res, next) => {
   }
 };
 
+const removeFriend = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { friendId } = req.params;
+    if (!isObjectId(friendId)) {
+      return res.status(400).json({ success: false, message: 'Invalid friend id' });
+    }
+    const deleted = await Friendship.findOneAndDelete({
+      status: 'accepted',
+      $or: [
+        { requesterId: userId, recipientId: friendId },
+        { requesterId: friendId, recipientId: userId },
+      ],
+    });
+    if (!deleted) return res.status(404).json({ success: false, message: 'Friend connection not found' });
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   sendFriendRequest,
   listFriendRequests,
   acceptFriendRequest,
   rejectFriendRequest,
+  cancelOutgoingFriendRequest,
   listFriends,
   getFriendSchedule,
+  removeFriend,
 };
