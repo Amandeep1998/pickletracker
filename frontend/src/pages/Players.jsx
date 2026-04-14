@@ -972,6 +972,15 @@ export default function Players() {
           )}
         </button>
       </div>
+      {/* Player card info */}
+      <div className="mb-3 bg-[#f4f8e8] border border-[#91BE4D]/30 rounded-xl px-4 py-3 flex gap-3">
+        <span className="text-lg flex-shrink-0 mt-0.5">🏅</span>
+        <div className="text-sm text-[#3a5c0a] space-y-1">
+          <p><span className="font-semibold">Your card updates automatically</span> — every tournament and medal you log on PickleTracker reflects on your community card instantly.</p>
+          <p>Have older wins that aren't showing? Tap <span className="font-semibold">Update my card</span> above to manually add past tournaments and medals.</p>
+        </div>
+      </div>
+
       <div className="mb-5 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
         <p className="text-sm text-blue-800 leading-relaxed">
           <span className="font-semibold">Add Friends:</span> send a friend request to follow each other&apos;s upcoming calendar schedule and stay in sync on events 😉
