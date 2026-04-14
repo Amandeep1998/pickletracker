@@ -87,7 +87,7 @@ const FEATURES = [
     Icon: IconCalendar,
     bg: 'bg-[#fff8ee]',
     title: 'Calendar View',
-    desc: 'Sessions and tournaments laid out by date. Tap any day to see activity. Sync tournaments to Google Calendar in one click.',
+    desc: 'Sessions and tournaments laid out by date. Tap any day to see activity. Get WhatsApp reminders before your tournaments.',
   },
 ];
 
@@ -205,7 +205,7 @@ export default function Landing() {
                 { value: '100%', label: 'Free to use' },
                 { value: 'Journal', label: 'Performance tracking' },
                 { value: 'Live', label: 'Finance dashboard' },
-                { value: 'Auto', label: 'Google Calendar sync' },
+                { value: 'WhatsApp', label: 'Reminders & insights' },
               ].map((s) => (
                 <div key={s.label} className="text-center">
                   <p className="text-2xl sm:text-3xl font-extrabold text-[#272702] tracking-tight">{s.value}</p>
@@ -277,20 +277,20 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ── Google Calendar note ──────────────────────────── */}
+        {/* ── WhatsApp note ────────────────────────────────── */}
         <section className="bg-white py-16 sm:py-20">
           <div className="max-w-6xl mx-auto px-5 sm:px-8">
             <div className="bg-[#f4f8e8] border border-[#91BE4D]/20 rounded-2xl px-7 py-8 sm:px-10 sm:py-10 flex flex-col sm:flex-row gap-6 items-start">
-              <div className="w-12 h-12 flex-shrink-0 rounded-xl bg-white border border-[#91BE4D]/20 flex items-center justify-center">
-                <IconCalendar />
+              <div className="w-12 h-12 flex-shrink-0 rounded-xl bg-white border border-[#91BE4D]/20 flex items-center justify-center text-2xl">
+                📱
               </div>
               <div>
-                <h3 className="text-lg font-bold text-[#272702] mb-2">How we use Google Calendar</h3>
+                <h3 className="text-lg font-bold text-[#272702] mb-2">Stay in the loop on WhatsApp</h3>
                 <p className="text-sm text-gray-500 leading-relaxed mb-2">
-                  You can optionally connect your Google Calendar. When connected, PickleTracker adds events for your upcoming tournaments so your schedule stays in sync.
+                  Connect your WhatsApp number in your profile to receive tournament reminders the day before your events — so you never miss a registration deadline or match time.
                 </p>
                 <p className="text-sm text-gray-400 leading-relaxed">
-                  We only create, update, or delete events that PickleTracker itself adds. We never read your existing events or other Google data. You can disconnect anytime from the Calendar page.
+                  We also send weekly performance insights — your top strengths, focus areas, and session stats — to keep you improving between sessions. You can disconnect anytime from your profile.
                 </p>
               </div>
             </div>

@@ -58,7 +58,7 @@ export const deleteAdminUser = (userId) => api.delete(`/admin/users/${userId}`);
 
 // WhatsApp
 export const getWhatsAppStatus = () => api.get('/whatsapp/status');
-export const connectWhatsApp = (phone) => api.post('/whatsapp/connect', { phone });
+export const connectWhatsApp = (data) => api.post('/whatsapp/connect', data);
 export const disconnectWhatsApp = () => api.delete('/whatsapp/connect');
 export const toggleWhatsAppAccess = (userId) => api.put(`/admin/users/${userId}/whatsapp-access`);
 

@@ -1,93 +1,124 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
+import CityAutocomplete from '../components/CityAutocomplete';
 
-const BENEFITS = [
-  {
-    field: 'whatsappPhone',
-    icon: '📱',
-    label: 'Mobile number',
-    benefit: 'Get a WhatsApp reminder 1 day before your next tournament — so you never miss a registration deadline or match time.',
-    placeholder: '9876543210',
-    inputType: 'tel',
-    inputMode: 'numeric',
-  },
-  {
-    field: 'city',
-    icon: '📍',
-    label: 'City',
-    benefit: 'We\'ll highlight tournaments and courts happening near you, making it easier to discover events you can actually attend.',
-    placeholder: 'e.g. Mumbai, Delhi, Bangalore…',
-    inputType: 'text',
-    inputMode: 'text',
-  },
+const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  // Union Territories
+  'Andaman and Nicobar Islands', 'Chandigarh',
+  'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Jammu and Kashmir',
+  'Ladakh', 'Lakshadweep', 'Puducherry',
 ];
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
 
-  const [form, setForm] = useState({
-    name: user?.name || '',
-    whatsappPhone: '',
-    city: '',
-  });
-  const [loading, setLoading] = useState(true);
+  // Profile fields
+  const [name, setName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  // WhatsApp connect form
+  const [phone, setPhone] = useState('');
+  const [waState, setWaState] = useState('');
+  const [waCity, setWaCity] = useState('');
+  const [waConnected, setWaConnected] = useState(false);
+  const [waPhone, setWaPhone] = useState(null);
+  const [waLoading, setWaLoading] = useState(false);
+  const [waError, setWaError] = useState('');
+  const [waSuccess, setWaSuccess] = useState('');
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getProfile()
-      .then((res) => {
-        const p = res.data.data;
-        setForm({
-          name: p.name || '',
-          whatsappPhone: p.whatsappPhone
-            ? p.whatsappPhone.replace(/^91/, '')   // strip country code for display
-            : '',
-          city: p.city || '',
-        });
+    Promise.all([api.getProfile(), api.getWhatsAppStatus()])
+      .then(([profRes, waRes]) => {
+        const p = profRes.data.data;
+        setName(p.name || '');
+        const wa = waRes.data;
+        setWaConnected(wa.connected);
+        setWaPhone(wa.phone);
+        if (p.state) setWaState(p.state);
+        if (p.city) setWaCity(p.city);
       })
-      .catch(() => setError('Could not load your profile.'))
+      .catch(() => setSaveError('Could not load profile.'))
       .finally(() => setLoading(false));
   }, []);
 
-  const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    setSuccess(false);
-    setError('');
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSaveName = async (e) => {
     e.preventDefault();
+    if (!name.trim()) return;
     setSaving(true);
-    setError('');
-    setSuccess(false);
+    setSaveError('');
+    setSaveSuccess(false);
     try {
-      const res = await api.updateProfile({
-        name: form.name.trim(),
-        city: form.city.trim() || null,
-        whatsappPhone: form.whatsappPhone.trim() || null,
-      });
+      const res = await api.updateProfile({ name: name.trim() });
       refreshUser(res.data.data);
-      setSuccess(true);
+      setSaveSuccess(true);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save profile');
+      setSaveError(err.response?.data?.message || 'Failed to save');
     } finally {
       setSaving(false);
     }
   };
 
-  // Profile completion: name always done; +1 for phone, +1 for city
+  const handleConnectWhatsApp = async (e) => {
+    e.preventDefault();
+    if (!phone.trim()) { setWaError('Please enter your phone number.'); return; }
+    if (!waState) { setWaError('Please select your state.'); return; }
+    if (!waCity.trim()) { setWaError('Please enter your city.'); return; }
+    setWaLoading(true);
+    setWaError('');
+    setWaSuccess('');
+    try {
+      await api.connectWhatsApp({ phone: phone.trim(), state: waState, city: waCity.trim() });
+      setWaConnected(true);
+      setWaPhone(`91${phone.replace(/\D/g, '').slice(-10)}`);
+      setWaSuccess('WhatsApp connected! Check your phone for a welcome message.');
+      // Also update profile so user state/city persist
+      const res = await api.updateProfile({ state: waState, city: waCity.trim() });
+      refreshUser(res.data.data);
+    } catch (err) {
+      setWaError(err.response?.data?.message || 'Failed to connect WhatsApp');
+    } finally {
+      setWaLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    setDisconnecting(true);
+    setWaError('');
+    setWaSuccess('');
+    try {
+      await api.disconnectWhatsApp();
+      setWaConnected(false);
+      setWaPhone(null);
+      setPhone('');
+      setWaSuccess('WhatsApp disconnected.');
+    } catch {
+      setWaError('Failed to disconnect. Please try again.');
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  const initials = (user?.name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+
+  // Profile completion
   const completionItems = [
-    { label: 'Name', done: !!form.name.trim() },
-    { label: 'Mobile number', done: !!form.whatsappPhone.trim() },
-    { label: 'City', done: !!form.city.trim() },
+    { label: 'Name', done: !!name.trim() },
+    { label: 'WhatsApp', done: waConnected },
+    { label: 'Location', done: !!(waState && waCity) },
   ];
   const completedCount = completionItems.filter((i) => i.done).length;
   const completionPct = Math.round((completedCount / completionItems.length) * 100);
-
-  const initials = (user?.name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
 
   return (
     <div className="max-w-xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
@@ -98,7 +129,6 @@ export default function Profile() {
         style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}
       >
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
-        {/* Avatar */}
         <div
           className="relative flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center text-xl font-black text-white shadow-lg"
           style={{ background: 'linear-gradient(135deg, #2d7005, #91BE4D 45%, #ec9937)' }}
@@ -142,90 +172,179 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Form */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5">
-        {loading ? (
-          <div className="text-center py-10 text-gray-400 text-sm">Loading…</div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
-
-            {/* Name */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                Display name
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="Your name"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
-              />
-            </div>
-
-            {/* Email — read only */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                Email <span className="text-gray-300 font-normal normal-case">(cannot be changed)</span>
-              </label>
-              <input
-                type="email"
-                value={user?.email || ''}
-                readOnly
-                className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-400 cursor-not-allowed"
-              />
-            </div>
-
-            {/* Optional fields with benefit callouts */}
-            {BENEFITS.map((b) => (
-              <div key={b.field}>
+      {loading ? (
+        <div className="text-center py-10 text-gray-400 text-sm">Loading…</div>
+      ) : (
+        <>
+          {/* Name form */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5 mb-5">
+            <form onSubmit={handleSaveName} className="space-y-4">
+              <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                  {b.icon} {b.label}{' '}
-                  <span className="text-gray-300 font-normal normal-case">(optional)</span>
+                  Display name
                 </label>
-                {/* Benefit card */}
-                <div className="mb-2 bg-[#f4f8e8] border border-[#91BE4D]/20 rounded-lg px-3 py-2">
-                  <p className="text-xs text-[#4a6e10] leading-relaxed">{b.benefit}</p>
-                </div>
                 <input
-                  type={b.inputType}
-                  inputMode={b.inputMode}
-                  name={b.field}
-                  value={form[b.field]}
-                  onChange={handleChange}
-                  placeholder={b.placeholder}
+                  type="text"
+                  value={name}
+                  onChange={(e) => { setName(e.target.value); setSaveSuccess(false); setSaveError(''); }}
+                  placeholder="Your name"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
                 />
-                {b.field === 'whatsappPhone' && (
-                  <p className="text-[11px] text-gray-400 mt-1">Enter your 10-digit Indian mobile number. Country code (+91) is added automatically.</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  Email <span className="text-gray-300 font-normal normal-case">(cannot be changed)</span>
+                </label>
+                <input
+                  type="email"
+                  value={user?.email || ''}
+                  readOnly
+                  className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-400 cursor-not-allowed"
+                />
+              </div>
+              {saveError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{saveError}</div>
+              )}
+              {saveSuccess && (
+                <div className="bg-[#f4f8e8] border border-[#91BE4D]/30 text-[#4a6e10] text-sm rounded-lg px-4 py-3 flex items-center gap-2">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Name saved!
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={saving}
+                className="w-full disabled:opacity-60 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-sm tracking-wide transition-opacity"
+                style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
+              >
+                {saving ? 'Saving…' : 'Save name'}
+              </button>
+            </form>
+          </div>
+
+          {/* WhatsApp Connect Card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5">
+            <div className="flex items-center gap-3 mb-1">
+              <span className="text-2xl">📱</span>
+              <div>
+                <p className="text-sm font-bold text-gray-900">WhatsApp Notifications</p>
+                <p className="text-xs text-gray-500">Tournament reminders &amp; weekly insights</p>
+              </div>
+              {waConnected && (
+                <span className="ml-auto flex items-center gap-1.5 text-xs text-green-600 font-semibold bg-green-50 px-2.5 py-1 rounded-full flex-shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#91BE4D] inline-block" />
+                  Connected
+                </span>
+              )}
+            </div>
+
+            {/* Benefit callout */}
+            <div className="mt-3 mb-4 bg-[#f4f8e8] border border-[#91BE4D]/20 rounded-xl px-4 py-3">
+              <p className="text-xs text-[#4a6e10] leading-relaxed">
+                Get a WhatsApp reminder 1 day before your tournaments, plus weekly performance insights — your top strengths, what to work on, and session stats — to keep improving.
+              </p>
+            </div>
+
+            {waConnected ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Connected number</p>
+                    <p className="text-sm font-bold text-gray-900 mt-0.5">+{waPhone}</p>
+                  </div>
+                  <button
+                    onClick={handleDisconnect}
+                    disabled={disconnecting}
+                    className="text-xs text-red-500 hover:text-red-700 font-semibold disabled:opacity-50 transition-colors"
+                  >
+                    {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+                  </button>
+                </div>
+                {waSuccess && (
+                  <div className="text-xs text-[#4a6e10] bg-[#f4f8e8] border border-[#91BE4D]/30 rounded-lg px-3 py-2">{waSuccess}</div>
+                )}
+                {waError && (
+                  <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{waError}</div>
                 )}
               </div>
-            ))}
+            ) : (
+              <form onSubmit={handleConnectWhatsApp} className="space-y-4">
+                {/* Phone */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                    Mobile number
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="flex-shrink-0 border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-500 bg-gray-50 font-medium">+91</span>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      value={phone}
+                      onChange={(e) => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setWaError(''); }}
+                      placeholder="9876543210"
+                      maxLength={10}
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-400 mt-1">Enter your 10-digit Indian mobile number.</p>
+                </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{error}</div>
-            )}
-            {success && (
-              <div className="bg-[#f4f8e8] border border-[#91BE4D]/30 text-[#4a6e10] text-sm rounded-lg px-4 py-3 flex items-center gap-2">
-                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                Profile saved successfully!
-              </div>
-            )}
+                {/* State */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                    State
+                  </label>
+                  <select
+                    value={waState}
+                    onChange={(e) => { setWaState(e.target.value); setWaError(''); }}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D] bg-white"
+                  >
+                    <option value="">Select state / UT…</option>
+                    {INDIAN_STATES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full disabled:opacity-60 hover:opacity-90 text-white font-bold py-3 rounded-xl text-sm tracking-wide transition-opacity"
-              style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
-            >
-              {saving ? 'Saving…' : 'Save profile'}
-            </button>
-          </form>
-        )}
-      </div>
+                {/* City */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                    City
+                  </label>
+                  <CityAutocomplete
+                    value={waCity}
+                    onChange={(val) => { setWaCity(val); setWaError(''); }}
+                    placeholder="Search your city…"
+                  />
+                </div>
+
+                {waError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{waError}</div>
+                )}
+                {waSuccess && (
+                  <div className="bg-[#f4f8e8] border border-[#91BE4D]/30 text-[#4a6e10] text-sm rounded-lg px-4 py-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    {waSuccess}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={waLoading}
+                  className="w-full disabled:opacity-60 hover:opacity-90 text-white font-bold py-3 rounded-xl text-sm tracking-wide transition-opacity"
+                  style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
+                >
+                  {waLoading ? 'Connecting…' : 'Connect WhatsApp'}
+                </button>
+              </form>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

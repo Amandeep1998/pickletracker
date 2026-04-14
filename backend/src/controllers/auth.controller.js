@@ -26,6 +26,7 @@ function publicUser(user) {
     isGoogleUser: Boolean(user.isGoogleUser),
     whatsappPhone: user.whatsappPhone || null,
     city: user.city || null,
+    state: user.state || null,
   };
 }
 
@@ -267,6 +268,7 @@ const updateProfile = async (req, res, next) => {
       update.name = trimmed;
     }
     if (city !== undefined) update.city = city ? String(city).trim().slice(0, 100) : null;
+    if (req.body.state !== undefined) update.state = req.body.state ? String(req.body.state).trim().slice(0, 100) : null;
     if (whatsappPhone !== undefined) {
       if (whatsappPhone) {
         const digits = String(whatsappPhone).replace(/\D/g, '');

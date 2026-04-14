@@ -46,6 +46,12 @@ const userSchema = new mongoose.Schema(
       trim: true,
       maxlength: [100, 'City name is too long'],
     },
+    state: {
+      type: String,
+      default: null,
+      trim: true,
+      maxlength: [100, 'State name is too long'],
+    },
     resetPasswordToken: {
       type: String,
       default: null,

@@ -4,27 +4,8 @@ import TournamentForm from '../components/TournamentForm';
 import SessionForm from '../components/SessionForm';
 import { formatINR } from '../utils/format';
 import { getMapUrl } from '../utils/mapUrl';
-import { connectGoogleCalendar, silentlyRefreshCalendarToken } from '../services/firebase';
-import {
-  isCalendarConnected,
-  wasCalendarConnected,
-  disconnectCalendar,
-  syncTournamentToCalendar,
-} from '../services/googleCalendar';
-
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-const CalendarIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <rect x="3" y="4" width="18" height="18" rx="2" stroke="#4285F4" strokeWidth="2" fill="white" />
-    <path d="M3 9h18" stroke="#4285F4" strokeWidth="2" />
-    <path d="M8 2v4M16 2v4" stroke="#4285F4" strokeWidth="2" strokeLinecap="round" />
-    <rect x="7" y="13" width="3" height="3" rx="0.5" fill="#EA4335" />
-    <rect x="11" y="13" width="3" height="3" rx="0.5" fill="#34A853" />
-    <rect x="15" y="13" width="3" height="3" rx="0.5" fill="#FBBC05" />
-  </svg>
-);
 
 function buildMonthGrid(year, month) {
   const firstDay = new Date(year, month, 1).getDay();
@@ -83,19 +64,6 @@ export default function Calendar() {
   const [addSessionModal, setAddSessionModal] = useState({ open: false, date: null });
   const [sessionFormLoading, setSessionFormLoading] = useState(false);
   const [sessionFormError, setSessionFormError] = useState('');
-
-  // Google Calendar
-  const [calendarConnected, setCalendarConnected] = useState(isCalendarConnected);
-  const [calendarLoading, setCalendarLoading] = useState(false);
-  const [syncProgress, setSyncProgress] = useState(null);
-
-  useEffect(() => {
-    if (!isCalendarConnected() && wasCalendarConnected()) {
-      silentlyRefreshCalendarToken()
-        .then(() => setCalendarConnected(true))
-        .catch(() => {});
-    }
-  }, []);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -217,67 +185,12 @@ export default function Calendar() {
     return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
   };
 
-  // ── Google Calendar handlers ──
-  const handleConnectCalendar = async () => {
-    setCalendarLoading(true);
-    try {
-      await connectGoogleCalendar();
-      setCalendarConnected(true);
-      const toSync = tournaments.filter((t) =>
-        t.categories.some((cat) => cat.date && cat.date >= todayStr)
-      );
-      if (toSync.length > 0) {
-        setSyncProgress({ done: 0, total: toSync.length });
-        for (let i = 0; i < toSync.length; i++) {
-          const t = toSync[i];
-          try {
-            const results = await syncTournamentToCalendar(t);
-            if (results?.length) {
-              const updatedCats = t.categories.map((cat, idx) => {
-                const match = results.find((r) => r.idx === idx);
-                return match ? { ...cat, calendarEventId: match.calendarEventId } : cat;
-              });
-              await api.updateTournament(t._id, { ...t, categories: updatedCats });
-            }
-          } catch {}
-          setSyncProgress({ done: i + 1, total: toSync.length });
-        }
-        await fetchTournaments();
-        setSyncProgress(null);
-      }
-    } catch (err) {
-      if (err?.code !== 'auth/popup-closed-by-user') {
-        alert('Failed to connect Google Calendar. Please try again.');
-      }
-    } finally {
-      setCalendarLoading(false);
-    }
-  };
-
-  const handleDisconnectCalendar = () => {
-    disconnectCalendar();
-    setCalendarConnected(false);
-  };
-
   // ── Tournament CRUD ──
   const handleAddTournament = async (data) => {
     setFormLoading(true);
     setAddError('');
     try {
-      const res = await api.createTournament(data);
-      const created = res.data.data;
-      if (isCalendarConnected()) {
-        try {
-          const results = await syncTournamentToCalendar(created);
-          if (results?.length) {
-            const updatedCats = created.categories.map((cat, i) => {
-              const match = results.find((r) => r.idx === i);
-              return match ? { ...cat, calendarEventId: match.calendarEventId } : cat;
-            });
-            await api.updateTournament(created._id, { ...created, categories: updatedCats });
-          }
-        } catch {}
-      }
+      await api.createTournament(data);
       setAddModal({ open: false, date: null });
       await fetchTournaments();
     } catch (err) {
@@ -292,27 +205,7 @@ export default function Calendar() {
     setFormLoading(true);
     setFormError('');
     try {
-      const dataWithIds = {
-        ...data,
-        categories: data.categories.map((cat, i) => ({
-          ...cat,
-          calendarEventId: selectedTournament.categories[i]?.calendarEventId || null,
-        })),
-      };
-      const res = await api.updateTournament(selectedTournament._id, dataWithIds);
-      const updated = res.data.data;
-      if (isCalendarConnected()) {
-        try {
-          const results = await syncTournamentToCalendar(updated);
-          if (results?.length) {
-            const updatedCats = updated.categories.map((cat, i) => {
-              const match = results.find((r) => r.idx === i);
-              return match ? { ...cat, calendarEventId: match.calendarEventId } : cat;
-            });
-            await api.updateTournament(updated._id, { ...updated, categories: updatedCats });
-          }
-        } catch {}
-      }
+      await api.updateTournament(selectedTournament._id, data);
       setIsEditing(false);
       setSelectedTournament(null);
       await fetchTournaments();
@@ -399,51 +292,6 @@ export default function Calendar() {
             <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">{s.label}</p>
           </div>
         ))}
-      </div>
-
-      {/* Google Calendar Connect */}
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 mb-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <CalendarIcon />
-            <div>
-              <p className="text-sm font-medium text-gray-900">Google Calendar</p>
-              <p className="text-xs text-gray-500">
-                {calendarConnected ? 'Syncing automatically' : 'Connect to sync tournaments'}
-              </p>
-            </div>
-          </div>
-          {calendarConnected ? (
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <span className="flex items-center gap-1.5 text-xs text-green-600 font-medium">
-                <span className="w-2 h-2 rounded-full bg-[#91BE4D] inline-block" />
-                Connected
-              </span>
-              <button onClick={handleDisconnectCalendar} className="text-xs text-gray-400 hover:text-red-500 transition-colors">
-                Disconnect
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleConnectCalendar}
-              disabled={calendarLoading}
-              className="flex-shrink-0 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-medium px-3 py-1.5 rounded-md transition-colors shadow-sm disabled:opacity-60"
-            >
-              {calendarLoading ? 'Connecting...' : 'Connect'}
-            </button>
-          )}
-        </div>
-        {syncProgress && (
-          <div className="mt-3">
-            <div className="flex justify-between mb-1">
-              <p className="text-xs text-blue-700 font-medium">Syncing… {syncProgress.done}/{syncProgress.total}</p>
-              <p className="text-xs text-blue-500">{Math.round((syncProgress.done / syncProgress.total) * 100)}%</p>
-            </div>
-            <div className="w-full bg-blue-100 rounded-full h-1.5">
-              <div className="bg-blue-500 h-1.5 rounded-full transition-all" style={{ width: `${(syncProgress.done / syncProgress.total) * 100}%` }} />
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── Calendar Card ── */}
