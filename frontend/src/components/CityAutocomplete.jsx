@@ -6,7 +6,8 @@ const LIBRARIES = ['places'];
 
 /**
  * City-only autocomplete restricted to India.
- * onSelect(cityName: string) — returns just the city name string.
+ * onChange(cityName: string) — called on every keystroke and on selection.
+ * value — used for initial value and external resets only.
  */
 export default function CityAutocomplete({ value, onChange, placeholder = 'Search city…', className = '' }) {
   const [inputValue, setInputValue] = useState(value || '');
@@ -14,7 +15,10 @@ export default function CityAutocomplete({ value, onChange, placeholder = 'Searc
   const [showDropdown, setShowDropdown] = useState(false);
   const autocompleteService = useRef(null);
   const containerRef = useRef(null);
-  const isUserTyping = useRef(false);
+
+  // Track the last value the user typed so we can distinguish parent feedback
+  // from a genuine external reset (e.g. parent clears the field).
+  const lastUserInput = useRef(value || '');
 
   const debouncedQuery = useDebounce(inputValue, 300);
 
@@ -28,17 +32,22 @@ export default function CityAutocomplete({ value, onChange, placeholder = 'Searc
     autocompleteService.current = new window.google.maps.places.AutocompleteService();
   }, [isLoaded]);
 
-  // Sync when parent resets the value
+  // Sync from parent only when it's a genuine external change
+  // (not just the parent echoing back what the user typed).
   useEffect(() => {
-    isUserTyping.current = false;
-    setInputValue(value || '');
+    const incoming = value || '';
+    if (incoming === lastUserInput.current) return; // parent feedback — ignore
+    lastUserInput.current = incoming;
+    setInputValue(incoming);
     setPredictions([]);
     setShowDropdown(false);
   }, [value]);
 
+  // Fire Places API whenever the debounced query changes
   useEffect(() => {
     if (!isLoaded || !autocompleteService.current) return;
-    if (!isUserTyping.current || !debouncedQuery || debouncedQuery.length < 2) {
+    const q = debouncedQuery.trim();
+    if (q.length < 2) {
       setPredictions([]);
       setShowDropdown(false);
       return;
@@ -46,12 +55,12 @@ export default function CityAutocomplete({ value, onChange, placeholder = 'Searc
 
     autocompleteService.current.getPlacePredictions(
       {
-        input: debouncedQuery,
+        input: q,
         componentRestrictions: { country: 'in' },
         types: ['(cities)'],
       },
       (results, status) => {
-        if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
+        if (status === window.google.maps.places.PlacesServiceStatus.OK && results?.length) {
           setPredictions(results);
           setShowDropdown(true);
         } else {
@@ -74,22 +83,23 @@ export default function CityAutocomplete({ value, onChange, placeholder = 'Searc
   }, []);
 
   const handleSelect = useCallback((prediction) => {
-    isUserTyping.current = false;
-    setShowDropdown(false);
-    setPredictions([]);
-    // Use just the city name (main_text), not the full description
     const cityName = prediction.structured_formatting.main_text;
+    lastUserInput.current = cityName;
     setInputValue(cityName);
+    setPredictions([]);
+    setShowDropdown(false);
     onChange(cityName);
   }, [onChange]);
 
   const handleChange = (e) => {
-    isUserTyping.current = true;
-    setInputValue(e.target.value);
-    onChange(e.target.value);
+    const val = e.target.value;
+    lastUserInput.current = val;
+    setInputValue(val);
+    onChange(val);
   };
 
   if (loadError) {
+    // Graceful fallback — let user type freely
     return (
       <input
         type="text"
