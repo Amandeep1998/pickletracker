@@ -468,6 +468,11 @@ function PlayerModal({ playerId, onClose, friendState, currentUserId, onSendFrie
                     <p className="text-xs text-gray-500 text-center">
                       Add friend to view their upcoming schedule calendar and follow their plans 😉
                     </p>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                      <p className="text-[11px] text-blue-800 leading-relaxed">
+                        Friend access shares only schedule/basic profile. Expenses, entry fees and earnings stay private.
+                      </p>
+                    </div>
                   </div>
                 )
               )}
@@ -714,6 +719,20 @@ export default function Players() {
 
   useEffect(() => { fetchPlayers(); }, [fetchPlayers]);
   useEffect(() => { fetchFriendData(); }, [fetchFriendData]);
+  useEffect(() => {
+    const onFocus = () => { fetchFriendData(); };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [fetchFriendData]);
+  useEffect(() => {
+    const timer = setInterval(() => { fetchFriendData(); }, 15000);
+    return () => clearInterval(timer);
+  }, [fetchFriendData]);
+
+  const incomingCount = (friendRequests.incoming || []).length;
+  useEffect(() => {
+    if (incomingCount > 0) setShowFriendRequests(true);
+  }, [incomingCount]);
 
   const handleSearchChange = (val) => {
     setSearch(val);
@@ -869,24 +888,26 @@ export default function Players() {
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2h2m10 0V6a2 2 0 00-2-2H9a2 2 0 00-2 2v2m10 0H7" /></svg>
           Friend Requests
-          {(friendRequests.incoming || []).length > 0 && (
+          {incomingCount > 0 && (
             <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 rounded-full bg-[#ec9937] text-white text-[10px] font-bold flex items-center justify-center">
-              {friendRequests.incoming.length}
+              {incomingCount}
             </span>
           )}
         </button>
       </div>
-      <p className="mb-5 text-sm text-gray-500">
-        Add friends to track each other&apos;s upcoming calendar schedule and stay in sync on events 😉
-      </p>
+      <div className="mb-5 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+        <p className="text-sm text-blue-800 leading-relaxed">
+          <span className="font-semibold">Add Friends:</span> send a friend request to follow each other&apos;s upcoming calendar schedule and stay in sync on events 😉
+        </p>
+      </div>
 
       {/* Incoming friend requests panel */}
       {showFriendRequests && (
         <div className="mb-5 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
           <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
-            Friend Requests <span className="text-[#4a6e10] ml-1">{friendRequests.incoming.length}</span>
+            Friend Requests <span className="text-[#4a6e10] ml-1">{incomingCount}</span>
           </p>
-          {(friendRequests.incoming || []).length === 0 ? (
+          {incomingCount === 0 ? (
             <p className="text-sm text-gray-400">No pending requests right now.</p>
           ) : (
             <div className="space-y-2">
