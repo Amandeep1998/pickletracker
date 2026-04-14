@@ -451,19 +451,24 @@ function PlayerModal({ playerId, onClose, friendState, currentUserId, onSendFrie
                     <span className="text-sm font-bold text-[#4a6e10]">Friends</span>
                   </div>
                 ) : (
-                  <button type="button" onClick={handleFriendClick}
-                    disabled={friendState === 'pending' || sending}
-                    className={`w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
-                      friendState === 'pending' ? 'bg-orange-50 text-orange-600 border border-orange-200 cursor-default'
-                      : 'text-white hover:opacity-90 disabled:opacity-60'
-                    }`}
-                    style={friendState !== 'pending' ? { background: 'linear-gradient(to right, #2d7005, #91BE4D 60%, #ec9937)' } : {}}>
-                    {sending
-                      ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Sending…</>
-                      : friendState === 'pending' ? '⏳ Friend request sent'
-                      : <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>Add Friend</>
-                    }
-                  </button>
+                  <div className="space-y-2">
+                    <button type="button" onClick={handleFriendClick}
+                      disabled={friendState === 'pending' || sending}
+                      className={`w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                        friendState === 'pending' ? 'bg-orange-50 text-orange-600 border border-orange-200 cursor-default'
+                        : 'text-white hover:opacity-90 disabled:opacity-60'
+                      }`}
+                      style={friendState !== 'pending' ? { background: 'linear-gradient(to right, #2d7005, #91BE4D 60%, #ec9937)' } : {}}>
+                      {sending
+                        ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Sending…</>
+                        : friendState === 'pending' ? '⏳ Friend request sent'
+                        : <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>Add Friend</>
+                      }
+                    </button>
+                    <p className="text-xs text-gray-500 text-center">
+                      Add friend to view their upcoming schedule calendar and follow their plans 😉
+                    </p>
+                  </div>
                 )
               )}
 
@@ -666,6 +671,7 @@ export default function Players() {
   const [friends, setFriends] = useState([]);
   const [toast, setToast] = useState(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showFriendRequests, setShowFriendRequests] = useState(false);
   const [consentRequest, setConsentRequest] = useState(null);
   const [acceptingId, setAcceptingId] = useState(null);
   const [friendCalendarTarget, setFriendCalendarTarget] = useState(null);
@@ -845,36 +851,59 @@ export default function Players() {
         </div>
       </div>
 
-      {/* Update profile CTA */}
-      <div className="mb-5">
-        <button type="button" onClick={() => setShowEditProfile(true)}
+      {/* Update profile + friend request CTA */}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setShowEditProfile(true)}
           className="flex items-center gap-2 text-sm font-semibold text-white px-4 py-2 rounded-xl hover:opacity-90 transition-opacity"
-          style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}>
+          style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}
+        >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
           Update my card
         </button>
+        <button
+          type="button"
+          onClick={() => setShowFriendRequests((v) => !v)}
+          className="relative flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl border border-[#91BE4D]/40 bg-[#f4f8e8] text-[#4a6e10] hover:bg-[#e9f3d5] transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2h2m10 0V6a2 2 0 00-2-2H9a2 2 0 00-2 2v2m10 0H7" /></svg>
+          Friend Requests
+          {(friendRequests.incoming || []).length > 0 && (
+            <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 rounded-full bg-[#ec9937] text-white text-[10px] font-bold flex items-center justify-center">
+              {friendRequests.incoming.length}
+            </span>
+          )}
+        </button>
       </div>
+      <p className="mb-5 text-sm text-gray-500">
+        Add friends to track each other&apos;s upcoming calendar schedule and stay in sync on events 😉
+      </p>
 
-      {/* Incoming friend requests */}
-      {(friendRequests.incoming || []).length > 0 && (
+      {/* Incoming friend requests panel */}
+      {showFriendRequests && (
         <div className="mb-5 bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
           <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">
             Friend Requests <span className="text-[#4a6e10] ml-1">{friendRequests.incoming.length}</span>
           </p>
-          <div className="space-y-2">
-            {friendRequests.incoming.map((r) => (
-              <div key={r.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-[#f4f8e8] border border-[#91BE4D]/20">
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">{r.user?.name || 'Player'}</p>
-                  <p className="text-xs text-gray-500">{r.user?.city || 'India'}</p>
+          {(friendRequests.incoming || []).length === 0 ? (
+            <p className="text-sm text-gray-400">No pending requests right now.</p>
+          ) : (
+            <div className="space-y-2">
+              {friendRequests.incoming.map((r) => (
+                <div key={r.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-[#f4f8e8] border border-[#91BE4D]/20">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">{r.user?.name || 'Player'}</p>
+                    <p className="text-xs text-gray-500">{r.user?.city || 'India'}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => handleAcceptRequest(r)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#4a6e10] text-white hover:bg-[#2d7005] transition-colors">Accept</button>
+                    <button type="button" onClick={() => handleRejectRequest(r.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors">Decline</button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => handleAcceptRequest(r)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#4a6e10] text-white hover:bg-[#2d7005] transition-colors">Accept</button>
-                  <button type="button" onClick={() => handleRejectRequest(r.id)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors">Decline</button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
