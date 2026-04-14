@@ -22,6 +22,7 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '600kb' })); // increased for base64 profile photo uploads
+app.use(express.urlencoded({ extended: false })); // needed for Twilio webhook (form-encoded body)
 
 // Lightweight health check — used by uptime pingers to prevent cold starts
 app.get('/health', (req, res) => {

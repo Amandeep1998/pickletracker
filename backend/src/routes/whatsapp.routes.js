@@ -1,10 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const protect = require('../middleware/auth.middleware');
-const { verify, webhook, getStatus, getDebug, connect, disconnect, triggerReminders, triggerInsights, testSend } = require('../controllers/whatsapp.controller');
+const { webhook, getStatus, getDebug, connect, disconnect, triggerReminders, triggerInsights, testSend } = require('../controllers/whatsapp.controller');
 
-// Meta webhook — public (verified by WHATSAPP_VERIFY_TOKEN)
-router.get('/webhook', verify);
+// Twilio webhook — public, Twilio POSTs form data here
 router.post('/webhook', webhook);
 
 // App-side connect / status — requires JWT

@@ -327,11 +327,14 @@ const normalisePhone = (input) => {
 exports.getStatus = async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id).select('whatsappPhone whatsappEnabled').lean();
+    const from = process.env.TWILIO_WHATSAPP_FROM || null;
+    const sandboxKeyword = process.env.TWILIO_SANDBOX_KEYWORD || null;
     res.json({
       enabled: !!user?.whatsappEnabled,
       connected: !!user?.whatsappPhone,
       phone: user?.whatsappPhone || null,
-      businessNumber: process.env.WHATSAPP_BUSINESS_NUMBER || null,
+      businessNumber: from,
+      sandboxKeyword,
     });
   } catch (err) {
     next(err);
@@ -614,14 +617,15 @@ exports.testSend = async (req, res, next) => {
     res.json({
       ok: result.ok,
       skipped: result.skipped || false,
-      status: result.status || null,
+      sid: result.sid || null,
       error: result.error || null,
       reason: result.reason || null,
       sentTo: `****${String(target).slice(-4)}`,
       envCheck: {
-        hasToken: Boolean(process.env.WHATSAPP_TOKEN),
-        hasPhoneId: Boolean(process.env.WHATSAPP_PHONE_ID),
-        phoneIdValue: process.env.WHATSAPP_PHONE_ID ? `...${String(process.env.WHATSAPP_PHONE_ID).slice(-6)}` : null,
+        hasAccountSid: Boolean(process.env.TWILIO_ACCOUNT_SID),
+        hasAuthToken:  Boolean(process.env.TWILIO_AUTH_TOKEN),
+        hasFrom:       Boolean(process.env.TWILIO_WHATSAPP_FROM),
+        from: process.env.TWILIO_WHATSAPP_FROM || null,
       },
     });
   } catch (err) {
@@ -631,37 +635,23 @@ exports.testSend = async (req, res, next) => {
 
 // ── Webhook controllers ────────────────────────────────────────────────────────
 
-exports.verify = (req, res) => {
-  const mode      = req.query['hub.mode'];
-  const token     = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
-
-  if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
-    return res.status(200).send(challenge);
-  }
-  res.status(403).send('Forbidden');
-};
-
+// Twilio POSTs form-encoded data — no GET verification step needed.
 exports.webhook = async (req, res) => {
-  res.status(200).send('OK');
+  // Twilio expects a 200 response quickly; reply before processing.
+  res.status(200).send('');
 
   try {
-    const message = req.body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
-    if (!message) {
-      console.log('[WA webhook] No message payload');
-      return;
-    }
-    if (message.type !== 'text') {
-      console.log(`[WA webhook] Ignored non-text message type: ${message.type}`);
+    // Twilio form fields: From = "whatsapp:+919833908356", Body = "hi"
+    const from = req.body?.From;
+    const text = req.body?.Body?.trim();
+
+    if (!from || !text) {
+      console.log('[WA webhook] Missing From or Body');
       return;
     }
 
-    const waId = message.from;
-    const text = message.text?.body?.trim();
-    if (!waId || !text) {
-      console.log('[WA webhook] Missing sender id or text body');
-      return;
-    }
+    // Strip "whatsapp:+" prefix → "919XXXXXXXXX" (matches our DB format)
+    const waId = from.replace(/^whatsapp:\+?/i, '');
 
     await processMessage(waId, text);
   } catch (err) {

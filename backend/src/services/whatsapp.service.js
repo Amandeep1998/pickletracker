@@ -1,39 +1,36 @@
-const GRAPH_URL = 'https://graph.facebook.com/v19.0';
+const twilio = require('twilio');
+
+const getClient = () => {
+  const sid   = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  if (!sid || !token) return null;
+  return twilio(sid, token);
+};
 
 /**
- * Send a plain-text WhatsApp message.
- * Errors are logged but not thrown — a failed send should not crash the webhook.
+ * Send a plain-text WhatsApp message via Twilio.
+ * `to` is stored in our DB as "919XXXXXXXXX" (no + prefix).
  */
 const send = async (to, body) => {
-  if (!process.env.WHATSAPP_TOKEN || !process.env.WHATSAPP_PHONE_ID) {
-    console.warn('[WhatsApp] WHATSAPP_TOKEN or WHATSAPP_PHONE_ID not set — skipping send');
+  const client = getClient();
+  if (!client) {
+    console.warn('[WhatsApp] TWILIO_ACCOUNT_SID or TWILIO_AUTH_TOKEN not set — skipping send');
     return { ok: false, skipped: true, reason: 'missing_env' };
   }
 
-  try {
-    const res = await fetch(`${GRAPH_URL}/${process.env.WHATSAPP_PHONE_ID}/messages`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to,
-        type: 'text',
-        text: { body, preview_url: false },
-      }),
-    });
+  const from = process.env.TWILIO_WHATSAPP_FROM || '+14155238886';
 
-    if (!res.ok) {
-      const err = await res.text();
-      console.error(`[WhatsApp] Send to ${to} failed (${res.status}):`, err);
-      return { ok: false, skipped: false, status: res.status, error: err };
-    }
-    return { ok: true, skipped: false, status: res.status };
+  try {
+    const message = await client.messages.create({
+      from: `whatsapp:${from}`,
+      to:   `whatsapp:+${to}`,
+      body,
+    });
+    console.log(`[WhatsApp] Sent to ${to}, SID: ${message.sid}`);
+    return { ok: true, sid: message.sid };
   } catch (err) {
-    console.error(`[WhatsApp] Network error sending to ${to}:`, err.message);
-    return { ok: false, skipped: false, reason: 'network', error: err.message };
+    console.error(`[WhatsApp] Twilio send to ${to} failed:`, err.message);
+    return { ok: false, error: err.message };
   }
 };
 
