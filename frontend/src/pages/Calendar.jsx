@@ -64,45 +64,8 @@ export default function Calendar() {
   const [addSessionModal, setAddSessionModal] = useState({ open: false, date: null });
   const [sessionFormLoading, setSessionFormLoading] = useState(false);
   const [sessionFormError, setSessionFormError] = useState('');
-  const [friends, setFriends] = useState([]);
-  const [friendId, setFriendId] = useState('');
-  const [friendEvents, setFriendEvents] = useState([]);
-  const [friendLoading, setFriendLoading] = useState(false);
-  const [friendError, setFriendError] = useState('');
 
   useEffect(() => { fetchData(); }, []);
-
-  useEffect(() => {
-    api
-      .getFriends()
-      .then((res) => {
-        const list = res.data.data || [];
-        setFriends(list);
-      })
-      .catch(() => {
-        // keep calendar usable if friends API is unavailable
-      });
-  }, []);
-
-  useEffect(() => {
-    if (!friendId) {
-      setFriendEvents([]);
-      setFriendError('');
-      return;
-    }
-    setFriendLoading(true);
-    setFriendError('');
-    api
-      .getFriendSchedule(friendId)
-      .then((res) => {
-        setFriendEvents(res.data.data || []);
-      })
-      .catch((err) => {
-        setFriendEvents([]);
-        setFriendError(err.response?.data?.message || 'Could not load friend schedule');
-      })
-      .finally(() => setFriendLoading(false));
-  }, [friendId]);
 
   const fetchTournaments = async () => {
     const res = await api.getTournaments();
@@ -331,47 +294,6 @@ export default function Calendar() {
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Friends schedules</p>
-            <p className="text-xs text-gray-400 mt-1">
-              Only schedule/basic details are shared with accepted friends. Expenses and entry fees stay private.
-            </p>
-          </div>
-          <select
-            value={friendId}
-            onChange={(e) => setFriendId(e.target.value)}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-[#91BE4D]"
-          >
-            <option value="">Select a friend</option>
-            {friends.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        {friendLoading ? (
-          <p className="text-xs text-gray-400 mt-3">Loading friend schedule…</p>
-        ) : friendError ? (
-          <p className="text-xs text-red-500 mt-3">{friendError}</p>
-        ) : friendId && friendEvents.length === 0 ? (
-          <p className="text-xs text-gray-400 mt-3">No upcoming schedule items to show.</p>
-        ) : friendEvents.length > 0 ? (
-          <div className="mt-3 space-y-2 max-h-40 overflow-auto">
-            {friendEvents.slice(0, 20).map((e, idx) => (
-              <div key={`${e.kind}-${e.date}-${idx}`} className="text-xs p-2 rounded border border-gray-100 bg-gray-50">
-                <p className="font-semibold text-gray-700">{e.title}</p>
-                <p className="text-gray-500">
-                  {e.date} · {e.kind === 'tournament' ? (e.categoryName || 'Tournament') : (e.sessionType || 'Session')}
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
       {/* ── Calendar Card ── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
 
@@ -461,29 +383,15 @@ export default function Calendar() {
                   </span>
                 </div>
 
-                {/* Mobile: colored dots at bottom of cell */}
-                {hasActivity && (
-                  <div className="sm:hidden absolute bottom-1.5 left-0 right-0 flex justify-center gap-1">
-                    {daySessions.slice(0, 2).map((s, i) => (
-                      <span key={i} className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${SESSION_DOT[s.type] || 'bg-blue-400'}`} />
-                    ))}
-                    {events.length > 0 && (
-                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-[#91BE4D]" />
-                    )}
-                    {(daySessions.length + events.length) > 3 && (
-                      <span className="text-[8px] text-gray-400 font-bold leading-none self-center">+</span>
-                    )}
-                  </div>
-                )}
-
-                {/* Desktop: named chips */}
-                <div className="hidden sm:block space-y-0.5">
+                {/* Named chips — visible on all screen sizes */}
+                <div className="space-y-0.5">
                   {daySessions.slice(0, 1).map((s, i) => (
                     <div
                       key={i}
-                      className={`text-xs rounded px-1 py-0.5 truncate font-medium leading-tight ${SESSION_CHIP[s.type] || 'bg-blue-100 text-blue-700'}`}
+                      className={`text-[8px] sm:text-[11px] rounded px-1 py-0.5 truncate font-semibold leading-tight ${SESSION_CHIP[s.type] || 'bg-blue-100 text-blue-700'}`}
                     >
-                      {SESSION_ICON[s.type]} {SESSION_LABEL[s.type]}
+                      <span className="hidden sm:inline">{SESSION_ICON[s.type]} </span>
+                      {SESSION_LABEL[s.type]}
                       {daySessions.length > 1 && ` ×${daySessions.length}`}
                     </div>
                   ))}
@@ -491,15 +399,16 @@ export default function Calendar() {
                     <div
                       key={i}
                       onClick={(e) => { e.stopPropagation(); setSelectedTournament(ev.tournament); }}
-                      className="text-xs bg-[#91BE4D]/15 text-[#4a6e10] rounded px-1 py-0.5 truncate font-medium hover:bg-green-200 transition cursor-pointer leading-tight"
+                      className="text-[8px] sm:text-[11px] bg-[#91BE4D]/15 text-[#4a6e10] rounded px-1 py-0.5 truncate font-semibold sm:hover:bg-green-200 transition cursor-pointer leading-tight"
                       title={`${ev.tournament.name} – ${ev.category.categoryName}`}
                     >
-                      🏆 {ev.tournament.name}
+                      <span className="hidden sm:inline">🏆 </span>
+                      {ev.tournament.name}
                     </div>
                   ))}
                   {(events.length + daySessions.length) > 2 && (
-                    <div className="text-[10px] text-gray-400 px-1 font-medium">
-                      +{events.length + daySessions.length - 2} more
+                    <div className="text-[8px] sm:text-[10px] text-gray-400 px-1 font-medium">
+                      +{events.length + daySessions.length - 2}
                     </div>
                   )}
                 </div>
