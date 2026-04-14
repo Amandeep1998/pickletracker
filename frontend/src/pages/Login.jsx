@@ -48,7 +48,7 @@ export default function Login() {
     clearError();
     const result = await handleLogin(form);
     if (result.success) {
-      navigate('/tournaments');
+      navigate('/calendar');
     } else {
       setError(result.message);
     }
@@ -81,7 +81,7 @@ export default function Login() {
 
             <GoogleSignInButton
               onBegin={() => { setError(''); clearError(); }}
-              onSuccess={() => navigate('/tournaments')}
+              onSuccess={() => navigate('/calendar')}
             />
 
             <div className="relative my-6">
