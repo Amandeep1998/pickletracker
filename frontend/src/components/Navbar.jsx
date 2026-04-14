@@ -48,6 +48,14 @@ export default function Navbar() {
           <NavLink to="/tournaments" className={linkClass}>Tournaments</NavLink>
           <NavLink to="/calendar"    className={linkClass}>Calendar</NavLink>
           <NavLink to="/sessions"   className={linkClass}>Journal</NavLink>
+          <NavLink to="/coach" className={({ isActive }) =>
+            `text-sm font-medium tracking-wide transition-colors flex items-center gap-1 ${
+              isActive ? 'text-[#91BE4D]' : 'text-[#272702]/60 hover:text-[#91BE4D]'
+            }`}>
+            AI Coach
+            <span className="text-[9px] font-bold px-1 py-0.5 rounded text-white leading-none"
+              style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}>NEW</span>
+          </NavLink>
           <NavLink to="/expenses"   className={linkClass}>Gear</NavLink>
           <NavLink to="/players"    className={linkClass}>Community</NavLink>
           {isAdmin && (

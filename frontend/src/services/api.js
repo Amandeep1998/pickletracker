@@ -89,6 +89,9 @@ export const removeFriend = (friendId) => api.delete(`/friends/${friendId}`);
 export const parseTournamentVoice = (transcript, currentForm) =>
   api.post('/ai/parse-voice', { transcript, currentForm });
 
+// AI — personal coach
+export const getCoachInsight = (messages) => api.post('/ai/coach', { messages });
+
 // AI — document (URL or file)
 export const parseFromFile = (file, currentForm) => {
   const formData = new FormData();
