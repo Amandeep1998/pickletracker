@@ -52,6 +52,20 @@ const userSchema = new mongoose.Schema(
       trim: true,
       maxlength: [100, 'State name is too long'],
     },
+    duprRating: {
+      type: Number,
+      default: null,
+      min: [1, 'DUPR rating must be between 1 and 8'],
+      max: [8, 'DUPR rating must be between 1 and 8'],
+    },
+    playingSince: {
+      type: Number,
+      default: null,
+    },
+    profilePhoto: {
+      type: String, // base64 data URL
+      default: null,
+    },
     resetPasswordToken: {
       type: String,
       default: null,

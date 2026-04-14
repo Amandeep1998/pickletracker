@@ -72,6 +72,7 @@ export default function MobileMenu() {
           <NavLink to="/calendar"    className={navLinkClass} onClick={() => setIsOpen(false)}>Calendar</NavLink>
           <NavLink to="/sessions"   className={navLinkClass} onClick={() => setIsOpen(false)}>Journal</NavLink>
           <NavLink to="/expenses"   className={navLinkClass} onClick={() => setIsOpen(false)}>Gear</NavLink>
+          <NavLink to="/my-card"    className={navLinkClass} onClick={() => setIsOpen(false)}>My Card</NavLink>
           <NavLink to="/profile"    className={navLinkClass} onClick={() => setIsOpen(false)}>Profile</NavLink>
           {isAdmin && (
             <NavLink to="/admin" className={({ isActive }) =>

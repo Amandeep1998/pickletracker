@@ -27,6 +27,9 @@ function publicUser(user) {
     whatsappPhone: user.whatsappPhone || null,
     city: user.city || null,
     state: user.state || null,
+    duprRating: user.duprRating || null,
+    playingSince: user.playingSince || null,
+    profilePhoto: user.profilePhoto || null,
   };
 }
 
@@ -269,6 +272,17 @@ const updateProfile = async (req, res, next) => {
     }
     if (city !== undefined) update.city = city ? String(city).trim().slice(0, 100) : null;
     if (req.body.state !== undefined) update.state = req.body.state ? String(req.body.state).trim().slice(0, 100) : null;
+    if (req.body.duprRating !== undefined) {
+      const r = parseFloat(req.body.duprRating);
+      update.duprRating = (!isNaN(r) && r >= 1 && r <= 8) ? Math.round(r * 100) / 100 : null;
+    }
+    if (req.body.playingSince !== undefined) {
+      const y = parseInt(req.body.playingSince);
+      update.playingSince = (!isNaN(y) && y >= 2000 && y <= new Date().getFullYear()) ? y : null;
+    }
+    if (req.body.profilePhoto !== undefined) {
+      update.profilePhoto = req.body.profilePhoto || null;
+    }
     if (whatsappPhone !== undefined) {
       if (whatsappPhone) {
         const digits = String(whatsappPhone).replace(/\D/g, '');
