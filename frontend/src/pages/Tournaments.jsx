@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import * as api from '../services/api';
 import TournamentForm from '../components/TournamentForm';
 import Modal from '../components/Modal';
-import WhatsAppConnect from '../components/WhatsAppConnect';
 import { formatINR, MEDAL_COLORS } from '../utils/format';
 import { getMapUrl } from '../utils/mapUrl';
 import { syncTournamentToCalendar, deleteTournamentFromCalendar, isCalendarConnected } from '../services/googleCalendar';
@@ -205,11 +204,6 @@ export default function Tournaments() {
             + Add Tournament
           </button>
         </div>
-      </div>
-
-      {/* WhatsApp connect */}
-      <div className="mb-4">
-        <WhatsAppConnect />
       </div>
 
       {/* Calendar tip */}

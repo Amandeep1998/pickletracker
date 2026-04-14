@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
+import CitySelect from '../components/CitySelect';
+
+const INDIAN_STATES = [
+  'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
+  'Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh',
+  'Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan',
+  'Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal',
+  'Andaman and Nicobar Islands','Chandigarh','Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi','Jammu and Kashmir','Ladakh','Lakshadweep','Puducherry',
+];
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
@@ -11,11 +21,12 @@ export default function Profile() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState('');
 
-  // Email notifications
-  const [emailReminders, setEmailReminders] = useState(true);
-  const [emailToggling, setEmailToggling] = useState(false);
-  const [emailTesting, setEmailTesting] = useState(false);
-  const [emailTestResult, setEmailTestResult] = useState(null);
+  // Location & contact (all optional)
+  const [locPhone, setLocPhone] = useState('');
+  const [locState, setLocState] = useState('');
+  const [locCity, setLocCity] = useState('');
+  const [locSaving, setLocSaving] = useState(false);
+  const [locSaved, setLocSaved] = useState(false);
 
   const [loading, setLoading] = useState(true);
 
@@ -24,11 +35,16 @@ export default function Profile() {
   const [exportError, setExportError] = useState('');
 
   useEffect(() => {
-    Promise.all([api.getProfile(), api.getEmailPrefs()])
-      .then(([profRes, prefsRes]) => {
-        const p = profRes.data.data;
+    api.getProfile()
+      .then((res) => {
+        const p = res.data.data;
         setName(p.name || '');
-        setEmailReminders(prefsRes.data.data.emailReminders !== false);
+        if (p.whatsappPhone) {
+          const digits = String(p.whatsappPhone);
+          setLocPhone(digits.startsWith('91') ? digits.slice(2) : digits);
+        }
+        if (p.state) setLocState(p.state);
+        if (p.city) setLocCity(p.city);
       })
       .catch(() => setSaveError('Could not load profile.'))
       .finally(() => setLoading(false));
@@ -51,29 +67,22 @@ export default function Profile() {
     }
   };
 
-  const handleToggleEmail = async () => {
-    const next = !emailReminders;
-    setEmailReminders(next);
-    setEmailToggling(true);
+  const handleSaveLocation = async (e) => {
+    e.preventDefault();
+    setLocSaving(true);
+    setLocSaved(false);
     try {
-      await api.updateEmailPrefs({ emailReminders: next });
-    } catch {
-      setEmailReminders(!next); // revert on error
+      const payload = {
+        state: locState || null,
+        city: locCity || null,
+        whatsappPhone: locPhone.trim() || null,
+      };
+      const res = await api.updateProfile(payload);
+      refreshUser(res.data.data);
+      setLocSaved(true);
+      setTimeout(() => setLocSaved(false), 3000);
     } finally {
-      setEmailToggling(false);
-    }
-  };
-
-  const handleTestEmail = async () => {
-    setEmailTesting(true);
-    setEmailTestResult(null);
-    try {
-      const res = await api.sendTestEmail();
-      setEmailTestResult({ ok: res.data.ok !== false });
-    } catch (err) {
-      setEmailTestResult({ ok: false, error: err.response?.data?.message || err.message });
-    } finally {
-      setEmailTesting(false);
+      setLocSaving(false);
     }
   };
 
@@ -214,51 +223,69 @@ export default function Profile() {
             </form>
           </div>
 
-          {/* Email Notifications Card */}
+          {/* Location & Contact Card */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5">
-            <div className="flex items-center gap-3 mb-1">
-              <span className="text-2xl">✉️</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-gray-900">Email Notifications</p>
-                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+            <p className="text-sm font-bold text-gray-900 mb-0.5">Location &amp; Contact</p>
+            <p className="text-xs text-gray-400 mb-4">Optional — helps personalise your community profile and upcoming features.</p>
+            <form onSubmit={handleSaveLocation} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  Mobile number <span className="text-gray-300 font-normal normal-case">(optional)</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="flex-shrink-0 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-400 bg-gray-50 font-medium">+91</span>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    value={locPhone}
+                    onChange={(e) => setLocPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    placeholder="9876543210"
+                    maxLength={10}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
+                  />
+                </div>
               </div>
-              {/* Toggle */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  State <span className="text-gray-300 font-normal normal-case">(optional)</span>
+                </label>
+                <select
+                  value={locState}
+                  onChange={(e) => { setLocState(e.target.value); setLocCity(''); }}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D] bg-white"
+                >
+                  <option value="">Select state…</option>
+                  {INDIAN_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  City <span className="text-gray-300 font-normal normal-case">(optional)</span>
+                </label>
+                <CitySelect
+                  state={locState}
+                  value={locCity}
+                  onChange={setLocCity}
+                  disabled={!locState}
+                />
+              </div>
+              {locSaved && (
+                <div className="bg-[#f4f8e8] border border-[#91BE4D]/30 text-[#4a6e10] text-sm rounded-lg px-4 py-2.5 flex items-center gap-2">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Saved!
+                </div>
+              )}
               <button
-                onClick={handleToggleEmail}
-                disabled={emailToggling}
-                className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none disabled:opacity-60 ${emailReminders ? 'bg-[#91BE4D]' : 'bg-gray-200'}`}
-                aria-label="Toggle email notifications"
+                type="submit"
+                disabled={locSaving}
+                className="w-full disabled:opacity-60 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-sm tracking-wide transition-opacity"
+                style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
               >
-                <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${emailReminders ? 'translate-x-5' : 'translate-x-0'}`} />
+                {locSaving ? 'Saving…' : 'Save'}
               </button>
-            </div>
-
-            <div className="mt-3 mb-4 bg-[#f4f8e8] border border-[#91BE4D]/20 rounded-xl px-4 py-3">
-              <p className="text-xs text-[#4a6e10] leading-relaxed">
-                {emailReminders
-                  ? <>Notifications are <strong>on</strong>. You'll get a reminder the day before each tournament, plus a weekly digest every Monday with your session stats and streak.</>
-                  : <>Notifications are <strong>off</strong>. Toggle to receive tournament reminders and weekly performance digests.</>
-                }
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleTestEmail}
-              disabled={emailTesting || !emailReminders}
-              className="w-full border border-gray-200 rounded-xl py-2 text-xs font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-700 disabled:opacity-40 transition-colors"
-            >
-              {emailTesting ? 'Sending…' : '📬 Send a test email to my inbox'}
-            </button>
-
-            {emailTestResult && (
-              <div className={`mt-2 text-xs rounded-lg px-3 py-2.5 ${emailTestResult.ok ? 'bg-[#f4f8e8] border border-[#91BE4D]/30 text-[#4a6e10]' : 'bg-red-50 border border-red-200 text-red-700'}`}>
-                {emailTestResult.ok
-                  ? 'Test email sent! Check your inbox (and spam folder).'
-                  : `Send failed: ${emailTestResult.error || 'unknown error'}`
-                }
-              </div>
-            )}
+            </form>
           </div>
 
           {/* Export Card */}

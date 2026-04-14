@@ -87,7 +87,7 @@ const FEATURES = [
     Icon: IconCalendar,
     bg: 'bg-[#fff8ee]',
     title: 'Calendar View',
-    desc: 'Sessions and tournaments laid out by date. Tap any day to see activity. Get WhatsApp reminders before your tournaments.',
+    desc: 'Sessions and tournaments laid out by date. Tap any day to see what you played, which tournaments you entered, and track your activity over time.',
   },
 ];
 
@@ -205,7 +205,7 @@ export default function Landing() {
                 { value: '100%', label: 'Free to use' },
                 { value: 'Journal', label: 'Performance tracking' },
                 { value: 'Live', label: 'Finance dashboard' },
-                { value: 'WhatsApp', label: 'Reminders & insights' },
+                { value: 'Community', label: 'Player community' },
               ].map((s) => (
                 <div key={s.label} className="text-center">
                   <p className="text-2xl sm:text-3xl font-extrabold text-[#272702] tracking-tight">{s.value}</p>
@@ -277,25 +277,6 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ── WhatsApp note ────────────────────────────────── */}
-        <section className="bg-white py-16 sm:py-20">
-          <div className="max-w-6xl mx-auto px-5 sm:px-8">
-            <div className="bg-[#f4f8e8] border border-[#91BE4D]/20 rounded-2xl px-7 py-8 sm:px-10 sm:py-10 flex flex-col sm:flex-row gap-6 items-start">
-              <div className="w-12 h-12 flex-shrink-0 rounded-xl bg-white border border-[#91BE4D]/20 flex items-center justify-center text-2xl">
-                📱
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-[#272702] mb-2">Stay in the loop on WhatsApp</h3>
-                <p className="text-sm text-gray-500 leading-relaxed mb-2">
-                  Connect your WhatsApp number in your profile to receive tournament reminders the day before your events — so you never miss a registration deadline or match time.
-                </p>
-                <p className="text-sm text-gray-400 leading-relaxed">
-                  We also send weekly performance insights — your top strengths, focus areas, and session stats — to keep you improving between sessions. You can disconnect anytime from your profile.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* ── CTA ───────────────────────────────────────────── */}
         <section className="bg-[#f4f8e8] border-t border-[#91BE4D]/15 py-20 sm:py-24">

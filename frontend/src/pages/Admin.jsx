@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import { formatINR } from '../utils/format';
-import { toggleWhatsAppAccess, deleteAdminUser } from '../services/api';
+import { deleteAdminUser } from '../services/api';
 import AdminUserCalendar from '../components/AdminUserCalendar';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
@@ -57,8 +57,6 @@ export default function Admin() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('createdAt');
   const [expandedId, setExpandedId] = useState(null);
-  const [whatsappAccess, setWhatsappAccess] = useState({}); // { [userId]: boolean }
-  const [whatsappToggling, setWhatsappToggling] = useState({}); // { [userId]: boolean }
   const [calendarUser, setCalendarUser] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null); // user object pending delete
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -75,26 +73,11 @@ export default function Admin() {
     api.getAdminUsers()
       .then((res) => {
         setData(res.data.data);
-        const access = {};
-        res.data.data.users.forEach((u) => { access[u._id] = u.whatsappEnabled; });
-        setWhatsappAccess(access);
       })
       .catch(() => setError('Failed to load admin data'))
       .finally(() => setLoading(false));
   }, []);
 
-  const handleToggleWhatsApp = async (userId, e) => {
-    e.stopPropagation();
-    setWhatsappToggling((prev) => ({ ...prev, [userId]: true }));
-    try {
-      const res = await toggleWhatsAppAccess(userId);
-      setWhatsappAccess((prev) => ({ ...prev, [userId]: res.data.whatsappEnabled }));
-    } catch {
-      // silent — user sees no change
-    } finally {
-      setWhatsappToggling((prev) => ({ ...prev, [userId]: false }));
-    }
-  };
 
   const handleDeleteUser = async () => {
     if (!deleteConfirm) return;
@@ -419,30 +402,7 @@ export default function Admin() {
                   </div>
 
                   {/* Bottom actions row */}
-                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between gap-4 flex-wrap">
-                    {/* WhatsApp access toggle */}
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-gray-700">WhatsApp Access</p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {whatsappAccess[u._id] ? 'User can connect WhatsApp' : 'WhatsApp feature hidden for this user'}
-                        </p>
-                      </div>
-                      <button
-                        onClick={(e) => handleToggleWhatsApp(u._id, e)}
-                        disabled={whatsappToggling[u._id]}
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${
-                          whatsappAccess[u._id] ? 'bg-[#25D366]' : 'bg-gray-200'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                            whatsappAccess[u._id] ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-end gap-4 flex-wrap">
                     {/* Delete user */}
                     <button
                       onClick={(e) => { e.stopPropagation(); setDeleteConfirm(u); setDeleteError(''); }}
@@ -498,7 +458,7 @@ export default function Admin() {
               <p className="text-xs text-gray-400">{deleteConfirm.email}</p>
             </div>
             <p className="text-xs text-gray-500 mb-4">
-              All their tournaments, expenses, and WhatsApp data will be permanently deleted.
+              All their tournaments, sessions, and data will be permanently deleted.
             </p>
 
             {deleteError && (

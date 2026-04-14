@@ -51,7 +51,7 @@ export default function Dashboard() {
   const [nudgeDismissed, setNudgeDismissed] = useState(
     () => sessionStorage.getItem(nudgeKey) === '1'
   );
-  const profileIncomplete = !user?.whatsappPhone || !user?.city;
+  const profileIncomplete = !user?.city || !user?.state;
   const showNudge = profileIncomplete && !nudgeDismissed;
   const dismissNudge = useCallback(() => {
     sessionStorage.setItem(nudgeKey, '1');
@@ -373,11 +373,7 @@ export default function Dashboard() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-[#272702]">Make PickleTracker work harder for you</p>
             <p className="text-xs text-gray-500 mt-0.5">
-              {!user?.whatsappPhone && !user?.city
-                ? 'Add your mobile & city — get tournament reminders and discover local events.'
-                : !user?.whatsappPhone
-                ? 'Add your mobile number to get WhatsApp reminders before your tournaments.'
-                : 'Add your city to discover tournaments happening near you.'}
+              Add your city and state to personalise your profile and appear in the community player directory.
             </p>
             <NavLink
               to="/profile"
@@ -541,15 +537,6 @@ export default function Dashboard() {
               })}
             </p>
           </div>
-          {/* Contextual phone nudge */}
-          {!user?.whatsappPhone && (
-            <NavLink
-              to="/profile"
-              className="w-full sm:w-auto text-center text-[11px] text-[#4a6e10] bg-[#f4f8e8] border border-[#91BE4D]/25 px-3 py-1.5 rounded-lg hover:bg-[#edf5d8] transition-colors font-semibold"
-            >
-              📱 Add phone → get a reminder before this
-            </NavLink>
-          )}
         </div>
       )}
 
