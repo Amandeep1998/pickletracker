@@ -113,8 +113,8 @@ export default function Profile() {
   // Profile completion
   const completionItems = [
     { label: 'Name', done: !!name.trim() },
-    { label: 'WhatsApp', done: waConnected },
-    { label: 'Location', done: !!(waState && waCity) },
+    { label: 'State', done: !!locState },
+    { label: 'City', done: !!locCity },
   ];
   const completedCount = completionItems.filter((i) => i.done).length;
   const completionPct = Math.round((completedCount / completionItems.length) * 100);
