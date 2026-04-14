@@ -17,6 +17,7 @@ import Terms from './pages/Terms';
 import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
 import PlayerCardPage from './pages/PlayerCardPage';
+import Players from './pages/Players';
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/my-card" element={<PlayerCardPage />} />
+          <Route path="/players" element={<Players />} />
           <Route path="/admin" element={<Admin />} />
         </Route>
 
