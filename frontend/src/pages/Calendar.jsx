@@ -294,6 +294,12 @@ export default function Calendar() {
         ))}
       </div>
 
+      <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+        <p className="text-sm text-blue-800 leading-relaxed">
+          <span className="font-semibold">Tip:</span> You can add a tournament directly from the calendar by clicking on any date.
+        </p>
+      </div>
+
       {/* ── Calendar Card ── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
 

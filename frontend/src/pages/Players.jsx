@@ -282,7 +282,7 @@ function FriendCalendarModal({ friend, onClose }) {
 }
 
 // ── Mini card in the city grid ───────────────────────────────────────────────
-function PlayerMiniCard({ player, onClick, friendState, onAddFriend, currentUserId }) {
+function PlayerMiniCard({ player, onClick, friendState, onAddFriend, currentUserId, isSendingFriendRequest }) {
   const { name, city, profilePhoto, duprSingles, duprDoubles, medals, totalMedals, topCategories } = player;
   const initials = (name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   const rarity = rarityLabel(totalMedals || 0);
@@ -290,7 +290,7 @@ function PlayerMiniCard({ player, onClick, friendState, onAddFriend, currentUser
 
   const handleFriendClick = (e) => {
     e.stopPropagation();
-    if (friendState === 'none') onAddFriend(player.id);
+    if (friendState === 'none' && !isSendingFriendRequest) onAddFriend(player.id);
   };
 
   return (
@@ -360,6 +360,14 @@ function PlayerMiniCard({ player, onClick, friendState, onAddFriend, currentUser
           ) : friendState === 'pending' ? (
             <div className="flex items-center justify-center py-1.5 rounded-lg bg-orange-50">
               <span className="text-[10px] font-bold text-orange-600">Requested</span>
+            </div>
+          ) : isSendingFriendRequest ? (
+            <div className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-blue-50 border border-blue-200">
+              <svg className="w-3 h-3 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+              </svg>
+              <span className="text-[10px] font-bold text-blue-700">Sending...</span>
             </div>
           ) : (
             <button onClick={handleFriendClick}
@@ -686,6 +694,8 @@ export default function Players() {
   const [consentRequest, setConsentRequest] = useState(null);
   const [acceptingId, setAcceptingId] = useState(null);
   const [friendCalendarTarget, setFriendCalendarTarget] = useState(null);
+  const [sendingFriendIds, setSendingFriendIds] = useState(() => new Set());
+  const [pendingFriendIds, setPendingFriendIds] = useState(() => new Set());
   const [locationPromptOpen, setLocationPromptOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -751,8 +761,11 @@ export default function Players() {
     friends.forEach((f) => { map[String(f.id)] = 'friend'; });
     (friendRequests.incoming || []).forEach((r) => { map[String(r.user.id)] = 'incoming'; });
     (friendRequests.outgoing || []).forEach((r) => { map[String(r.user.id)] = 'pending'; });
+    pendingFriendIds.forEach((id) => {
+      if (!map[String(id)]) map[String(id)] = 'pending';
+    });
     return map;
-  }, [friendRequests, friends]);
+  }, [friendRequests, friends, pendingFriendIds]);
 
   // ── City grouping & distance sorting ──
   const filteredPlayers = useMemo(() => {
@@ -803,12 +816,25 @@ export default function Players() {
   const showToast = (message, type = 'success') => setToast({ message, type });
 
   const handleSendFriendRequest = async (playerId) => {
+    setSendingFriendIds((prev) => new Set(prev).add(String(playerId)));
+    setPendingFriendIds((prev) => new Set(prev).add(String(playerId)));
     try {
       await api.sendFriendRequest(playerId);
       showToast('Friend request sent!');
       await fetchFriendData();
     } catch (err) {
+      setPendingFriendIds((prev) => {
+        const next = new Set(prev);
+        next.delete(String(playerId));
+        return next;
+      });
       showToast(err.response?.data?.message || 'Could not send request', 'error');
+    } finally {
+      setSendingFriendIds((prev) => {
+        const next = new Set(prev);
+        next.delete(String(playerId));
+        return next;
+      });
     }
   };
 
@@ -1043,6 +1069,7 @@ export default function Players() {
                       friendState={friendStatusByUserId[String(p.id)] || 'none'}
                       onAddFriend={handleSendFriendRequest}
                       currentUserId={user?.id}
+                      isSendingFriendRequest={sendingFriendIds.has(String(p.id))}
                     />
                   ))}
                 </div>
