@@ -1,7 +1,27 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import CitySelect from '../components/CitySelect';
+
+const resizeImage = (file) =>
+  new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const SIZE = 300;
+        const canvas = document.createElement('canvas');
+        canvas.width = SIZE; canvas.height = SIZE;
+        const ctx = canvas.getContext('2d');
+        const scale = Math.max(SIZE / img.width, SIZE / img.height);
+        const w = img.width * scale; const h = img.height * scale;
+        ctx.drawImage(img, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
 
 const INDIAN_STATES = [
   'Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat',
@@ -14,12 +34,17 @@ const INDIAN_STATES = [
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
+  const fileInputRef = useRef(null);
 
   // Profile fields
   const [name, setName] = useState(user?.name || '');
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  // Photo
+  const [profilePhoto, setProfilePhoto] = useState(null);
+  const [photoSaving, setPhotoSaving] = useState(false);
 
   // Location & contact (all optional)
   const [locPhone, setLocPhone] = useState('');
@@ -39,6 +64,7 @@ export default function Profile() {
       .then((res) => {
         const p = res.data.data;
         setName(p.name || '');
+        if (p.profilePhoto) setProfilePhoto(p.profilePhoto);
         if (p.whatsappPhone) {
           const digits = String(p.whatsappPhone);
           setLocPhone(digits.startsWith('91') ? digits.slice(2) : digits);
@@ -49,6 +75,33 @@ export default function Profile() {
       .catch(() => setSaveError('Could not load profile.'))
       .finally(() => setLoading(false));
   }, []);
+
+  const handlePhotoChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoSaving(true);
+    try {
+      const dataUrl = await resizeImage(file);
+      setProfilePhoto(dataUrl);
+      const res = await api.updateProfile({ profilePhoto: dataUrl });
+      refreshUser(res.data.data);
+    } catch {
+      // photo upload failed silently — preview still shows
+    } finally {
+      setPhotoSaving(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    setPhotoSaving(true);
+    try {
+      const res = await api.updateProfile({ profilePhoto: null });
+      refreshUser(res.data.data);
+      setProfilePhoto(null);
+    } finally {
+      setPhotoSaving(false);
+    }
+  };
 
   const handleSaveName = async (e) => {
     e.preventDefault();
@@ -109,6 +162,7 @@ export default function Profile() {
   };
 
   const initials = (user?.name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+  const displayPhoto = profilePhoto || user?.profilePhoto || null;
 
   // Profile completion
   const completionItems = [
@@ -128,16 +182,50 @@ export default function Profile() {
         style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}
       >
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
-        <div
-          className="relative flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center text-xl font-black text-white shadow-lg"
-          style={{ background: 'linear-gradient(135deg, #2d7005, #91BE4D 45%, #ec9937)' }}
+        {/* Clickable avatar */}
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={photoSaving}
+          className="relative flex-shrink-0 w-16 h-16 rounded-full group focus:outline-none"
+          style={{ background: 'linear-gradient(135deg, #2d7005, #91BE4D 45%, #ec9937)', padding: 2.5 }}
         >
-          {initials}
-        </div>
-        <div className="relative">
+          <div className="w-full h-full rounded-full overflow-hidden bg-[#1c3a07] flex items-center justify-center">
+            {displayPhoto
+              ? <img src={displayPhoto} alt={user?.name} className="w-full h-full object-cover" />
+              : <span className="text-lg font-black text-white">{initials}</span>
+            }
+          </div>
+          {/* Camera overlay on hover */}
+          <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            {photoSaving
+              ? <svg className="w-4 h-4 text-white animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+              : <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            }
+          </div>
+        </button>
+        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoChange} className="hidden" />
+
+        <div className="relative flex-1 min-w-0">
           <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-0.5">Your profile</p>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight">{user?.name}</h1>
-          <p className="text-slate-400 text-xs mt-0.5">{user?.email}</p>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight truncate">{user?.name}</h1>
+          <p className="text-slate-400 text-xs mt-0.5 truncate">{user?.email}</p>
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="text-[#91BE4D]/70 hover:text-[#91BE4D] text-[10px] font-semibold mt-1 transition-colors"
+          >
+            {displayPhoto ? 'Change photo' : '+ Add photo'}
+          </button>
+          {displayPhoto && (
+            <button
+              type="button"
+              onClick={handleRemovePhoto}
+              className="text-white/30 hover:text-red-400 text-[10px] font-semibold mt-1 ml-3 transition-colors"
+            >
+              Remove
+            </button>
+          )}
         </div>
       </div>
 

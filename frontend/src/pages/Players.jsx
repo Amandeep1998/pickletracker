@@ -493,32 +493,47 @@ function PlayerModal({ playerId, onClose, onSendFriendRequest, friendState, curr
                   {rarity.text}
                 </span>
               )}
-
-              {!currentUserId || String(player.id) === String(currentUserId) ? null : (
-                <button
-                  type="button"
-                  onClick={handleFriendClick}
-                  disabled={friendState !== 'none' || sending}
-                  className={`mt-4 text-xs font-bold px-4 py-1.5 rounded-lg border flex items-center gap-2 transition-colors ${
-                    friendState === 'friend'
-                      ? 'border-[#91BE4D] bg-[#91BE4D]/15 text-[#4a6e10]'
-                      : friendState === 'pending'
-                      ? 'border-orange-300 bg-orange-50 text-orange-700'
-                      : 'border-white/20 bg-white/10 text-white hover:bg-white/20'
-                  }`}
-                >
-                  {sending
-                    ? <><svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Sending…</>
-                    : friendState === 'friend' ? '✓ Friends'
-                    : friendState === 'pending' ? '⏳ Request pending'
-                    : '+ Add friend'
-                  }
-                </button>
-              )}
             </div>
 
             {/* Stats */}
             <div className="px-6 py-5 space-y-5">
+
+              {/* Add friend — prominent in white area so it's clearly visible */}
+              {currentUserId && String(player.id) !== String(currentUserId) && (
+                friendState === 'friend' ? (
+                  <div className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#f4f8e8] border border-[#91BE4D]/30">
+                    <svg className="w-4 h-4 text-[#4a6e10]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-sm font-bold text-[#4a6e10]">Friends</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleFriendClick}
+                    disabled={friendState === 'pending' || sending}
+                    className={`w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                      friendState === 'pending'
+                        ? 'bg-orange-50 text-orange-600 border border-orange-200 cursor-default'
+                        : 'text-white hover:opacity-90 disabled:opacity-60'
+                    }`}
+                    style={friendState !== 'pending' ? { background: 'linear-gradient(to right, #2d7005, #91BE4D 60%, #ec9937)' } : {}}
+                  >
+                    {sending ? (
+                      <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Sending…</>
+                    ) : friendState === 'pending' ? (
+                      <>⏳ Friend request sent</>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                        </svg>
+                        Add Friend
+                      </>
+                    )}
+                  </button>
+                )
+              )}
 
               {/* Tournaments + medals — aligned by adding icon row to Events */}
               <div>
