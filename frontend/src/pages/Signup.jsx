@@ -47,7 +47,7 @@ export default function Signup() {
           {/* Branding */}
           <div className="mb-8 text-center">
             <div className="mb-3"><BrandLogo size="2xl" /></div>
-            <p className="text-sm text-gray-500 mt-2">Track your pickleball tournaments and finances</p>
+            <p className="text-sm text-gray-500 mt-2">Play smarter. Win more. Own your game.</p>
           </div>
 
           {/* Card */}
