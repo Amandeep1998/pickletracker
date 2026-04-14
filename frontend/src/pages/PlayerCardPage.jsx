@@ -15,13 +15,10 @@ const resizeImage = (file) =>
       img.onload = () => {
         const SIZE = 300;
         const canvas = document.createElement('canvas');
-        canvas.width = SIZE;
-        canvas.height = SIZE;
+        canvas.width = SIZE; canvas.height = SIZE;
         const ctx = canvas.getContext('2d');
-        // Cover-crop to square
         const scale = Math.max(SIZE / img.width, SIZE / img.height);
-        const w = img.width * scale;
-        const h = img.height * scale;
+        const w = img.width * scale; const h = img.height * scale;
         ctx.drawImage(img, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
         resolve(canvas.toDataURL('image/jpeg', 0.82));
       };
@@ -30,12 +27,12 @@ const resizeImage = (file) =>
     reader.readAsDataURL(file);
   });
 
+const MEDAL_OPTIONS = ['Gold', 'Silver', 'Bronze'];
+
 export default function PlayerCardPage() {
   const { user, refreshUser } = useAuth();
-
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [form, setForm] = useState({
     duprSingles: '',
     duprDoubles: '',
@@ -47,7 +44,6 @@ export default function PlayerCardPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [photoPreview, setPhotoPreview] = useState(null);
-
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -78,14 +74,12 @@ export default function PlayerCardPage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    setSaving(true);
-    setSaveError('');
-    setSaveSuccess(false);
+    setSaving(true); setSaveError(''); setSaveSuccess(false);
     try {
       const payload = {
         duprSingles: form.duprSingles !== '' ? form.duprSingles : null,
         duprDoubles: form.duprDoubles !== '' ? form.duprDoubles : null,
-        duprRating: form.duprSingles !== '' ? form.duprSingles : null,
+        duprRating:  form.duprSingles !== '' ? form.duprSingles : null,
         playingSince: form.playingSince !== '' ? form.playingSince : null,
         profilePhoto: form.profilePhoto ?? null,
         manualAchievements: form.manualAchievements || [],
@@ -100,310 +94,228 @@ export default function PlayerCardPage() {
     }
   };
 
-  // Build profile object for the card
-  const manualAchievements = Array.isArray(form.manualAchievements) ? form.manualAchievements : [];
-  const mergedTournamentNames = [
-    ...new Set(
-      [
-        ...tournaments.map((t) => t.name),
-        ...manualAchievements.map((a) => a.tournamentName),
-      ]
-        .map((x) => (x || '').trim())
-        .filter(Boolean)
-    ),
-  ];
-  const copyTournamentNames = async () => {
-    try {
-      await navigator.clipboard.writeText(mergedTournamentNames.join('\n'));
-      setSaveSuccess(true);
-    } catch {
-      setSaveError('Could not copy. Please copy manually.');
-    }
-  };
+  const updateAchievement = (idx, field, value) =>
+    setForm((f) => {
+      const copy = [...(f.manualAchievements || [])];
+      copy[idx] = { ...copy[idx], [field]: value };
+      return { ...f, manualAchievements: copy };
+    });
+
+  const removeAchievement = (idx) =>
+    setForm((f) => ({ ...f, manualAchievements: (f.manualAchievements || []).filter((_, i) => i !== idx) }));
+
+  const addAchievement = () =>
+    setForm((f) => ({
+      ...f,
+      manualAchievements: [...(f.manualAchievements || []), { tournamentName: '', categoryName: '', medal: 'Gold', date: '' }],
+    }));
 
   const cardProfile = {
     name: user?.name || '',
     city: user?.city || '',
     state: user?.state || '',
     duprRating: form.duprSingles || null,
+    duprDoubles: form.duprDoubles || null,
     playingSince: form.playingSince || null,
     profilePhoto: photoPreview,
   };
 
+  const manualAchievements = Array.isArray(form.manualAchievements) ? form.manualAchievements : [];
+  const initials = (user?.name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+
   return (
-    <div className="max-w-xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
 
       {/* Hero */}
-      <div
-        className="rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-6 flex items-center gap-4 overflow-hidden relative"
-        style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}
-      >
+      <div className="rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-6 overflow-hidden relative"
+        style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}>
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
-        <div className="relative">
-          <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-0.5">Community</p>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight">My Public Player Profile</h1>
-          <p className="text-slate-400 text-xs mt-0.5">Customize your card and achievements shown in Community</p>
+        <div className="relative flex items-center justify-between gap-4">
+          <div>
+            <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-0.5">Community</p>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight">My Player Card</h1>
+            <p className="text-slate-400 text-xs mt-0.5">Edit your card and share it with the pickleball community</p>
+          </div>
+          <Link to="/players" className="relative flex-shrink-0 text-xs font-semibold text-white/60 hover:text-white transition-colors">
+            ← Community
+          </Link>
         </div>
-        <div className="relative ml-auto select-none text-4xl">🏓</div>
-      </div>
-
-      <div className="mb-4 flex justify-end">
-        <Link
-          to="/players"
-          className="text-sm font-semibold text-[#4a6e10] hover:text-[#2d7005] transition-colors"
-        >
-          ← Back to Community
-        </Link>
       </div>
 
       {loading ? (
         <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
       ) : (
-        <>
-          {/* Card preview */}
-          <div className="flex justify-center mb-6">
+        /* Desktop: side by side. Mobile: form first, card below */
+        <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[340px_1fr] lg:gap-10 lg:items-start">
+
+          {/* ── Card preview (right on mobile, left on desktop) ── */}
+          <div className="order-2 lg:order-1 lg:sticky lg:top-24 flex flex-col items-center gap-4">
             <PlayerCard profile={cardProfile} tournaments={tournaments} />
+            <p className="text-xs text-gray-400 text-center">Card updates live as you edit →</p>
           </div>
 
-          {/* Edit form */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5">
-            <p className="text-sm font-bold text-gray-800 mb-4">Customise your card</p>
+          {/* ── Edit form (first on mobile, right on desktop) ── */}
+          <div className="order-1 lg:order-2">
             <form onSubmit={handleSave} className="space-y-5">
 
-              {/* Profile photo */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                  Profile photo
-                </label>
+              {/* Photo upload — prominent at top */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Profile Photo</p>
                 <div className="flex items-center gap-4">
-                  <div
-                    className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-black text-white flex-shrink-0 overflow-hidden cursor-pointer border-2 border-dashed border-gray-300 hover:border-[#91BE4D] transition-colors"
-                    style={{ background: photoPreview ? 'transparent' : 'linear-gradient(135deg, #2d7005, #91BE4D 45%, #ec9937)' }}
+                  {/* Big tappable avatar */}
+                  <button
+                    type="button"
                     onClick={() => fileInputRef.current?.click()}
+                    className="relative w-20 h-20 rounded-full overflow-hidden flex-shrink-0 group"
+                    style={{ background: 'linear-gradient(135deg, #2d7005, #91BE4D 45%, #ec9937)' }}
                   >
                     {photoPreview
                       ? <img src={photoPreview} alt="preview" className="w-full h-full object-cover" />
-                      : (user?.name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+                      : <span className="flex items-center justify-center w-full h-full text-xl font-black text-white">{initials}</span>
                     }
-                  </div>
+                    {/* Overlay */}
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                  </button>
                   <div>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="text-sm font-semibold text-[#4a6e10] hover:text-[#2d7005] transition-colors"
-                    >
-                      {photoPreview ? 'Change photo' : 'Upload photo'}
+                    <button type="button" onClick={() => fileInputRef.current?.click()}
+                      className="block text-sm font-bold text-[#4a6e10] hover:text-[#2d7005] transition-colors mb-1">
+                      {photoPreview ? 'Change photo' : '+ Upload photo'}
                     </button>
+                    <p className="text-[11px] text-gray-400">JPG or PNG, auto-cropped to square</p>
                     {photoPreview && (
-                      <button
-                        type="button"
+                      <button type="button"
                         onClick={() => { setPhotoPreview(null); setForm((f) => ({ ...f, profilePhoto: null })); }}
-                        className="block text-xs text-gray-400 hover:text-red-500 mt-1 transition-colors"
-                      >
-                        Remove
+                        className="text-xs text-gray-400 hover:text-red-500 mt-1 transition-colors">
+                        Remove photo
                       </button>
                     )}
-                    <p className="text-[11px] text-gray-400 mt-1">JPG or PNG, auto-cropped to square</p>
                   </div>
                 </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handlePhotoChange}
-                  className="hidden"
-                />
+                <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp"
+                  onChange={handlePhotoChange} className="hidden" />
               </div>
 
-              {/* DUPR Ratings */}
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                    DUPR Singles <span className="text-gray-300 font-normal normal-case">(optional)</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="1"
-                    max="8"
-                    value={form.duprSingles}
-                    onChange={(e) => { setForm((f) => ({ ...f, duprSingles: e.target.value })); setSaveSuccess(false); }}
-                    placeholder="e.g. 3.75"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
-                  />
+              {/* DUPR + Playing since */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5 space-y-4">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Ratings & Experience</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">DUPR Singles</label>
+                    <input type="number" step="0.01" min="1" max="8"
+                      value={form.duprSingles}
+                      onChange={(e) => { setForm((f) => ({ ...f, duprSingles: e.target.value })); setSaveSuccess(false); }}
+                      placeholder="e.g. 3.75"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1">DUPR Doubles</label>
+                    <input type="number" step="0.01" min="1" max="8"
+                      value={form.duprDoubles}
+                      onChange={(e) => { setForm((f) => ({ ...f, duprDoubles: e.target.value })); setSaveSuccess(false); }}
+                      placeholder="e.g. 4.10"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                    DUPR Doubles <span className="text-gray-300 font-normal normal-case">(optional)</span>
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="1"
-                    max="8"
-                    value={form.duprDoubles}
-                    onChange={(e) => { setForm((f) => ({ ...f, duprDoubles: e.target.value })); setSaveSuccess(false); }}
-                    placeholder="e.g. 4.10"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
-                  />
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Playing since</label>
+                  <select value={form.playingSince}
+                    onChange={(e) => { setForm((f) => ({ ...f, playingSince: e.target.value })); setSaveSuccess(false); }}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D] bg-white">
+                    <option value="">Select year…</option>
+                    {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+                  </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                  Tournament names (copy friendly)
-                </label>
-                <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                  {mergedTournamentNames.length === 0 ? (
-                    <p className="text-xs text-gray-400">No tournament names yet.</p>
-                  ) : (
-                    <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line max-h-24 overflow-auto">
-                      {mergedTournamentNames.join('\n')}
-                    </p>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={copyTournamentNames}
-                  className="mt-2 text-sm font-semibold text-[#4a6e10] hover:text-[#2d7005]"
-                >
-                  Copy all tournament names
-                </button>
-              </div>
 
-              {/* Playing since */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                  Playing since <span className="text-gray-300 font-normal normal-case">(optional)</span>
-                </label>
-                <select
-                  value={form.playingSince}
-                  onChange={(e) => { setForm((f) => ({ ...f, playingSince: e.target.value })); setSaveSuccess(false); }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D] bg-white"
-                >
-                  <option value="">Select year…</option>
-                  {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Past achievements (manual)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm((f) => ({
-                        ...f,
-                        manualAchievements: [
-                          ...(f.manualAchievements || []),
-                          { tournamentName: '', categoryName: '', medal: 'Gold', date: '' },
-                        ],
-                      }))
-                    }
-                    className="text-xs font-semibold text-[#4a6e10] hover:text-[#2d7005]"
-                  >
-                    + Add old tournament
+              {/* Manual past achievements */}
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Past Achievements</p>
+                  <button type="button" onClick={addAchievement}
+                    className="text-xs font-bold text-[#4a6e10] hover:text-[#2d7005] transition-colors">
+                    + Add
                   </button>
                 </div>
-                {(manualAchievements || []).length === 0 ? (
-                  <p className="text-xs text-gray-400">Add your old tournaments, category, and medal.</p>
+                <p className="text-xs text-gray-400 mb-4">Add old tournaments not logged in the app yet.</p>
+
+                {manualAchievements.length === 0 ? (
+                  <button type="button" onClick={addAchievement}
+                    className="w-full border-2 border-dashed border-gray-200 rounded-xl py-4 text-sm text-gray-400 hover:border-[#91BE4D]/40 hover:text-[#4a6e10] transition-colors">
+                    + Add a past tournament
+                  </button>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {manualAchievements.map((row, idx) => (
-                      <div key={idx} className="grid grid-cols-12 gap-2 p-2 border border-gray-200 rounded-lg">
-                        <input
-                          className="col-span-12 sm:col-span-4 border border-gray-300 rounded px-2 py-1.5 text-xs"
-                          placeholder="Tournament name"
-                          value={row.tournamentName || ''}
-                          onChange={(e) =>
-                            setForm((f) => {
-                              const copy = [...(f.manualAchievements || [])];
-                              copy[idx] = { ...copy[idx], tournamentName: e.target.value };
-                              return { ...f, manualAchievements: copy };
-                            })
-                          }
-                        />
-                        <input
-                          className="col-span-12 sm:col-span-3 border border-gray-300 rounded px-2 py-1.5 text-xs"
-                          placeholder="Category"
-                          value={row.categoryName || ''}
-                          onChange={(e) =>
-                            setForm((f) => {
-                              const copy = [...(f.manualAchievements || [])];
-                              copy[idx] = { ...copy[idx], categoryName: e.target.value };
-                              return { ...f, manualAchievements: copy };
-                            })
-                          }
-                        />
-                        <select
-                          className="col-span-5 sm:col-span-2 border border-gray-300 rounded px-2 py-1.5 text-xs bg-white"
-                          value={row.medal || 'Gold'}
-                          onChange={(e) =>
-                            setForm((f) => {
-                              const copy = [...(f.manualAchievements || [])];
-                              copy[idx] = { ...copy[idx], medal: e.target.value };
-                              return { ...f, manualAchievements: copy };
-                            })
-                          }
-                        >
-                          <option value="Gold">Gold</option>
-                          <option value="Silver">Silver</option>
-                          <option value="Bronze">Bronze</option>
-                        </select>
-                        <input
-                          type="date"
-                          className="col-span-5 sm:col-span-2 border border-gray-300 rounded px-2 py-1.5 text-xs"
-                          value={row.date || ''}
-                          onChange={(e) =>
-                            setForm((f) => {
-                              const copy = [...(f.manualAchievements || [])];
-                              copy[idx] = { ...copy[idx], date: e.target.value };
-                              return { ...f, manualAchievements: copy };
-                            })
-                          }
-                        />
-                        <button
-                          type="button"
-                          className="col-span-2 sm:col-span-1 text-xs text-red-500 hover:text-red-700"
-                          onClick={() =>
-                            setForm((f) => ({
-                              ...f,
-                              manualAchievements: (f.manualAchievements || []).filter((_, i) => i !== idx),
-                            }))
-                          }
-                        >
-                          ✕
-                        </button>
+                      <div key={idx} className="bg-gray-50 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <input
+                            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#91BE4D]"
+                            placeholder="Tournament name"
+                            value={row.tournamentName || ''}
+                            onChange={(e) => updateAchievement(idx, 'tournamentName', e.target.value)}
+                          />
+                          <button type="button" onClick={() => removeAchievement(idx)}
+                            className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0 p-1">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <input
+                            className="col-span-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#91BE4D]"
+                            placeholder="Category"
+                            value={row.categoryName || ''}
+                            onChange={(e) => updateAchievement(idx, 'categoryName', e.target.value)}
+                          />
+                          <select
+                            className="col-span-1 border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#91BE4D]"
+                            value={row.medal || 'Gold'}
+                            onChange={(e) => updateAchievement(idx, 'medal', e.target.value)}
+                          >
+                            {MEDAL_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+                          </select>
+                          <input type="date"
+                            className="col-span-1 border border-gray-200 rounded-lg px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#91BE4D]"
+                            value={row.date || ''}
+                            onChange={(e) => updateAchievement(idx, 'date', e.target.value)}
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
+              {/* Status messages */}
               {saveError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{saveError}</div>
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{saveError}</div>
               )}
               {saveSuccess && (
-                <div className="bg-[#f4f8e8] border border-[#91BE4D]/30 text-[#4a6e10] text-sm rounded-lg px-4 py-3 flex items-center gap-2">
+                <div className="bg-[#f4f8e8] border border-[#91BE4D]/30 text-[#4a6e10] text-sm rounded-xl px-4 py-3 flex items-center gap-2">
                   <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
-                  Card saved! Download it above.
+                  Card saved! Download it on the left.
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={saving}
+              <button type="submit" disabled={saving}
                 className="w-full disabled:opacity-60 hover:opacity-90 text-white font-bold py-3 rounded-xl text-sm tracking-wide transition-opacity"
-                style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
-              >
+                style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}>
                 {saving ? 'Saving…' : 'Save & update card'}
               </button>
             </form>
           </div>
-        </>
+
+        </div>
       )}
     </div>
   );

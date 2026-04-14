@@ -330,7 +330,7 @@ export default function VoiceInput({ onFill, currentForm }) {
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">You can mention</p>
               <div className="space-y-1.5">
                 {[
-                  ['🏸', 'Tournament', 'Pune Open, Delhi Open, Bangalore League'],
+                  ['🎾', 'Tournament', 'Pune Open, Delhi Open, Bangalore League'],
                   ['👥', 'Category', "Men's singles, men's doubles, mixed doubles"],
                   ['📅', 'Date', 'April 20, tomorrow, yesterday'],
                   ['💰', 'Entry fee', '500, 700, 1000'],

@@ -10,7 +10,7 @@ const SKILL_TAGS = [
 ];
 
 const SESSION_TYPES = [
-  { value: 'casual',     label: 'Casual Play', icon: '🏸', desc: 'Recreational / court booking' },
+  { value: 'casual',     label: 'Casual Play', icon: '🎾', desc: 'Recreational / court booking' },
   { value: 'practice',  label: 'Practice',    icon: '🎯', desc: 'Drilling & training' },
   { value: 'tournament', label: 'Tournament', icon: '🏆', desc: 'Competitive event' },
 ];

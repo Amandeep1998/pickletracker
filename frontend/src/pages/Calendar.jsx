@@ -32,7 +32,7 @@ const SESSION_CHIP = {
   practice: 'bg-purple-100 text-purple-700',
   tournament: 'bg-orange-100 text-orange-700',
 };
-const SESSION_ICON = { casual: '🏸', practice: '🎯', tournament: '🏆' };
+const SESSION_ICON = { casual: '🎾', practice: '🎯', tournament: '🏆' };
 const SESSION_LABEL = { casual: 'Casual', practice: 'Practice', tournament: 'Tournament' };
 
 export default function Calendar() {

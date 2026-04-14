@@ -626,7 +626,7 @@ export default function Players() {
               {total > 0 ? `${total} player${total !== 1 ? 's' : ''} found` : 'Discover the pickleball community'}
             </p>
           </div>
-          <div className="ml-auto text-4xl select-none">🏓</div>
+          <div className="ml-auto text-4xl select-none">🎾</div>
         </div>
       </div>
 
@@ -809,7 +809,7 @@ export default function Players() {
         </div>
       ) : players.length === 0 ? (
         <div className="text-center py-20">
-          <p className="text-4xl mb-3">🏓</p>
+          <p className="text-4xl mb-3">🎾</p>
           <p className="text-gray-500 font-semibold">No players found</p>
           <p className="text-gray-400 text-sm mt-1">Try adjusting your filters</p>
         </div>

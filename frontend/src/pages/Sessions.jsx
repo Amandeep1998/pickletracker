@@ -9,7 +9,7 @@ const TYPE_COLORS = {
   casual:     'bg-blue-50 text-blue-700',
   practice:   'bg-[#91BE4D]/15 text-[#4a6e10]',
 };
-const TYPE_ICONS = { tournament: '🏆', casual: '🏸', practice: '🎯' };
+const TYPE_ICONS = { tournament: '🏆', casual: '🎾', practice: '🎯' };
 const RATING_EMOJI = { 1: '😫', 2: '😕', 3: '😐', 4: '😊', 5: '🔥' };
 const RATING_LABEL = { 1: 'Rough', 2: 'Poor', 3: 'Okay', 4: 'Good', 5: 'On fire!' };
 

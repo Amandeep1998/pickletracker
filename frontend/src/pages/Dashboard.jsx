@@ -469,7 +469,7 @@ export default function Dashboard() {
           <div className="space-y-2">
             {recentSessions.map((s) => {
               const EMOJI = { 1: '😫', 2: '😕', 3: '😐', 4: '😊', 5: '🔥' };
-              const TYPE_ICON = { tournament: '🏆', casual: '🏸', practice: '🎯' };
+              const TYPE_ICON = { tournament: '🏆', casual: '🎾', practice: '🎯' };
               const TYPE_LABEL = { tournament: 'Tournament', casual: 'Casual', practice: 'Practice' };
               const [y, m, d] = s.date.split('-');
               const dateLabel = new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });

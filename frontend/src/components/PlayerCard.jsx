@@ -59,6 +59,8 @@ export default function PlayerCard({ profile, tournaments }) {
         ref={cardRef}
         style={{
           width: 320,
+          maxWidth: '100%',
+          boxSizing: 'border-box',
           background: 'linear-gradient(160deg, #0f2206 0%, #1c3a07 40%, #2a1a00 100%)',
           borderRadius: 20,
           padding: '28px 24px 24px',
@@ -148,13 +150,13 @@ export default function PlayerCard({ profile, tournaments }) {
                 Highlights
               </p>
               {medalTournaments.map((t, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontSize: 14 }}>{MEDAL_EMOJI[t.medal]}</span>
-                  <div style={{ minWidth: 0 }}>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, width: '100%', overflow: 'hidden' }}>
+                  <span style={{ fontSize: 14, flexShrink: 0 }}>{MEDAL_EMOJI[t.medal]}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 11, fontWeight: 700, color: '#ffffff', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {t.name}
                     </p>
-                    <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', margin: '1px 0 0' }}>{t.category}</p>
+                    <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.4)', margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.category}</p>
                   </div>
                 </div>
               ))}
@@ -175,7 +177,7 @@ export default function PlayerCard({ profile, tournaments }) {
               color: totalMedals >= 10 ? '#ec9937' : '#91BE4D',
               border: `1px solid ${totalMedals >= 10 ? 'rgba(236,153,55,0.3)' : 'rgba(145,190,77,0.25)'}`,
             }}>
-              {totalMedals >= 10 ? '🏆 Legend' : totalMedals >= 5 ? '⭐ Elite' : '🎯 Rising'}
+              {totalMedals >= 10 ? '🏆 Legend' : totalMedals >= 5 ? '⭐ Elite' : '✨ Rising'}
             </span>
           )}
         </div>
