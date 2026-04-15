@@ -51,7 +51,7 @@ export default function Dashboard() {
   const [nudgeDismissed, setNudgeDismissed] = useState(
     () => sessionStorage.getItem(nudgeKey) === '1'
   );
-  const profileIncomplete = !user?.city || !user?.state;
+  const profileIncomplete = !user?.city;
   const showNudge = profileIncomplete && !nudgeDismissed;
   const dismissNudge = useCallback(() => {
     sessionStorage.setItem(nudgeKey, '1');
@@ -373,7 +373,7 @@ export default function Dashboard() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-[#272702]">Make PickleTracker work harder for you</p>
             <p className="text-xs text-gray-500 mt-0.5">
-              Add your city and state to personalise your profile and appear in the community player directory.
+              Add your city to personalise your profile and appear in the community player directory.
             </p>
             <NavLink
               to="/profile"

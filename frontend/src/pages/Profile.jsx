@@ -174,6 +174,7 @@ export default function Profile() {
   const completionItems = [
     { label: 'Name', done: !!name.trim() },
     { label: 'City', done: !!locCity },
+    { label: 'Mobile', done: locPhone.length === 10 },
   ];
   const completedCount = completionItems.filter((i) => i.done).length;
   const completionPct = Math.round((completedCount / completionItems.length) * 100);
