@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import posthog from 'posthog-js';
 import * as api from '../services/api';
-import { signInWithGoogleAndGetCredentials, getGoogleRedirectResult, isMobileBrowser } from '../services/firebase';
+import { signInWithGoogleAndGetCredentials, onFirebaseAuthStateChanged, firebaseSignOut, isMobileBrowser } from '../services/firebase';
 
 // Attach PostHog identity to a logged-in user
 function identifyUser(userData) {
@@ -31,44 +31,58 @@ export const AuthProvider = ({ children }) => {
 
   const clearError = () => setError(null);
 
-  // On mobile: pick up the result of a signInWithRedirect after page reload
+  // On mobile: listen for Firebase auth state changes to detect a completed redirect.
+  // onAuthStateChanged is reliable on iOS Safari where getRedirectResult() often
+  // returns null due to storage restrictions clearing the pending redirect state.
   useEffect(() => {
-    if (!isMobileBrowser()) return;
+    if (!isMobileBrowser()) {
+      setRedirectLoading(false);
+      return;
+    }
 
-    let cancelled = false;
-    async function checkRedirect() {
+    let handled = false;
+
+    const unsubscribe = onFirebaseAuthStateChanged(async (firebaseUser) => {
+      // No Firebase user — nothing to do, clear loading state
+      if (!firebaseUser) {
+        setRedirectLoading(false);
+        return;
+      }
+
+      // Our app already has a valid session — the user is logged in, skip
+      if (localStorage.getItem('token')) {
+        setRedirectLoading(false);
+        return;
+      }
+
+      // Firebase has a user but our app doesn't — redirect just completed.
+      // Guard against this firing more than once.
+      if (handled) return;
+      handled = true;
+
       try {
-        const creds = await getGoogleRedirectResult();
-        if (!creds || cancelled) return;
-
-        const res = await api.loginWithGoogle(creds);
-        if (cancelled) return;
-
+        const idToken = await firebaseUser.getIdToken();
+        const res = await api.loginWithGoogle({
+          idToken,
+          name: firebaseUser.displayName || '',
+          email: firebaseUser.email || '',
+        });
         const { token, user: userData } = res.data;
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(userData));
         identifyUser(userData);
         posthog.capture(userData.isNewUser ? 'user_signed_up' : 'user_logged_in', { method: 'google' });
         setUser(userData);
-        // Login/Signup pages watch `user` and will navigate automatically
+        // Login/Signup pages watch `user` and navigate automatically
       } catch (err) {
-        if (cancelled) return;
-        // auth/cancelled-popup-request or no pending redirect → silent (user just loaded the page)
-        const silentCodes = ['auth/no-auth-event', 'auth/cancelled-popup-request', 'auth/redirect-cancelled-by-user'];
-        if (!err?.code || !silentCodes.includes(err.code)) {
-          // Real failure — show a message so the user isn't left wondering
-          const msg = err?.code === 'auth/unauthorized-domain'
-            ? 'This domain is not authorised for Google sign-in. Please contact support.'
-            : 'Google sign-in failed. Please try again or use email/password.';
-          setError(msg);
-        }
+        setError('Google sign-in failed. Please try again or use email/password.');
+        console.error('[Auth] Mobile Google redirect error:', err);
       } finally {
-        if (!cancelled) setRedirectLoading(false);
+        setRedirectLoading(false);
       }
-    }
+    });
 
-    checkRedirect();
-    return () => { cancelled = true; };
+    return () => unsubscribe();
   }, []);
 
   const handleSignup = async (data) => {
@@ -153,6 +167,9 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    // Sign out from Firebase so onAuthStateChanged doesn't auto-log Google users
+    // back in on next page load
+    firebaseSignOut();
   };
 
   // Call after a profile update so the stored user stays in sync

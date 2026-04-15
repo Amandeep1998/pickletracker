@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut } from 'firebase/auth';
 import { saveCalendarToken } from './googleCalendar';
 
 /**
@@ -68,19 +68,37 @@ export async function signInWithGoogleAndGetCredentials() {
 }
 
 /**
- * Called on app mount to pick up the result of a previous signInWithRedirect call.
- * Returns { idToken, name, email } if a redirect just completed, or null otherwise.
+ * Subscribes to Firebase auth state changes.
+ * Fires immediately with the current user (or null), then again on every change.
+ * Returns an unsubscribe function.
+ *
+ * This is used on mobile to detect when signInWithRedirect completes — Firebase
+ * updates onAuthStateChanged reliably even when getRedirectResult() returns null
+ * (common on iOS Safari due to storage restrictions).
  */
-export async function getGoogleRedirectResult() {
-  if (!isFirebaseClientConfigured()) return null;
-  const app = getFirebaseApp();
-  const auth = getAuth(app);
-  const result = await getRedirectResult(auth);
-  if (!result) return null;
-  const idToken = await result.user.getIdToken();
-  const name = result.user.displayName || '';
-  const email = result.user.email || '';
-  return { idToken, name, email };
+export function onFirebaseAuthStateChanged(callback) {
+  if (!isFirebaseClientConfigured()) {
+    // Call once with null so callers can set their loading state
+    callback(null);
+    return () => {};
+  }
+  const auth = getAuth(getFirebaseApp());
+  return onAuthStateChanged(auth, callback);
+}
+
+/**
+ * Signs the current user out of Firebase.
+ * Must be called on logout to prevent onAuthStateChanged from auto-logging
+ * Google users back in on the next page load.
+ */
+export async function firebaseSignOut() {
+  if (!isFirebaseClientConfigured()) return;
+  try {
+    const auth = getAuth(getFirebaseApp());
+    await signOut(auth);
+  } catch {
+    // Ignore — Firebase sign-out failure should not block our app logout
+  }
 }
 
 /**
