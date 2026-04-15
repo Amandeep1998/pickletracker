@@ -5,7 +5,15 @@ import Navbar from './Navbar';
 import Footer from './Footer';
 
 export default function PrivateRoute() {
-  const { user } = useAuth();
+  const { user, authInitializing } = useAuth();
+
+  if (authInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm text-gray-500">
+        Validating session...
+      </div>
+    );
+  }
 
   if (!user) {
     return <Navigate to="/login" replace />;

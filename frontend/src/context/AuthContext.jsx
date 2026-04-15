@@ -27,6 +27,7 @@ export const AuthProvider = ({ children }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [authInitializing, setAuthInitializing] = useState(true);
   // True on mobile while we check for a pending redirect result on mount
   const [redirectLoading, setRedirectLoading] = useState(() => isMobileBrowser());
 
@@ -37,6 +38,13 @@ export const AuthProvider = ({ children }) => {
 
   const clearError = () => setError(null);
 
+  const clearStoredSession = async () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+    await firebaseSignOut();
+  };
+
   const completeGoogleLogin = async ({ idToken, name, email }) => {
     const res = await api.loginWithGoogle({ idToken, name, email });
     const { token, user: userData } = res.data;
@@ -46,6 +54,35 @@ export const AuthProvider = ({ children }) => {
     posthog.capture(userData.isNewUser ? 'user_signed_up' : 'user_logged_in', { method: 'google' });
     setUser(userData);
   };
+
+  // Validate cached token/user at app bootstrap so deleted DB users are logged out
+  // before protected pages render.
+  useEffect(() => {
+    let active = true;
+    const bootstrapAuth = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        if (active) setAuthInitializing(false);
+        return;
+      }
+      try {
+        const res = await api.getProfile();
+        const userData = res?.data?.data;
+        if (userData && active) {
+          localStorage.setItem('user', JSON.stringify(userData));
+          setUser(userData);
+        }
+      } catch {
+        await clearStoredSession();
+      } finally {
+        if (active) setAuthInitializing(false);
+      }
+    };
+    bootstrapAuth();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // On mobile: listen for Firebase auth state changes to detect a completed redirect.
   // onAuthStateChanged is reliable on iOS Safari where getRedirectResult() often
@@ -194,15 +231,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     posthog.capture('user_logged_out');
     posthog.reset(); // clears identity so next user on same device gets a fresh session
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
     // Sign out from Firebase so onAuthStateChanged doesn't auto-log Google users
-    // back in on next page load
-    firebaseSignOut();
+    // back in on next page load.
+    await clearStoredSession();
   };
 
   // Call after a profile update so the stored user stays in sync
@@ -216,6 +250,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
+        authInitializing,
         loading,
         redirectLoading,
         error,
