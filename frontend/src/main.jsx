@@ -2,15 +2,23 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
-import { BrowserTracing } from '@sentry/react';
+import { BrowserTracing, Replay } from '@sentry/react';
 import App from './App';
 import './index.css';
 
 if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
     dsn: import.meta.env.VITE_SENTRY_DSN,
-    integrations: [new BrowserTracing()],
+    integrations: [
+      new BrowserTracing(),
+      new Replay({
+        maskAllText: false,    // show actual text in replays
+        blockAllMedia: false,  // show images/media
+      }),
+    ],
     tracesSampleRate: 0.1,
+    replaysSessionSampleRate: 0.1,  // record 10% of all sessions
+    replaysOnErrorSampleRate: 1.0,  // record 100% of sessions that hit an error
     environment: import.meta.env.MODE,
   });
 }
