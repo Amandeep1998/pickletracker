@@ -217,7 +217,14 @@ export default function Calendar() {
     setAddError('');
     try {
       await api.createTournament(data);
-      posthog.capture('tournament_created', { category_count: data.categories?.length ?? 1 });
+      posthog.capture('tournament_created', {
+        category_count: data.categories?.length ?? 1,
+        has_feedback: !!(data.rating || data.wentWell?.length || data.wentWrong?.length || data.notes),
+        has_rating: !!data.rating,
+        went_well_count: data.wentWell?.length ?? 0,
+        went_wrong_count: data.wentWrong?.length ?? 0,
+        has_notes: !!(data.notes?.trim()),
+      });
       setAddModal({ open: false, date: null });
       await fetchTournaments();
     } catch (err) {
@@ -233,7 +240,13 @@ export default function Calendar() {
     setFormError('');
     try {
       await api.updateTournament(selectedTournament._id, data);
-      posthog.capture('tournament_edited');
+      posthog.capture('tournament_edited', {
+        has_feedback: !!(data.rating || data.wentWell?.length || data.wentWrong?.length || data.notes),
+        has_rating: !!data.rating,
+        went_well_count: data.wentWell?.length ?? 0,
+        went_wrong_count: data.wentWrong?.length ?? 0,
+        has_notes: !!(data.notes?.trim()),
+      });
       setIsEditing(false);
       setSelectedTournament(null);
       await fetchTournaments();
@@ -250,7 +263,14 @@ export default function Calendar() {
     setSessionFormError('');
     try {
       await api.createSession(data);
-      posthog.capture('session_logged', { type: data.type, rating: data.rating });
+      posthog.capture('session_logged', {
+        type: data.type,
+        has_rating: !!data.rating,
+        rating: data.rating ?? null,
+        went_well_count: data.wentWell?.length ?? 0,
+        went_wrong_count: data.wentWrong?.length ?? 0,
+        has_notes: !!(data.notes?.trim()),
+      });
       setAddSessionModal({ open: false, date: null });
       await fetchData();
     } catch (err) {
