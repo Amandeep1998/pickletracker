@@ -51,8 +51,17 @@ export const AuthProvider = ({ children }) => {
         posthog.capture(userData.isNewUser ? 'user_signed_up' : 'user_logged_in', { method: 'google' });
         setUser(userData);
         // Login/Signup pages watch `user` and will navigate automatically
-      } catch {
-        // Not a completed redirect, or it failed — nothing to do
+      } catch (err) {
+        if (cancelled) return;
+        // auth/cancelled-popup-request or no pending redirect → silent (user just loaded the page)
+        const silentCodes = ['auth/no-auth-event', 'auth/cancelled-popup-request', 'auth/redirect-cancelled-by-user'];
+        if (!err?.code || !silentCodes.includes(err.code)) {
+          // Real failure — show a message so the user isn't left wondering
+          const msg = err?.code === 'auth/unauthorized-domain'
+            ? 'This domain is not authorised for Google sign-in. Please contact support.'
+            : 'Google sign-in failed. Please try again or use email/password.';
+          setError(msg);
+        }
       } finally {
         if (!cancelled) setRedirectLoading(false);
       }

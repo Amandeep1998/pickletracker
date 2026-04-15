@@ -75,17 +75,12 @@ export async function getGoogleRedirectResult() {
   if (!isFirebaseClientConfigured()) return null;
   const app = getFirebaseApp();
   const auth = getAuth(app);
-  try {
-    const result = await getRedirectResult(auth);
-    if (!result) return null;
-    const idToken = await result.user.getIdToken();
-    const name = result.user.displayName || '';
-    const email = result.user.email || '';
-    return { idToken, name, email };
-  } catch {
-    // auth/redirect-cancelled-by-user or similar — no result to process
-    return null;
-  }
+  const result = await getRedirectResult(auth);
+  if (!result) return null;
+  const idToken = await result.user.getIdToken();
+  const name = result.user.displayName || '';
+  const email = result.user.email || '';
+  return { idToken, name, email };
 }
 
 /**
