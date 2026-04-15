@@ -177,10 +177,13 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         prizeAmount: Number(cat.prizeAmount) || 0,
         entryFee: Number(cat.entryFee),
       })),
-      rating: form.rating || null,
-      wentWell: form.wentWell,
-      wentWrong: form.wentWrong,
-      notes: form.notes.trim(),
+      // Only include feedback when at least one category is past/present
+      ...(showFeedback && {
+        rating: form.rating || null,
+        wentWell: form.wentWell,
+        wentWrong: form.wentWrong,
+        notes: form.notes.trim(),
+      }),
     });
   };
 
@@ -188,6 +191,10 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
     (sum, cat) => sum + ((Number(cat.prizeAmount) || 0) - (Number(cat.entryFee) || 0)),
     0
   );
+
+  // Only show performance feedback if at least one category date is today or in the past
+  const today = new Date().toISOString().split('T')[0];
+  const showFeedback = form.categories.some((cat) => cat.date && cat.date <= today);
 
   const inputClass = "w-full border border-gray-300 rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]";
 
@@ -403,8 +410,8 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         </span>
       </div>
 
-      {/* ── Performance feedback ─────────────────────────────────────────── */}
-      <div className="border-t pt-4 space-y-5">
+      {/* ── Performance feedback — only shown for past/present tournaments ── */}
+      {showFeedback && <div className="border-t pt-4 space-y-5">
         <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Performance Feedback <span className="text-gray-300 font-normal normal-case">(optional)</span></p>
 
         {/* Rating */}
@@ -505,7 +512,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D] resize-none"
           />
         </div>
-      </div>
+      </div>}
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2">
