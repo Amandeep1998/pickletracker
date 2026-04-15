@@ -1,5 +1,4 @@
 const twilio = require('twilio');
-const withTimeout = require('../utils/withTimeout');
 
 const getClient = () => {
   const sid   = process.env.TWILIO_ACCOUNT_SID;
@@ -22,11 +21,11 @@ const send = async (to, body) => {
   const from = process.env.TWILIO_WHATSAPP_FROM || '+14155238886';
 
   try {
-    const message = await withTimeout(client.messages.create({
+    const message = await client.messages.create({
       from: `whatsapp:${from}`,
       to:   `whatsapp:+${to}`,
       body,
-    }), 10000, 'Twilio');
+    });
     console.log(`[WhatsApp] Sent to ${to}, SID: ${message.sid}`);
     return { ok: true, sid: message.sid };
   } catch (err) {
