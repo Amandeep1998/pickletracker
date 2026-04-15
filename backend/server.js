@@ -85,11 +85,6 @@ app.use('/api/players', playersRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/friends', friendshipRoutes);
 
-// Temp: test Sentry error reporting — remove after confirming
-app.get('/api/test-sentry', (_req, _res) => {
-  throw new Error('Sentry backend test');
-});
-
 app.use(Sentry.Handlers.errorHandler()); // captures unhandled errors and sends to Sentry
 app.use(errorHandler);
 
