@@ -118,7 +118,7 @@ const getCoachInsight = async (req, res, next) => {
       messages   : chatMessages,
       temperature: 0.7,
       max_tokens : 900,
-    });
+    }, { timeout: 15000 });
 
     const reply = completion.choices[0]?.message?.content?.trim() || 'Could not generate a response.';
     res.json({ success: true, data: { reply } });

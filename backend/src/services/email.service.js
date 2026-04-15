@@ -1,9 +1,10 @@
 const { Resend } = require('resend');
+const withTimeout = require('../utils/withTimeout');
 
 async function sendPasswordResetEmail(toEmail, resetUrl) {
   const resend = new Resend(process.env.RESEND_API_KEY);
 
-  await resend.emails.send({
+  await withTimeout(resend.emails.send({
     from: process.env.EMAIL_FROM || 'PickleTracker <onboarding@resend.dev>',
     to: toEmail,
     subject: 'Reset your PickleTracker password',
@@ -28,7 +29,7 @@ async function sendPasswordResetEmail(toEmail, resetUrl) {
         </p>
       </div>
     `,
-  });
+  }), 10000, 'Resend');
 }
 
 async function sendNotificationEmail({ to, subject, html }) {
@@ -38,12 +39,12 @@ async function sendNotificationEmail({ to, subject, html }) {
     return { ok: false, skipped: true };
   }
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await withTimeout(resend.emails.send({
       from: process.env.EMAIL_FROM || 'PickleTracker <notifications@pickletracker.in>',
       to,
       subject,
       html,
-    });
+    }), 10000, 'Resend');
     if (error) {
       console.error('[Email] Send failed:', error);
       return { ok: false, error };

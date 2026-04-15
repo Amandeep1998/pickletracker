@@ -358,7 +358,7 @@ exports.parseTournamentVoice = async (req, res, next) => {
       response_format: { type: 'json_object' },
       temperature: 0.1,
       max_tokens: 1200,
-    });
+    }, { timeout: 15000 });
 
     let parsed;
     try {
