@@ -38,48 +38,153 @@ function formatTournaments(tournaments) {
   }).join('\n');
 }
 
-// ── System prompt ─────────────────────────────────────────────────────────────
+// ── Build player data block injected into the prompt ─────────────────────────
 
-function buildSystemPrompt(user, sessions, tournaments) {
+function buildPlayerData(user, sessions, tournaments) {
   const name = user?.name || 'Player';
   const city = user?.city || 'India';
 
-  // Derive a quick stats summary
   const totalSessions    = sessions.length;
   const totalTournaments = tournaments.length;
-  const avgRating = totalSessions
-    ? (sessions.reduce((s, x) => s + (x.rating || 0), 0) / totalSessions).toFixed(1)
+
+  const ratedSessions = sessions.filter((s) => s.rating);
+  const avgRating = ratedSessions.length
+    ? (ratedSessions.reduce((s, x) => s + x.rating, 0) / ratedSessions.length).toFixed(1)
     : null;
+
+  // Medal tallies
   const medals = tournaments.flatMap((t) => (t.categories || []).map((c) => c.medal));
   const goldCount   = medals.filter((m) => m === 'Gold').length;
   const silverCount = medals.filter((m) => m === 'Silver').length;
   const bronzeCount = medals.filter((m) => m === 'Bronze').length;
 
-  return `You are the personal pickleball coach AI for ${name} (${city}). \
-You are a world-class coach — warm, specific, encouraging, and data-driven. \
-Always speak directly to the player as "you". Reference their actual data whenever possible.
+  // Skill frequency across sessions + tournaments
+  const allWentWell  = [
+    ...sessions.flatMap((s) => s.wentWell  || []),
+    ...tournaments.flatMap((t) => t.wentWell  || []),
+  ];
+  const allWentWrong = [
+    ...sessions.flatMap((s) => s.wentWrong || []),
+    ...tournaments.flatMap((t) => t.wentWrong || []),
+  ];
 
-QUICK STATS:
-- Sessions logged: ${totalSessions}${avgRating ? ` | Avg session rating: ${avgRating}/5` : ''}
-- Tournaments logged: ${totalTournaments} | Medals: 🥇${goldCount} 🥈${silverCount} 🥉${bronzeCount}
+  const freq = (arr) => {
+    const counts = {};
+    arr.forEach((tag) => { counts[tag] = (counts[tag] || 0) + 1; });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8)
+      .map(([tag, n]) => `${tag} (×${n})`).join(', ') || '—';
+  };
 
-RECENT SESSIONS (newest first, up to 30):
+  // Win rate
+  const totalCats = tournaments.flatMap((t) => t.categories || []);
+  const medalCats = totalCats.filter((c) => c.medal && c.medal !== 'None');
+  const winRate = totalCats.length
+    ? `${Math.round((medalCats.length / totalCats.length) * 100)}% (${medalCats.length}/${totalCats.length} categories)`
+    : 'No data';
+
+  // Session rating trend (last 5 rated sessions)
+  const lastRatings = sessions.filter((s) => s.rating).slice(0, 5).map((s) => `${s.date}:${s.rating}`).join(', ');
+
+  return `PLAYER: ${name} | Location: ${city}
+
+SUMMARY STATS:
+- Sessions logged: ${totalSessions} | Avg session rating: ${avgRating ? `${avgRating}/5` : 'N/A'}
+- Tournaments logged: ${totalTournaments} | Category win rate: ${winRate}
+- Medals: 🥇 Gold ×${goldCount}  🥈 Silver ×${silverCount}  🥉 Bronze ×${bronzeCount}
+- Recent session ratings (newest first): ${lastRatings || 'N/A'}
+
+SKILL PATTERNS:
+- Top strengths (frequency): ${freq(allWentWell)}
+- Top weaknesses (frequency): ${freq(allWentWrong)}
+
+RECENT SESSIONS (up to 30, newest first):
 ${formatSessions(sessions)}
 
-RECENT TOURNAMENTS (newest first, up to 20):
-${formatTournaments(tournaments)}
+RECENT TOURNAMENTS (up to 20, newest first):
+${formatTournaments(tournaments)}`;
+}
 
-COACHING GUIDELINES:
-- For the initial report use this structure (plain markdown, no HTML):
-  **📊 Recent Activity**  (2–3 sentences on volume, consistency, session types)
-  **💪 Your Strengths**   (2–4 bullet points referencing recurring "went well" skills)
-  **🎯 Focus Areas**      (2–3 bullet points on recurring "needs work" skills)
-  **💡 This Week's Drills** (3 specific, practical drills tied to their weak areas)
-  **📈 Trend**            (1–2 sentences on whether ratings/medals are improving)
-- Keep each section tight — quality over quantity.
-- If data is sparse (< 3 sessions or < 2 tournaments) acknowledge it and give general beginner advice.
-- For follow-up questions: answer concisely and practically in 3–6 sentences max.
-- Always end with one short motivating line.`;
+// ── System prompt ─────────────────────────────────────────────────────────────
+
+function buildSystemPrompt(user, sessions, tournaments) {
+  const playerData = buildPlayerData(user, sessions, tournaments);
+
+  return `You are an elite pickleball coach and performance analyst.
+
+Your role is to analyze player data and generate sharp, data-driven insights that help the player improve quickly.
+
+Do NOT give generic advice. Do NOT be overly motivational. Focus on insights, patterns, and actionable improvements.
+
+-------------------------
+INPUT DATA:
+${playerData}
+-------------------------
+
+INSTRUCTIONS:
+
+1. Identify the most impactful weakness:
+- Which skill is costing the most points?
+- Use numbers or percentages if available
+
+2. Analyze performance:
+- Highlight key stats (success rates, errors, win/loss patterns)
+- Identify imbalance (e.g., strong forehand vs weak backhand)
+
+3. Prioritize improvements:
+- Limit to top 2–3 issues only
+- Focus on highest impact areas
+
+4. Provide actionable drills:
+- Drills must directly address weaknesses
+- Keep them specific and efficient (no generic suggestions)
+
+5. Analyze trends (if data exists):
+- What improved?
+- What declined?
+- What does it mean?
+
+6. Define a measurable goal:
+- Give 1–2 clear targets for the next week
+
+7. If data is limited:
+- Acknowledge it briefly
+- Still extract best possible insights
+- Suggest what data should be tracked next
+
+-------------------------
+OUTPUT FORMAT (for the initial report):
+
+🧠 Key Insight
+(1–2 lines — strongest takeaway, include numbers if possible)
+
+📊 Performance Snapshot
+(3–5 bullet points with stats/percentages)
+
+🎯 Priority Fixes
+(Top 2–3 issues ranked by impact)
+
+💪 Targeted Drills
+(2–4 drills linked directly to weaknesses)
+
+📈 Progress Insight
+(Only if trend data exists — skip this section entirely if not)
+
+🎯 Next Target
+(1–2 measurable goals for the next week)
+
+-------------------------
+
+TONE:
+- Direct and analytical
+- Concise but insightful
+- No fluff or filler words
+- Always speak directly to the player as "you"
+
+IMPORTANT:
+- Every recommendation must be backed by data or clear reasoning
+- Avoid obvious statements unless supported by data
+- For follow-up questions: answer concisely and practically in 3–6 sentences max
+- Use plain markdown only (no HTML)`;
 }
 
 // ── Controller ────────────────────────────────────────────────────────────────
@@ -116,8 +221,8 @@ const getCoachInsight = async (req, res, next) => {
     const completion = await getClient().chat.completions.create({
       model      : 'gpt-4o',
       messages   : chatMessages,
-      temperature: 0.7,
-      max_tokens : 900,
+      temperature: 0.4,
+      max_tokens : 1200,
     }, { timeout: 15000 });
 
     const reply = completion.choices[0]?.message?.content?.trim() || 'Could not generate a response.';
