@@ -29,16 +29,29 @@ function GoogleIcon() {
  * @param {{ onSuccess?: () => void; onBegin?: () => void }} props
  */
 export default function GoogleSignInButton({ onSuccess, onBegin }) {
-  const { handleGoogleLogin, loading } = useAuth();
+  const { handleGoogleLogin, loading, redirectLoading } = useAuth();
 
   if (!isFirebaseClientConfigured()) {
     return null;
   }
 
+  // Mobile returned from Google redirect — show a non-interactive completing state
+  if (redirectLoading) {
+    return (
+      <div className="w-full flex items-center justify-center border border-gray-200 bg-gray-50 text-gray-500 font-semibold py-3 rounded-lg text-sm shadow-sm gap-2">
+        <svg className="animate-spin w-4 h-4 text-[#91BE4D]" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+        </svg>
+        Completing sign-in…
+      </div>
+    );
+  }
+
   const handleClick = async () => {
     onBegin?.();
     const result = await handleGoogleLogin();
-    if (result.success && onSuccess) {
+    if (result?.success && onSuccess) {
       onSuccess();
     }
   };

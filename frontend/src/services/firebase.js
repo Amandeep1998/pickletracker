@@ -1,6 +1,16 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { saveCalendarToken } from './googleCalendar';
+
+/**
+ * Mobile browsers (especially iOS Safari) block popups that are opened
+ * outside of a direct synchronous user gesture.  Firebase's async flow
+ * breaks that requirement, so we use redirect on all mobile devices and
+ * fall back to popup only on desktop.
+ */
+export function isMobileBrowser() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
 
 
 export function isFirebaseClientConfigured() {
@@ -30,6 +40,9 @@ function getFirebaseApp() {
 
 /**
  * Opens Google sign-in and returns the Firebase ID token plus profile fields for the API.
+ * On mobile, uses redirect (no popup) to avoid browser popup-blocking.
+ * On mobile the function initiates the redirect and never resolves — the result
+ * is picked up on the next page load via getGoogleRedirectResult().
  */
 export async function signInWithGoogleAndGetCredentials() {
   if (!isFirebaseClientConfigured()) {
@@ -39,11 +52,40 @@ export async function signInWithGoogleAndGetCredentials() {
   const auth = getAuth(app);
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
+
+  if (isMobileBrowser()) {
+    // Mobile browsers block popups that open outside a synchronous user gesture.
+    // signInWithRedirect navigates the page to Google — it never returns here.
+    await signInWithRedirect(auth, provider);
+    return null; // unreachable, but satisfies linters
+  }
+
   const result = await signInWithPopup(auth, provider);
   const idToken = await result.user.getIdToken();
   const name = result.user.displayName || '';
   const email = result.user.email || '';
   return { idToken, name, email };
+}
+
+/**
+ * Called on app mount to pick up the result of a previous signInWithRedirect call.
+ * Returns { idToken, name, email } if a redirect just completed, or null otherwise.
+ */
+export async function getGoogleRedirectResult() {
+  if (!isFirebaseClientConfigured()) return null;
+  const app = getFirebaseApp();
+  const auth = getAuth(app);
+  try {
+    const result = await getRedirectResult(auth);
+    if (!result) return null;
+    const idToken = await result.user.getIdToken();
+    const name = result.user.displayName || '';
+    const email = result.user.email || '';
+    return { idToken, name, email };
+  } catch {
+    // auth/redirect-cancelled-by-user or similar — no result to process
+    return null;
+  }
 }
 
 /**

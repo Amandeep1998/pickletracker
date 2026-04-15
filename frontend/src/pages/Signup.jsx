@@ -76,11 +76,13 @@ export default function Signup() {
               </div>
               <div className="border-2 border-[#91BE4D]/40 rounded-xl pt-4 pb-2 px-2 bg-[#f4f8e8]/50">
                 <GoogleSignInButton
-                  onBegin={() => { setError(''); clearError(); }}
-                  onSuccess={() => {
+                  onBegin={() => {
+                    // Set before redirect so mobile gets it even after page reload
                     localStorage.setItem('pt_calTutorialPending', '1');
-                    navigate('/calendar');
+                    setError('');
+                    clearError();
                   }}
+                  onSuccess={() => navigate('/calendar')}
                 />
               </div>
             </div>

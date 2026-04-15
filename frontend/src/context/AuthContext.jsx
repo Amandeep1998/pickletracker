@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import * as api from '../services/api';
-import { signInWithGoogleAndGetCredentials } from '../services/firebase';
+import { signInWithGoogleAndGetCredentials, getGoogleRedirectResult, isMobileBrowser } from '../services/firebase';
 
 const AuthContext = createContext(null);
 
@@ -11,8 +11,39 @@ export const AuthProvider = ({ children }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // True on mobile while we check for a pending redirect result on mount
+  const [redirectLoading, setRedirectLoading] = useState(() => isMobileBrowser());
 
   const clearError = () => setError(null);
+
+  // On mobile: pick up the result of a signInWithRedirect after page reload
+  useEffect(() => {
+    if (!isMobileBrowser()) return;
+
+    let cancelled = false;
+    async function checkRedirect() {
+      try {
+        const creds = await getGoogleRedirectResult();
+        if (!creds || cancelled) return;
+
+        const res = await api.loginWithGoogle(creds);
+        if (cancelled) return;
+
+        const { token, user: userData } = res.data;
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        setUser(userData);
+        // Login/Signup pages watch `user` and will navigate automatically
+      } catch {
+        // Not a completed redirect, or it failed — nothing to do
+      } finally {
+        if (!cancelled) setRedirectLoading(false);
+      }
+    }
+
+    checkRedirect();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleSignup = async (data) => {
     setLoading(true);
@@ -55,7 +86,12 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const { idToken, name, email } = await signInWithGoogleAndGetCredentials();
+      const creds = await signInWithGoogleAndGetCredentials();
+      // On mobile, signInWithRedirect navigates away — creds will be null and
+      // the page never reaches the lines below. The result is handled by the
+      // useEffect above on the next page load.
+      if (!creds) return { success: false, message: '' };
+      const { idToken, name, email } = creds;
       const res = await api.loginWithGoogle({ idToken, name, email });
       const { token, user: userData } = res.data;
       localStorage.setItem('token', token);
@@ -98,6 +134,7 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         loading,
+        redirectLoading,
         error,
         clearError,
         handleSignup,
