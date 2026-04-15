@@ -1,4 +1,11 @@
 require('dotenv').config();
+const Sentry = require('@sentry/node');
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  tracesSampleRate: 0.2,
+  environment: process.env.NODE_ENV || 'development',
+});
+
 const http = require('http');
 const express = require('express');
 const cors = require('cors');
@@ -54,6 +61,7 @@ io.on('connection', (socket) => {
 });
 
 // ── HTTP middleware ──────────────────────────────────────────────────────────
+app.use(Sentry.Handlers.requestHandler()); // attaches request context to Sentry events
 app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '600kb' })); // increased for base64 profile photo uploads
@@ -77,6 +85,7 @@ app.use('/api/players', playersRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/friends', friendshipRoutes);
 
+app.use(Sentry.Handlers.errorHandler()); // captures unhandled errors and sends to Sentry
 app.use(errorHandler);
 
 if (require.main === module) {
