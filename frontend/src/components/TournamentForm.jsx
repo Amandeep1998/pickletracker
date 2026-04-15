@@ -68,10 +68,16 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
     setForm((prev) => {
       const updated = { ...prev };
       const cat = { ...updated.categories[idx] };
+      const todayStr = new Date().toISOString().split('T')[0];
       if (field === 'medal' && value === 'None') {
         cat.prizeAmount = 0;
       }
       cat[field] = value;
+      if (field === 'date' && value && value > todayStr) {
+        // Future categories should not carry result fields.
+        cat.medal = 'None';
+        cat.prizeAmount = 0;
+      }
       updated.categories[idx] = cat;
       return updated;
     });
@@ -140,19 +146,21 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
 
   const validate = () => {
     const errs = {};
+    const todayStr = new Date().toISOString().split('T')[0];
     if (!form.name.trim()) errs.name = 'Tournament name is required';
     if (form.categories.length === 0) errs.categories = 'At least one category is required';
 
     form.categories.forEach((cat, idx) => {
+      const isPastOrToday = cat.date && cat.date <= todayStr;
       if (!cat.categoryName) errs[`cat_${idx}_categoryName`] = 'Category is required';
       if (!cat.date) errs[`cat_${idx}_date`] = 'Category date is required';
       if (cat.entryFee === '' || Number(cat.entryFee) < 0) {
         errs[`cat_${idx}_entryFee`] = 'Entry fee must be 0 or more';
       }
-      if (cat.medal !== 'None' && (cat.prizeAmount === '' || Number(cat.prizeAmount) <= 0)) {
+      if (isPastOrToday && cat.medal !== 'None' && (cat.prizeAmount === '' || Number(cat.prizeAmount) <= 0)) {
         errs[`cat_${idx}_prizeAmount`] = 'Winning amount must be > 0 when a medal is awarded';
       }
-      if (cat.medal === 'None' && Number(cat.prizeAmount) > 0) {
+      if (isPastOrToday && cat.medal === 'None' && Number(cat.prizeAmount) > 0) {
         errs[`cat_${idx}_prizeAmount`] = 'Winning amount must be 0 when no medal';
       }
     });
@@ -167,14 +175,15 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
       setErrors(errs);
       return;
     }
+    const todayStr = new Date().toISOString().split('T')[0];
     onSubmit({
       name: form.name.trim(),
       location: form.location || undefined,
       categories: form.categories.map((cat) => ({
         categoryName: cat.categoryName,
         date: cat.date,
-        medal: cat.medal,
-        prizeAmount: Number(cat.prizeAmount) || 0,
+        medal: cat.date && cat.date <= todayStr ? cat.medal : 'None',
+        prizeAmount: cat.date && cat.date <= todayStr ? (Number(cat.prizeAmount) || 0) : 0,
         entryFee: Number(cat.entryFee),
       })),
       // Only include feedback when at least one category is past/present
@@ -272,6 +281,11 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
 
         {form.categories.map((cat, idx) => (
           <div key={idx} className="bg-[#F3F8F9] border border-gray-200 rounded-lg p-3 sm:p-4 mb-3 space-y-3">
+            {(() => {
+              const todayStr = new Date().toISOString().split('T')[0];
+              const showResults = cat.date && cat.date <= todayStr;
+              return (
+                <>
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-[#272702] uppercase tracking-wide">Category {idx + 1}</span>
               {form.categories.length > 1 && (
@@ -313,24 +327,32 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
               )}
             </div>
 
-            {/* Medal */}
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-2">Medal</label>
-              <div className="flex flex-wrap gap-2 sm:gap-3">
-                {MEDALS.map((m) => (
-                  <label key={m} className="flex items-center gap-1 cursor-pointer min-h-[32px]">
-                    <input
-                      type="radio"
-                      checked={cat.medal === m}
-                      onChange={(e) => handleCategoryChange(idx, 'medal', e.target.value)}
-                      value={m}
-                      className="accent-[#91BE4D]"
-                    />
-                    <span className="text-xs sm:text-sm">{m}</span>
-                  </label>
-                ))}
+            {/* Medal / winning amount are only for today or past categories */}
+            {showResults ? (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-2">Medal</label>
+                <div className="flex flex-wrap gap-2 sm:gap-3">
+                  {MEDALS.map((m) => (
+                    <label key={m} className="flex items-center gap-1 cursor-pointer min-h-[32px]">
+                      <input
+                        type="radio"
+                        checked={cat.medal === m}
+                        onChange={(e) => handleCategoryChange(idx, 'medal', e.target.value)}
+                        value={m}
+                        className="accent-[#91BE4D]"
+                      />
+                      <span className="text-xs sm:text-sm">{m}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                <p className="text-xs text-blue-800">
+                  Medal and amount won will appear once this category date is today or in the past.
+                </p>
+              </div>
+            )}
 
             {/* Financials */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
@@ -355,25 +377,27 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
                 )}
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Amount Won (₹)</label>
-                <input
-                  type="number"
-                  value={cat.prizeAmount}
-                  onChange={(e) => handleCategoryChange(idx, 'prizeAmount', e.target.value)}
-                  min="0"
-                  step="1"
-                  disabled={cat.medal === 'None'}
-                  className={`${inputClass} disabled:bg-gray-200 disabled:cursor-not-allowed`}
-                  placeholder="0"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {cat.medal === 'None' ? 'Select a medal to enter amount' : 'Amount won in this category'}
-                </p>
-                {errors[`cat_${idx}_prizeAmount`] && (
-                  <p className="text-red-500 text-xs mt-1">{errors[`cat_${idx}_prizeAmount`]}</p>
-                )}
-              </div>
+              {showResults && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Amount Won (₹)</label>
+                  <input
+                    type="number"
+                    value={cat.prizeAmount}
+                    onChange={(e) => handleCategoryChange(idx, 'prizeAmount', e.target.value)}
+                    min="0"
+                    step="1"
+                    disabled={cat.medal === 'None'}
+                    className={`${inputClass} disabled:bg-gray-200 disabled:cursor-not-allowed`}
+                    placeholder="0"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {cat.medal === 'None' ? 'Select a medal to enter amount' : 'Amount won in this category'}
+                  </p>
+                  {errors[`cat_${idx}_prizeAmount`] && (
+                    <p className="text-red-500 text-xs mt-1">{errors[`cat_${idx}_prizeAmount`]}</p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Per-category profit */}
@@ -385,6 +409,9 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
                 )}
               </span>
             </div>
+                </>
+              );
+            })()}
           </div>
         ))}
 

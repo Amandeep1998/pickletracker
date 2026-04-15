@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'brand-logo.png', 'brand-logo2.png', 'brand-logo3.png'],
+      includeAssets: ['favicon.svg', 'brand-logo.png', 'brand-logo2.png', 'brand-logo3.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'PickleTracker',
         short_name: 'PickleTracker',
@@ -19,21 +19,16 @@ export default defineConfig({
         scope: '/',
         icons: [
           {
-            src: '/favicon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
-            purpose: 'any',
+            src: '/icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any maskable',
           },
           {
-            src: '/brand-logo2.png',
-            sizes: '1024x682',
+            src: '/icon-512.png',
+            sizes: '512x512',
             type: 'image/png',
-            purpose: 'any',
-          },
-          {
-            src: '/brand-logo.png',
-            sizes: '1536x1024',
-            type: 'image/png',
+            purpose: 'any maskable',
           },
         ],
       },
