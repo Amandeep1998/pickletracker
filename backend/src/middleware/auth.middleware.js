@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-const protect = (req, res, next) => {
+const protect = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -11,6 +12,13 @@ const protect = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Confirm the user still exists — catches deleted accounts whose JWT hasn't expired yet
+    const exists = await User.exists({ _id: decoded.id });
+    if (!exists) {
+      return res.status(401).json({ success: false, message: 'Account no longer exists' });
+    }
+
     req.user = decoded;
     next();
   } catch (err) {

@@ -2,6 +2,8 @@ const User = require('../models/User');
 const Tournament = require('../models/Tournament');
 const Expense = require('../models/Expense');
 const WhatsAppSession = require('../models/WhatsAppSession');
+const Session = require('../models/Session');
+const Friendship = require('../models/Friendship');
 
 const getUsers = async (req, res, next) => {
   try {
@@ -154,11 +156,14 @@ const deleteUser = async (req, res, next) => {
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    // Delete all data belonging to this user
+    // Cascade-delete everything belonging to this user
     await Promise.all([
       Tournament.deleteMany({ userId: id }),
+      Session.deleteMany({ userId: id }),
       Expense.deleteMany({ userId: id }),
       WhatsAppSession.deleteMany({ userId: id }),
+      // Remove friendships where the user is either side of the relationship
+      Friendship.deleteMany({ $or: [{ requesterId: id }, { recipientId: id }] }),
     ]);
 
     await User.findByIdAndDelete(id);
