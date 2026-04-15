@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from 'firebase/auth';
 import { saveCalendarToken } from './googleCalendar';
 
 /**
@@ -84,6 +84,21 @@ export function onFirebaseAuthStateChanged(callback) {
   }
   const auth = getAuth(getFirebaseApp());
   return onAuthStateChanged(auth, callback);
+}
+
+/**
+ * Reads Google redirect result credentials after returning from signInWithRedirect.
+ * Returns null when no redirect result is available.
+ */
+export async function getGoogleRedirectCredentials() {
+  if (!isFirebaseClientConfigured()) return null;
+  const auth = getAuth(getFirebaseApp());
+  const result = await getRedirectResult(auth);
+  if (!result?.user) return null;
+  const idToken = await result.user.getIdToken();
+  const name = result.user.displayName || '';
+  const email = result.user.email || '';
+  return { idToken, name, email };
 }
 
 /**

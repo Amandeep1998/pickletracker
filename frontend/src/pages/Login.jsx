@@ -19,7 +19,7 @@ export default function Login() {
   const [forgotMsg, setForgotMsg] = useState('');
 
   useEffect(() => {
-    if (user) navigate('/dashboard', { replace: true });
+    if (user) navigate('/calendar', { replace: true });
   }, [user, navigate]);
 
   const handleChange = (e) => {

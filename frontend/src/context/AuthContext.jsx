@@ -1,7 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import posthog from 'posthog-js';
 import * as api from '../services/api';
-import { signInWithGoogleAndGetCredentials, onFirebaseAuthStateChanged, firebaseSignOut, isMobileBrowser } from '../services/firebase';
+import {
+  signInWithGoogleAndGetCredentials,
+  getGoogleRedirectCredentials,
+  onFirebaseAuthStateChanged,
+  firebaseSignOut,
+  isMobileBrowser,
+} from '../services/firebase';
 
 // Attach PostHog identity to a logged-in user
 function identifyUser(userData) {
@@ -31,6 +37,16 @@ export const AuthProvider = ({ children }) => {
 
   const clearError = () => setError(null);
 
+  const completeGoogleLogin = async ({ idToken, name, email }) => {
+    const res = await api.loginWithGoogle({ idToken, name, email });
+    const { token, user: userData } = res.data;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    identifyUser(userData);
+    posthog.capture(userData.isNewUser ? 'user_signed_up' : 'user_logged_in', { method: 'google' });
+    setUser(userData);
+  };
+
   // On mobile: listen for Firebase auth state changes to detect a completed redirect.
   // onAuthStateChanged is reliable on iOS Safari where getRedirectResult() often
   // returns null due to storage restrictions clearing the pending redirect state.
@@ -41,48 +57,71 @@ export const AuthProvider = ({ children }) => {
     }
 
     let handled = false;
+    let active = true;
+
+    const finishLoading = () => {
+      if (active) setRedirectLoading(false);
+    };
+
+    const processGoogleCreds = async (creds) => {
+      if (!creds || handled) return false;
+      handled = true;
+      try {
+        await completeGoogleLogin(creds);
+      } catch (err) {
+        setError('Google sign-in failed. Please try again or use email/password.');
+        console.error('[Auth] Mobile Google redirect completion error:', err);
+      } finally {
+        finishLoading();
+      }
+      return true;
+    };
+
+    (async () => {
+      try {
+        const redirectCreds = await getGoogleRedirectCredentials();
+        if (await processGoogleCreds(redirectCreds)) return;
+      } catch {
+        // We'll still use the auth state listener fallback below.
+      } finally {
+        if (!handled) finishLoading();
+      }
+    })();
 
     const unsubscribe = onFirebaseAuthStateChanged(async (firebaseUser) => {
       // No Firebase user — nothing to do, clear loading state
       if (!firebaseUser) {
-        setRedirectLoading(false);
+        finishLoading();
         return;
       }
 
       // Our app already has a valid session — the user is logged in, skip
       if (localStorage.getItem('token')) {
-        setRedirectLoading(false);
+        finishLoading();
         return;
       }
 
       // Firebase has a user but our app doesn't — redirect just completed.
       // Guard against this firing more than once.
       if (handled) return;
-      handled = true;
 
       try {
         const idToken = await firebaseUser.getIdToken();
-        const res = await api.loginWithGoogle({
+        await processGoogleCreds({
           idToken,
           name: firebaseUser.displayName || '',
           email: firebaseUser.email || '',
         });
-        const { token, user: userData } = res.data;
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(userData));
-        identifyUser(userData);
-        posthog.capture(userData.isNewUser ? 'user_signed_up' : 'user_logged_in', { method: 'google' });
-        setUser(userData);
-        // Login/Signup pages watch `user` and navigate automatically
       } catch (err) {
-        setError('Google sign-in failed. Please try again or use email/password.');
-        console.error('[Auth] Mobile Google redirect error:', err);
-      } finally {
-        setRedirectLoading(false);
+        finishLoading();
+        console.error('[Auth] Mobile Firebase user processing error:', err);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
   const handleSignup = async (data) => {
@@ -135,13 +174,7 @@ export const AuthProvider = ({ children }) => {
       // useEffect above on the next page load.
       if (!creds) return { success: false, message: '' };
       const { idToken, name, email } = creds;
-      const res = await api.loginWithGoogle({ idToken, name, email });
-      const { token, user: userData } = res.data;
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
-      identifyUser(userData);
-      posthog.capture(userData.isNewUser ? 'user_signed_up' : 'user_logged_in', { method: 'google' });
-      setUser(userData);
+      await completeGoogleLogin({ idToken, name, email });
       return { success: true };
     } catch (err) {
       if (err?.code === 'auth/popup-closed-by-user') {
