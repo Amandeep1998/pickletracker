@@ -3,10 +3,7 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRe
 import { saveCalendarToken } from './googleCalendar';
 
 /**
- * Mobile browsers (especially iOS Safari) block popups that are opened
- * outside of a direct synchronous user gesture.  Firebase's async flow
- * breaks that requirement, so we use redirect on all mobile devices and
- * fall back to popup only on desktop.
+ * Heuristic for mobile browsers where popup auth may be flaky.
  */
 export function isMobileBrowser() {
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
@@ -38,11 +35,20 @@ function getFirebaseApp() {
   return getApps()[0];
 }
 
+function shouldFallbackToRedirect(error) {
+  const code = error?.code || '';
+  return (
+    code === 'auth/popup-blocked' ||
+    code === 'auth/popup-closed-by-user' ||
+    code === 'auth/cancelled-popup-request' ||
+    code === 'auth/operation-not-supported-in-this-environment'
+  );
+}
+
 /**
- * Opens Google sign-in and returns the Firebase ID token plus profile fields for the API.
- * On mobile, uses redirect (no popup) to avoid browser popup-blocking.
- * On mobile the function initiates the redirect and never resolves — the result
- * is picked up on the next page load via getGoogleRedirectResult().
+ * Opens Google sign-in and returns Firebase ID token + profile fields.
+ * Uses popup first for faster completion, and on mobile falls back to redirect
+ * when popup cannot be used.
  */
 export async function signInWithGoogleAndGetCredentials() {
   if (!isFirebaseClientConfigured()) {
@@ -53,18 +59,20 @@ export async function signInWithGoogleAndGetCredentials() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
 
-  if (isMobileBrowser()) {
-    // Mobile browsers block popups that open outside a synchronous user gesture.
-    // signInWithRedirect navigates the page to Google — it never returns here.
-    await signInWithRedirect(auth, provider);
-    return null; // unreachable, but satisfies linters
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const idToken = await result.user.getIdToken();
+    const name = result.user.displayName || '';
+    const email = result.user.email || '';
+    return { idToken, name, email };
+  } catch (err) {
+    // On mobile, retry with redirect if popup cannot complete in this browser.
+    if (isMobileBrowser() && shouldFallbackToRedirect(err)) {
+      await signInWithRedirect(auth, provider);
+      return null; // redirect navigation takes over
+    }
+    throw err;
   }
-
-  const result = await signInWithPopup(auth, provider);
-  const idToken = await result.user.getIdToken();
-  const name = result.user.displayName || '';
-  const email = result.user.email || '';
-  return { idToken, name, email };
 }
 
 /**
