@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import BrandLogo from '../components/BrandLogo';
+import { useAuth } from '../context/AuthContext';
 
 /* ─── Custom Icons ─────────────────────────────────────────── */
 const IconTrophy = () => (
@@ -100,7 +101,20 @@ const STEPS = [
 
 /* ─── Landing Page ─────────────────────────────────────────── */
 export default function Landing() {
+  const { user, authInitializing } = useAuth();
   const year = new Date().getFullYear();
+
+  if (authInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm text-gray-500">
+        Checking your session...
+      </div>
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/calendar" replace />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-white" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
