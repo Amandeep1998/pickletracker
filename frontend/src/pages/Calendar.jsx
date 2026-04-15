@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import posthog from 'posthog-js';
 import * as api from '../services/api';
 import TournamentForm from '../components/TournamentForm';
 import SessionForm from '../components/SessionForm';
@@ -216,6 +217,7 @@ export default function Calendar() {
     setAddError('');
     try {
       await api.createTournament(data);
+      posthog.capture('tournament_created', { category_count: data.categories?.length ?? 1 });
       setAddModal({ open: false, date: null });
       await fetchTournaments();
     } catch (err) {
@@ -247,6 +249,7 @@ export default function Calendar() {
     setSessionFormError('');
     try {
       await api.createSession(data);
+      posthog.capture('session_logged', { type: data.type, rating: data.rating });
       setAddSessionModal({ open: false, date: null });
       await fetchData();
     } catch (err) {

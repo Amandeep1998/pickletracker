@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import posthog from 'posthog-js';
 import { parseFromFile } from '../services/api';
 
 // status: 'idle' | 'loading' | 'clarifying'
@@ -40,6 +41,7 @@ export default function DocumentInput({ onFill, currentForm }) {
 
     try {
       const res = await parseFromFile(file, currentForm);
+      posthog.capture('pdf_upload_used', { type: isPdf ? 'pdf' : 'screenshot' });
       handleParsed(res.data.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Could not read this file. Please try again.');

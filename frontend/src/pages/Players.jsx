@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import posthog from 'posthog-js';
 import * as api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
@@ -836,6 +837,7 @@ export default function Players() {
     setPendingFriendIds((prev) => new Set(prev).add(String(playerId)));
     try {
       await api.sendFriendRequest(playerId);
+      posthog.capture('friend_request_sent');
       showToast('Friend request sent!');
       await fetchFriendData();
     } catch (err) {

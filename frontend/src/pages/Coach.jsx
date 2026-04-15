@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import posthog from 'posthog-js';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 
@@ -102,6 +103,7 @@ export default function Coach() {
 
   // Generate the initial coaching report on mount
   useEffect(() => {
+    posthog.capture('ai_coach_opened');
     let cancelled = false;
     setInitialLoading(true);
     api.getCoachInsight([])

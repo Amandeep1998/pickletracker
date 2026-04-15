@@ -3,8 +3,17 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { BrowserTracing, Replay } from '@sentry/react';
+import posthog from 'posthog-js';
 import App from './App';
 import './index.css';
+
+if (import.meta.env.VITE_POSTHOG_KEY) {
+  posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
+    api_host: 'https://app.posthog.com',
+    autocapture: false, // only track explicit events we fire
+    capture_pageview: true,
+  });
+}
 
 if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
