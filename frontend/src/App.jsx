@@ -1,5 +1,4 @@
-import React, { useEffect } from 'react';
-import * as Sentry from '@sentry/react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
@@ -22,10 +21,6 @@ import Players from './pages/Players';
 import Coach from './pages/Coach';
 
 export default function App() {
-  useEffect(() => {
-    Sentry.captureException(new Error('Sentry frontend test'));
-  }, []);
-
   return (
     <AuthProvider>
       <SocketProvider>
