@@ -863,6 +863,7 @@ export default function Players() {
     setAcceptingId(consentRequest.id);
     try {
       await api.acceptFriendRequest(consentRequest.id);
+      posthog.capture('friend_request_accepted');
       setConsentRequest(null);
       showToast(`You and ${consentRequest.user?.name} are now friends!`);
       await fetchFriendData();

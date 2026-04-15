@@ -132,6 +132,7 @@ export default function Coach() {
     setSending(true);
     setError('');
 
+    posthog.capture('ai_coach_message_sent', { message_count: history.length });
     try {
       const res = await api.getCoachInsight(history.map((m) => ({ role: m.role, content: m.content })));
       setMessages((prev) => [...prev, { role: 'assistant', content: res.data.data.reply }]);

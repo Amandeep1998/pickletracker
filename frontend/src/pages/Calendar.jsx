@@ -233,6 +233,7 @@ export default function Calendar() {
     setFormError('');
     try {
       await api.updateTournament(selectedTournament._id, data);
+      posthog.capture('tournament_edited');
       setIsEditing(false);
       setSelectedTournament(null);
       await fetchTournaments();

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import posthog from 'posthog-js';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import CITIES_BY_STATE from '../data/indianCities';
@@ -148,6 +149,7 @@ export default function Profile() {
     setExportError('');
     try {
       const res = await api.exportData();
+      posthog.capture('data_exported');
       const url = URL.createObjectURL(new Blob([res.data]));
       const a = document.createElement('a');
       const today = new Date();

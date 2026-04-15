@@ -1,6 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import posthog from 'posthog-js';
 import * as api from '../services/api';
 import { signInWithGoogleAndGetCredentials, getGoogleRedirectResult, isMobileBrowser } from '../services/firebase';
+
+// Attach PostHog identity to a logged-in user
+function identifyUser(userData) {
+  posthog.identify(userData.id || userData._id, {
+    name: userData.name,
+    email: userData.email,
+    signup_method: userData.isGoogleUser ? 'google' : 'email',
+  });
+}
 
 const AuthContext = createContext(null);
 
@@ -13,6 +23,11 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   // True on mobile while we check for a pending redirect result on mount
   const [redirectLoading, setRedirectLoading] = useState(() => isMobileBrowser());
+
+  // Re-identify PostHog whenever the user changes (covers app re-open with stored session)
+  useEffect(() => {
+    if (user) identifyUser(user);
+  }, [user?.id]);
 
   const clearError = () => setError(null);
 
@@ -32,6 +47,8 @@ export const AuthProvider = ({ children }) => {
         const { token, user: userData } = res.data;
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(userData));
+        identifyUser(userData);
+        posthog.capture(userData.isNewUser ? 'user_signed_up' : 'user_logged_in', { method: 'google' });
         setUser(userData);
         // Login/Signup pages watch `user` and will navigate automatically
       } catch {
@@ -50,6 +67,7 @@ export const AuthProvider = ({ children }) => {
     setError(null);
     try {
       await api.signup(data);
+      posthog.capture('user_signed_up', { method: 'email' });
       return { success: true };
     } catch (err) {
       const msg = err.response?.data?.errors?.[0] || err.response?.data?.message || 'Signup failed';
@@ -68,6 +86,8 @@ export const AuthProvider = ({ children }) => {
       const { token, user: userData } = res.data;
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
+      identifyUser(userData);
+      posthog.capture('user_logged_in', { method: 'email' });
       setUser(userData);
       return { success: true };
     } catch (err) {
@@ -96,6 +116,8 @@ export const AuthProvider = ({ children }) => {
       const { token, user: userData } = res.data;
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(userData));
+      identifyUser(userData);
+      posthog.capture(userData.isNewUser ? 'user_signed_up' : 'user_logged_in', { method: 'google' });
       setUser(userData);
       return { success: true };
     } catch (err) {
@@ -117,6 +139,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const handleLogout = () => {
+    posthog.capture('user_logged_out');
+    posthog.reset(); // clears identity so next user on same device gets a fresh session
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
