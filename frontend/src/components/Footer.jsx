@@ -2,11 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import BrandLogo from './BrandLogo';
 
-function InstagramIcon() {
+function InstagramIcon({ className = 'w-4 h-4' }) {
   return (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="3.5" y="3.5" width="17" height="17" rx="4.5" stroke="currentColor" strokeWidth="2" />
-      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="3.5" y="3.5" width="17" height="17" rx="4.5" stroke="currentColor" strokeWidth="1.75" />
+      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="1.75" />
       <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
     </svg>
   );
@@ -21,19 +21,22 @@ export default function Footer() {
     <footer className="bg-[#1c1c02] mt-auto">
       {/* Mobile */}
       <div className="sm:hidden px-5 py-8 space-y-6">
-        <div className="rounded-[28px] bg-[#121c2c] px-5 py-6">
-          <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-white mb-4">Get in touch</p>
-          <a href={`mailto:${supportEmail}`} className="block text-[15px] text-slate-300 break-all hover:text-white transition-colors">
+        <div>
+          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.14em] mb-3">Get in touch</p>
+          <a
+            href={`mailto:${supportEmail}`}
+            className="text-sm text-gray-400 hover:text-[#91BE4D] transition-colors break-all block mb-3"
+          >
             {supportEmail}
           </a>
           <a
             href={instagramUrl}
             target="_blank"
             rel="noreferrer"
-            className="mt-5 inline-flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 text-lg font-medium text-slate-300 hover:bg-white/15 hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-gray-300 hover:text-[#91BE4D] transition-colors"
           >
-            <InstagramIcon />
-            <span>Follow us</span>
+            <InstagramIcon className="w-4 h-4 text-[#91BE4D]" />
+            <span>Instagram</span>
           </a>
         </div>
         <div className="flex items-center justify-between gap-4">
@@ -69,25 +72,38 @@ export default function Footer() {
           </div>
 
           <div>
-            <div className="rounded-[28px] bg-[#121c2c] px-6 py-6">
-              <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-white mb-4">Get in touch</p>
-              <a href={`mailto:${supportEmail}`} className="block text-[15px] text-slate-300 break-all hover:text-white transition-colors">
-                {supportEmail}
-              </a>
-              <a
-                href={instagramUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-5 inline-flex items-center gap-3 rounded-2xl bg-white/10 px-5 py-3 text-lg font-medium text-slate-300 hover:bg-white/15 hover:text-white transition-colors"
-              >
-                <InstagramIcon />
-                <span>Follow us</span>
-              </a>
-            </div>
-            <div className="mt-5 flex items-center gap-4">
-              <Link to="/privacy-policy" className="text-sm text-gray-400 hover:text-[#91BE4D] transition-colors">Privacy Policy</Link>
-              <Link to="/terms" className="text-sm text-gray-400 hover:text-[#91BE4D] transition-colors">Terms of Service</Link>
-            </div>
+            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.14em] mb-4">Get in touch</p>
+            <ul className="space-y-2.5">
+              <li>
+                <a
+                  href={`mailto:${supportEmail}`}
+                  className="text-sm text-gray-400 hover:text-[#91BE4D] transition-colors break-all"
+                >
+                  {supportEmail}
+                </a>
+              </li>
+              <li>
+                <a
+                  href={instagramUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-[#91BE4D] transition-colors"
+                >
+                  <InstagramIcon className="w-4 h-4 text-[#91BE4D] flex-shrink-0" />
+                  <span>Instagram</span>
+                </a>
+              </li>
+              <li>
+                <Link to="/privacy-policy" className="text-sm text-gray-400 hover:text-[#91BE4D] transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/terms" className="text-sm text-gray-400 hover:text-[#91BE4D] transition-colors">
+                  Terms of Service
+                </Link>
+              </li>
+            </ul>
           </div>
         </div>
 
