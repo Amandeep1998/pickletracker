@@ -29,8 +29,6 @@ export default function Signup() {
     clearError();
     const result = await handleSignup(form);
     if (result.success) {
-      // Mark that this is a brand-new signup so Calendar shows the one-time tutorial
-      localStorage.setItem('pt_calTutorialPending', '1');
       setSuccess('Account created! Redirecting to login...');
       setTimeout(() => navigate('/login'), 1500);
     } else {
@@ -77,8 +75,6 @@ export default function Signup() {
               <div className="border-2 border-[#91BE4D]/40 rounded-xl pt-4 pb-2 px-2 bg-[#f4f8e8]/50">
                 <GoogleSignInButton
                   onBegin={() => {
-                    // Set before redirect so mobile gets it even after page reload
-                    localStorage.setItem('pt_calTutorialPending', '1');
                     setError('');
                     clearError();
                   }}

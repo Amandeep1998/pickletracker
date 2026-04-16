@@ -66,31 +66,6 @@ export default function Calendar() {
   const [sessionFormLoading, setSessionFormLoading] = useState(false);
   const [sessionFormError, setSessionFormError] = useState('');
 
-  // One-time tutorial — only shown after first signup (flag set by Signup.jsx)
-  const [showTutorial, setShowTutorial] = useState(
-    () => !!localStorage.getItem('pt_calTutorialPending')
-  );
-  const [tutorialPos, setTutorialPos] = useState(null);
-
-  useEffect(() => {
-    if (!showTutorial || loading) return;
-    const measure = () => {
-      const el = document.querySelector('[data-cal-tutorial]');
-      if (el) {
-        const r = el.getBoundingClientRect();
-        setTutorialPos({ top: r.top, left: r.left, w: r.width, h: r.height });
-      }
-    };
-    const t = setTimeout(measure, 120);
-    return () => clearTimeout(t);
-  }, [showTutorial, loading, viewYear, viewMonth]);
-
-  const dismissTutorial = () => {
-    localStorage.removeItem('pt_calTutorialPending');
-    setShowTutorial(false);
-    setTutorialPos(null);
-  };
-
   useEffect(() => { fetchData(); }, []);
 
   const fetchTournaments = async () => {
@@ -424,7 +399,6 @@ export default function Calendar() {
               <div
                 key={dateStr}
                 onClick={() => openDayPopup(dateStr)}
-                {...(isToday && showTutorial ? { 'data-cal-tutorial': '' } : {})}
                 className={`relative border-b border-r border-gray-100 min-h-[72px] sm:min-h-[90px] p-1 sm:p-1.5 transition-colors select-none cursor-pointer
                   ${hasActivity ? 'hover:bg-green-50/50' : isFuture ? 'hover:bg-gray-50' : 'hover:bg-gray-50/60'}
                   ${idx % 7 === 0 ? 'border-l-0' : ''}
@@ -875,89 +849,6 @@ export default function Calendar() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* ── First-time onboarding tutorial ── */}
-      {showTutorial && tutorialPos && (
-        <>
-          <style>{`
-            @keyframes calTutorialTap {
-              0%, 25% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
-              55%, 70% { transform: translateX(-50%) translateY(26px) scale(0.88); opacity: 0.9; }
-              90%, 100% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
-            }
-            @keyframes calSpotPulse {
-              0%, 100% { border-color: rgba(145,190,77,0.7); }
-              50% { border-color: rgba(145,190,77,1); }
-            }
-          `}</style>
-
-          {/* Full-screen backdrop — clicking it dismisses */}
-          <div
-            className="fixed inset-0 z-[100]"
-            style={{ background: 'transparent' }}
-            onClick={dismissTutorial}
-          />
-
-          {/* Spotlight ring around today's cell */}
-          <div
-            style={{
-              position: 'fixed',
-              top: tutorialPos.top - 3,
-              left: tutorialPos.left - 3,
-              width: tutorialPos.w + 6,
-              height: tutorialPos.h + 6,
-              boxShadow: '0 0 0 9999px rgba(0,0,0,0.72)',
-              borderRadius: 8,
-              border: '2px solid rgba(145,190,77,0.9)',
-              zIndex: 101,
-              pointerEvents: 'none',
-              animation: 'calSpotPulse 1.6s ease-in-out infinite',
-            }}
-          />
-
-          {/* Animated tap hand */}
-          <div
-            style={{
-              position: 'fixed',
-              top: tutorialPos.top - 44,
-              left: tutorialPos.left + tutorialPos.w / 2,
-              zIndex: 103,
-              pointerEvents: 'none',
-              fontSize: 36,
-              lineHeight: 1,
-              animation: 'calTutorialTap 1.8s ease-in-out infinite',
-              filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.4))',
-            }}
-          >
-            👇
-          </div>
-
-          {/* Bottom sheet tooltip */}
-          <div
-            className="fixed bottom-0 left-0 right-0 z-[102] bg-white rounded-t-2xl shadow-2xl px-5 pt-4 pb-8"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Handle */}
-            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-11 h-11 rounded-xl bg-[#f4f8e8] flex items-center justify-center text-2xl flex-shrink-0">📅</div>
-              <div>
-                <p className="font-extrabold text-gray-900 text-base leading-snug">Tap any date to log activity</p>
-                <p className="text-sm text-gray-500 mt-1 leading-relaxed">
-                  Click on a date on the calendar to add a <strong className="text-gray-700">tournament</strong> or a <strong className="text-gray-700">play session</strong>. Your calendar fills up as you track more!
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={dismissTutorial}
-              className="w-full py-3 rounded-xl font-bold text-white text-sm hover:opacity-90 transition-opacity"
-              style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
-            >
-              Got it!
-            </button>
-          </div>
-        </>
       )}
 
     </div>
