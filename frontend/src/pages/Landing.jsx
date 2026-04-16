@@ -64,6 +64,14 @@ const Ball = ({ size = 60, opacity = 1 }) => (
   </svg>
 );
 
+const InstagramIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <rect x="3.5" y="3.5" width="17" height="17" rx="4.5" stroke="currentColor" strokeWidth="2" />
+    <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+    <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
+  </svg>
+);
+
 /* ─── Features data ────────────────────────────────────────── */
 const FEATURES = [
   {
@@ -358,24 +366,25 @@ export default function Landing() {
                 </ul>
               </div>
               <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] mb-4">Support</p>
-                <ul className="space-y-3">
-                  {[['Privacy Policy', '/privacy-policy'], ['Terms of Service', '/terms']].map(([label, to]) => (
-                    <li key={label}>
-                      <Link to={to} className="text-sm text-slate-400 hover:text-[#91BE4D] transition-colors">{label}</Link>
-                    </li>
-                  ))}
-                  <li>
-                    <a href={`mailto:${supportEmail}`} className="text-sm text-slate-400 hover:text-[#91BE4D] transition-colors">
-                      {supportEmail}
-                    </a>
-                  </li>
-                  <li>
-                    <a href={instagramUrl} target="_blank" rel="noreferrer" className="text-sm text-slate-400 hover:text-[#91BE4D] transition-colors">
-                      Instagram
-                    </a>
-                  </li>
-                </ul>
+                <div className="rounded-[28px] bg-[#121c2c] px-6 py-6">
+                  <p className="text-sm font-extrabold uppercase tracking-[0.18em] text-white mb-4">Get in touch</p>
+                  <a href={`mailto:${supportEmail}`} className="block text-[15px] text-slate-300 break-all hover:text-white transition-colors">
+                    {supportEmail}
+                  </a>
+                  <a
+                    href={instagramUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-5 inline-flex items-center gap-3 rounded-2xl bg-white/10 px-5 py-3 text-lg font-medium text-slate-300 hover:bg-white/15 hover:text-white transition-colors"
+                  >
+                    <InstagramIcon />
+                    <span>Follow us</span>
+                  </a>
+                </div>
+                <div className="mt-5 flex items-center gap-4">
+                  <Link to="/privacy-policy" className="text-sm text-slate-400 hover:text-[#91BE4D] transition-colors">Privacy Policy</Link>
+                  <Link to="/terms" className="text-sm text-slate-400 hover:text-[#91BE4D] transition-colors">Terms of Service</Link>
+                </div>
               </div>
             </div>
           </div>
