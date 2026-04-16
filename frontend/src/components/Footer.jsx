@@ -4,6 +4,8 @@ import BrandLogo from './BrandLogo';
 
 export default function Footer() {
   const year = new Date().getFullYear();
+  const supportEmail = 'pickletracker.app@gmail.com';
+  const instagramUrl = 'https://www.instagram.com/pickletracker/';
 
   return (
     <footer className="bg-[#1c1c02] mt-auto">
@@ -13,6 +15,8 @@ export default function Footer() {
         <div className="flex items-center gap-4">
           <Link to="/privacy-policy" className="text-xs text-gray-500 hover:text-[#91BE4D] transition-colors">Privacy</Link>
           <Link to="/terms"          className="text-xs text-gray-500 hover:text-[#91BE4D] transition-colors">Terms</Link>
+          <a href={`mailto:${supportEmail}`} className="text-xs text-gray-500 hover:text-[#91BE4D] transition-colors">Support</a>
+          <a href={instagramUrl} target="_blank" rel="noreferrer" className="text-xs text-gray-500 hover:text-[#91BE4D] transition-colors">Instagram</a>
         </div>
       </div>
 
@@ -42,15 +46,25 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Legal */}
+          {/* Legal & Support */}
           <div>
-            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.14em] mb-4">Legal</p>
+            <p className="text-[11px] font-bold text-gray-500 uppercase tracking-[0.14em] mb-4">Support</p>
             <ul className="space-y-2.5">
               {[['Privacy Policy', '/privacy-policy'], ['Terms of Service', '/terms']].map(([label, to]) => (
                 <li key={label}>
                   <Link to={to} className="text-sm text-gray-400 hover:text-[#91BE4D] transition-colors">{label}</Link>
                 </li>
               ))}
+              <li>
+                <a href={`mailto:${supportEmail}`} className="text-sm text-gray-400 hover:text-[#91BE4D] transition-colors">
+                  {supportEmail}
+                </a>
+              </li>
+              <li>
+                <a href={instagramUrl} target="_blank" rel="noreferrer" className="text-sm text-gray-400 hover:text-[#91BE4D] transition-colors">
+                  Instagram
+                </a>
+              </li>
             </ul>
           </div>
 

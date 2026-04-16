@@ -103,6 +103,8 @@ const STEPS = [
 export default function Landing() {
   const { user, authInitializing } = useAuth();
   const year = new Date().getFullYear();
+  const supportEmail = 'pickletracker.app@gmail.com';
+  const instagramUrl = 'https://www.instagram.com/pickletracker/';
 
   if (authInitializing) {
     return (
@@ -356,7 +358,7 @@ export default function Landing() {
                 </ul>
               </div>
               <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] mb-4">Legal</p>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] mb-4">Support</p>
                 <ul className="space-y-3">
                   {[['Privacy Policy', '/privacy-policy'], ['Terms of Service', '/terms']].map(([label, to]) => (
                     <li key={label}>
@@ -364,8 +366,13 @@ export default function Landing() {
                     </li>
                   ))}
                   <li>
-                    <a href="mailto:support@pickletracker.in" className="text-sm text-slate-400 hover:text-[#91BE4D] transition-colors">
-                      Contact
+                    <a href={`mailto:${supportEmail}`} className="text-sm text-slate-400 hover:text-[#91BE4D] transition-colors">
+                      {supportEmail}
+                    </a>
+                  </li>
+                  <li>
+                    <a href={instagramUrl} target="_blank" rel="noreferrer" className="text-sm text-slate-400 hover:text-[#91BE4D] transition-colors">
+                      Instagram
                     </a>
                   </li>
                 </ul>
