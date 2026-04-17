@@ -6,6 +6,9 @@ import { BrowserTracing, Replay } from '@sentry/react';
 import posthog from 'posthog-js';
 import App from './App';
 import './index.css';
+import { registerSW } from 'virtual:pwa-register';
+
+registerSW({ immediate: true });
 
 if (import.meta.env.VITE_POSTHOG_KEY) {
   posthog.init(import.meta.env.VITE_POSTHOG_KEY, {

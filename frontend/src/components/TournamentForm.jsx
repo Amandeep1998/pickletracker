@@ -39,6 +39,13 @@ const EMPTY_FORM = {
   notes: '',
 };
 
+/** Normalize API / ISO strings so <input type="date"> always gets YYYY-MM-DD. */
+function toInputDateStr(value) {
+  if (!value) return '';
+  const s = String(value);
+  return s.length >= 10 ? s.slice(0, 10) : s;
+}
+
 export default function TournamentForm({ initial, onSubmit, onCancel, loading }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
@@ -51,7 +58,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         location: initial.location || null,
         categories: (initial.categories || [{ ...EMPTY_CATEGORY }]).map((cat) => ({
           categoryName: cat.categoryName || '',
-          date: cat.date || '',
+          date: toInputDateStr(cat.date),
           medal: cat.medal || 'None',
           prizeAmount: cat.prizeAmount ?? '',
           entryFee: cat.entryFee ?? '',
@@ -123,7 +130,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
       if (data.categories && data.categories.length > 0) {
         next.categories = data.categories.map((cat) => ({
           categoryName: cat.categoryName || '',
-          date: cat.date || '',
+          date: toInputDateStr(cat.date) || '',
           medal: cat.medal || 'None',
           prizeAmount: (cat.medal === 'None' || !cat.medal) ? 0 : cat.prizeAmount != null ? cat.prizeAmount : '',
           entryFee: cat.entryFee != null ? cat.entryFee : '',
@@ -191,7 +198,8 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
     0
   );
 
-  const showFeedback = form.categories.some((cat) => cat.date);
+  // Always show optional performance feedback (not tied to past vs future category dates).
+  const showFeedback = true;
 
   const inputClass = "w-full border border-gray-300 rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]";
 
@@ -406,7 +414,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         </span>
       </div>
 
-      {/* ── Performance feedback — shown when any category has a date ── */}
+      {/* ── Performance feedback (optional) ── */}
       {showFeedback && <div className="border-t pt-4 space-y-5">
         <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Performance Feedback <span className="text-gray-300 font-normal normal-case">(optional)</span></p>
 
