@@ -3,6 +3,10 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  define: {
+    // Set on Vercel builds so you can confirm which revision the tab is running (DevTools console).
+    'import.meta.env.VITE_COMMIT': JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA || ''),
+  },
   plugins: [
     react(),
     VitePWA({

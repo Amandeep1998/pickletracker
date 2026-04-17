@@ -8,6 +8,10 @@ import App from './App';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 
+if (import.meta.env.PROD && import.meta.env.VITE_COMMIT) {
+  console.info('[PickleTracker] deployment', import.meta.env.VITE_COMMIT.slice(0, 7));
+}
+
 registerSW({
   immediate: true,
   // When a new build is deployed, reload so the app does not stay on precached old UI.
