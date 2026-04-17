@@ -10,10 +10,13 @@ const SKILL_TAGS = [
 ];
 
 const SESSION_TYPES = [
-  { value: 'casual',     label: 'Casual Play', icon: '🎾', desc: 'Recreational / court booking' },
-  { value: 'practice',  label: 'Practice',    icon: '🎯', desc: 'Drilling & training' },
-  { value: 'tournament', label: 'Tournament', icon: '🏆', desc: 'Competitive event' },
+  { value: 'casual',   label: 'Casual Play', icon: '🎾', desc: 'Recreational / court booking' },
+  { value: 'practice', label: 'Drill',       icon: '🎯', desc: 'Drilling & training' },
 ];
+
+// Legacy option: surfaced only when editing a pre-existing session that was
+// saved as type 'tournament', so the user's selection stays visible.
+const LEGACY_TOURNAMENT_TYPE = { value: 'tournament', label: 'Tournament', icon: '🏆', desc: 'Competitive event (legacy)' };
 
 const RATINGS = [
   { value: 1, emoji: '😫', label: 'Rough' },
@@ -75,7 +78,23 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     const errs = validate();
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      // Scroll to the first invalid field (runs after DOM paints the new errors)
+      const formEl = e.currentTarget;
+      requestAnimationFrame(() => {
+        for (const key of Object.keys(errs)) {
+          const el = formEl.querySelector(`[data-error-key="${key}"]`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const focusable = el.querySelector('input, textarea, select, button');
+            focusable?.focus?.({ preventScroll: true });
+            break;
+          }
+        }
+      });
+      return;
+    }
     onSubmit({
       type: form.type,
       date: form.date,
@@ -105,8 +124,8 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
       {/* Session type */}
       <div>
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Session type</p>
-        <div className="grid grid-cols-3 gap-2">
-          {SESSION_TYPES.map((t) => (
+        <div className={`grid gap-2 ${form.type === 'tournament' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          {(form.type === 'tournament' ? [...SESSION_TYPES, LEGACY_TOURNAMENT_TYPE] : SESSION_TYPES).map((t) => (
             <button
               key={t.value}
               type="button"
@@ -129,7 +148,7 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
 
       {/* Date */}
       <div className="grid grid-cols-2 gap-3">
-        <div>
+        <div data-error-key="date">
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Date</label>
           <input
             type="date"
@@ -171,7 +190,7 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
       </div>
 
       {/* Rating */}
-      <div>
+      <div data-error-key="rating">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">How did you play?</p>
         <div className="flex gap-2 sm:gap-3">
           {RATINGS.map((r) => (

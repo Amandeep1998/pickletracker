@@ -34,7 +34,7 @@ const SESSION_CHIP = {
   tournament: 'bg-orange-100 text-orange-700',
 };
 const SESSION_ICON = { casual: '🎾', practice: '🎯', tournament: '🏆' };
-const SESSION_LABEL = { casual: 'Casual', practice: 'Practice', tournament: 'Tournament' };
+const SESSION_LABEL = { casual: 'Casual', practice: 'Drill', tournament: 'Tournament' };
 
 export default function Calendar() {
   const today = new Date();
@@ -65,6 +65,9 @@ export default function Calendar() {
   const [addSessionModal, setAddSessionModal] = useState({ open: false, date: null });
   const [sessionFormLoading, setSessionFormLoading] = useState(false);
   const [sessionFormError, setSessionFormError] = useState('');
+
+  // Floating action button (speed-dial) state
+  const [fabOpen, setFabOpen] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -318,12 +321,6 @@ export default function Calendar() {
         ))}
       </div>
 
-      <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
-        <p className="text-sm text-blue-800 leading-relaxed">
-          <span className="font-semibold">Tip:</span> You can add a tournament directly from the calendar by clicking on any date.
-        </p>
-      </div>
-
       {/* ── Calendar Card ── */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
 
@@ -356,11 +353,21 @@ export default function Calendar() {
           </div>
         </div>
 
+        {/* Helper hint */}
+        <div className="flex items-center gap-2 px-4 py-2 bg-[#f7faf3] border-b border-[#91BE4D]/20">
+          <svg className="w-3.5 h-3.5 text-[#4a6e10] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <p className="text-[11px] sm:text-xs text-[#3d6210] font-medium leading-snug">
+            Tap any date to add a session or tournament.
+          </p>
+        </div>
+
         {/* Legend */}
         <div className="flex items-center gap-3 sm:gap-4 px-4 py-2 border-b border-gray-50 overflow-x-auto">
           {[
             { dot: 'bg-blue-400', label: 'Casual' },
-            { dot: 'bg-purple-400', label: 'Practice' },
+            { dot: 'bg-purple-400', label: 'Drill' },
             { dot: 'bg-orange-400', label: 'Session (Tourney)' },
             { dot: 'bg-[#91BE4D]', label: 'Tournament' },
           ].map((l) => (
@@ -399,7 +406,7 @@ export default function Calendar() {
               <div
                 key={dateStr}
                 onClick={() => openDayPopup(dateStr)}
-                className={`relative border-b border-r border-gray-100 min-h-[72px] sm:min-h-[90px] p-1 sm:p-1.5 transition-colors select-none cursor-pointer
+                className={`relative flex flex-col border-b border-r border-gray-100 min-h-[72px] sm:min-h-[90px] p-1 sm:p-1.5 transition-colors select-none cursor-pointer
                   ${hasActivity ? 'hover:bg-green-50/50' : isFuture ? 'hover:bg-gray-50' : 'hover:bg-gray-50/60'}
                   ${idx % 7 === 0 ? 'border-l-0' : ''}
                 `}
@@ -413,40 +420,34 @@ export default function Calendar() {
                   </span>
                 </div>
 
-                {/* Named chips — visible on all screen sizes */}
-                <div className="space-y-0.5">
-                  {daySessions.slice(0, 1).map((s, i) => (
-                    <div
-                      key={i}
-                      className={`text-[8px] sm:text-[11px] rounded px-1 py-0.5 truncate font-semibold leading-tight ${SESSION_CHIP[s.type] || 'bg-blue-100 text-blue-700'}`}
-                    >
-                      <span className="hidden sm:inline">{SESSION_ICON[s.type]} </span>
-                      {SESSION_LABEL[s.type]}
-                      {daySessions.length > 1 && ` ×${daySessions.length}`}
-                    </div>
-                  ))}
-                  {events.slice(0, 1).map((ev, i) => (
-                    <div
-                      key={i}
-                      onClick={(e) => { e.stopPropagation(); setSelectedTournament(ev.tournament); }}
-                      className="text-[8px] sm:text-[11px] bg-[#91BE4D]/15 text-[#4a6e10] rounded px-1 py-0.5 truncate font-semibold sm:hover:bg-green-200 transition cursor-pointer leading-tight"
-                      title={`${ev.tournament.name} – ${ev.category.categoryName}`}
-                    >
-                      <span className="hidden sm:inline">🏆 </span>
-                      {ev.tournament.name}
-                    </div>
-                  ))}
-                  {(events.length + daySessions.length) > 2 && (
-                    <div className="text-[8px] sm:text-[10px] text-gray-400 px-1 font-medium">
-                      +{events.length + daySessions.length - 2}
-                    </div>
-                  )}
-                </div>
-
-                {/* "+" add hint — desktop hover only, no button on mobile */}
-                {!hasActivity && (
-                  <div className="hidden sm:flex absolute bottom-1 right-1 w-5 h-5 rounded-full items-center justify-center text-xs font-bold text-gray-300 hover:bg-green-600 hover:text-white transition-colors border border-gray-200 bg-white">
-                    +
+                {hasActivity && (
+                  <div className="space-y-0.5">
+                    {daySessions.slice(0, 1).map((s, i) => (
+                      <div
+                        key={i}
+                        className={`text-[8px] sm:text-[11px] rounded px-1 py-0.5 truncate font-semibold leading-tight ${SESSION_CHIP[s.type] || 'bg-blue-100 text-blue-700'}`}
+                      >
+                        <span className="hidden sm:inline">{SESSION_ICON[s.type]} </span>
+                        {SESSION_LABEL[s.type]}
+                        {daySessions.length > 1 && ` ×${daySessions.length}`}
+                      </div>
+                    ))}
+                    {events.slice(0, 1).map((ev, i) => (
+                      <div
+                        key={i}
+                        onClick={(e) => { e.stopPropagation(); setSelectedTournament(ev.tournament); }}
+                        className="text-[8px] sm:text-[11px] bg-[#91BE4D]/15 text-[#4a6e10] rounded px-1 py-0.5 truncate font-semibold sm:hover:bg-green-200 transition cursor-pointer leading-tight"
+                        title={`${ev.tournament.name} – ${ev.category.categoryName}`}
+                      >
+                        <span className="hidden sm:inline">🏆 </span>
+                        {ev.tournament.name}
+                      </div>
+                    ))}
+                    {(events.length + daySessions.length) > 2 && (
+                      <div className="text-[8px] sm:text-[10px] text-gray-400 px-1 font-medium">
+                        +{events.length + daySessions.length - 2}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -849,6 +850,70 @@ export default function Calendar() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Floating Action Button (speed-dial) ──
+          Hidden whenever a modal/popup is open so it doesn't overlap forms. */}
+      {!dayPopup.open && !addModal.open && !addSessionModal.open && !selectedTournament && (
+      <>
+      {/* Scrim */}
+      {fabOpen && (
+        <div
+          className="fixed inset-0 bg-black/30 z-40 transition-opacity"
+          onClick={() => setFabOpen(false)}
+        />
+      )}
+
+      <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end gap-2.5">
+        {/* Speed-dial options */}
+        <div
+          className={`flex flex-col items-end gap-2.5 transition-all duration-200 ${
+            fabOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-2 pointer-events-none'
+          }`}
+        >
+          <button
+            onClick={() => {
+              setFabOpen(false);
+              setAddSessionModal({ open: true, date: todayStr });
+              setSessionFormError('');
+            }}
+            className="flex items-center gap-2.5 bg-white shadow-lg border border-gray-100 rounded-full pl-4 pr-5 py-2.5 hover:shadow-xl active:scale-95 transition-all"
+          >
+            <span className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-base">🎯</span>
+            <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">Log Session</span>
+          </button>
+          <button
+            onClick={() => {
+              setFabOpen(false);
+              setAddModal({ open: true, date: todayStr });
+              setAddError('');
+            }}
+            className="flex items-center gap-2.5 bg-white shadow-lg border border-gray-100 rounded-full pl-4 pr-5 py-2.5 hover:shadow-xl active:scale-95 transition-all"
+          >
+            <span className="w-7 h-7 rounded-full bg-[#91BE4D]/20 flex items-center justify-center text-base">🏆</span>
+            <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">Add Tournament</span>
+          </button>
+        </div>
+
+        {/* Main FAB */}
+        <button
+          onClick={() => setFabOpen((v) => !v)}
+          aria-label={fabOpen ? 'Close add menu' : 'Open add menu'}
+          className="w-14 h-14 rounded-full text-white shadow-lg hover:shadow-xl active:scale-95 flex items-center justify-center transition-all"
+          style={{ background: 'linear-gradient(135deg, #2d7005 0%, #91BE4D 55%, #ec9937 100%)' }}
+        >
+          <svg
+            className={`w-7 h-7 transition-transform duration-200 ${fabOpen ? 'rotate-45' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+      </div>
+      </>
       )}
 
     </div>

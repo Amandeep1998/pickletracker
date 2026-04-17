@@ -320,7 +320,7 @@ export default function Profile() {
           {/* Location & Contact Card */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5">
             <p className="text-sm font-bold text-gray-900 mb-0.5">Location &amp; Contact</p>
-            <p className="text-xs text-gray-400 mb-4">Optional — helps personalise your community profile and upcoming features.</p>
+            <p className="text-xs text-gray-400 mb-4">Optional — helps personalise your Nearby Players profile and upcoming features.</p>
             <form onSubmit={handleSaveLocation} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">

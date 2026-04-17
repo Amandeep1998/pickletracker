@@ -132,12 +132,12 @@ export default function PlayerCardPage() {
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
         <div className="relative flex items-center justify-between gap-4">
           <div>
-            <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-0.5">Community</p>
+            <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-0.5">Nearby Players</p>
             <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight">My Player Card</h1>
             <p className="text-slate-400 text-xs mt-0.5">Edit your card and share it with the pickleball community</p>
           </div>
           <Link to="/players" className="relative flex-shrink-0 text-xs font-semibold text-white/60 hover:text-white transition-colors">
-            ← Community
+            ← Nearby Players
           </Link>
         </div>
       </div>

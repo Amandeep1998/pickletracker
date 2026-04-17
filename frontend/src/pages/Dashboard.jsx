@@ -373,7 +373,7 @@ export default function Dashboard() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-[#272702]">Make PickleTracker work harder for you</p>
             <p className="text-xs text-gray-500 mt-0.5">
-              Add your city to personalise your profile and appear in the community player directory.
+              Add your city to personalise your profile and appear in the Nearby Players directory.
             </p>
             <NavLink
               to="/profile"
@@ -470,7 +470,7 @@ export default function Dashboard() {
             {recentSessions.map((s) => {
               const EMOJI = { 1: '😫', 2: '😕', 3: '😐', 4: '😊', 5: '🔥' };
               const TYPE_ICON = { tournament: '🏆', casual: '🎾', practice: '🎯' };
-              const TYPE_LABEL = { tournament: 'Tournament', casual: 'Casual', practice: 'Practice' };
+              const TYPE_LABEL = { tournament: 'Tournament', casual: 'Casual', practice: 'Drill' };
               const [y, m, d] = s.date.split('-');
               const dateLabel = new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
               return (

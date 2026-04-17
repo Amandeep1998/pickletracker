@@ -57,7 +57,7 @@ export default function Navbar() {
               style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}>NEW</span>
           </NavLink>
           <NavLink to="/expenses"   className={linkClass}>Gear</NavLink>
-          <NavLink to="/players"    className={linkClass}>Community</NavLink>
+          <NavLink to="/players"    className={linkClass}>Nearby Players</NavLink>
           {isAdmin && (
             <NavLink to="/admin" className={({ isActive }) =>
               `text-sm font-medium tracking-wide transition-colors ${isActive ? 'text-purple-500' : 'text-purple-400 hover:text-purple-500'}`

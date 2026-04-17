@@ -178,6 +178,19 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
     const errs = validate();
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
+      // Scroll to the first invalid field (runs after DOM paints the new errors)
+      const formEl = e.currentTarget;
+      requestAnimationFrame(() => {
+        for (const key of Object.keys(errs)) {
+          const el = formEl.querySelector(`[data-error-key="${key}"]`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const focusable = el.querySelector('input, textarea, select, button');
+            focusable?.focus?.({ preventScroll: true });
+            break;
+          }
+        }
+      });
       return;
     }
     onSubmit({
@@ -242,7 +255,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
       </div>
 
       {/* Name */}
-      <div>
+      <div data-error-key="name">
         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Tournament Name</label>
         <input
           type="text"
@@ -297,7 +310,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
             </div>
 
             {/* Category Name */}
-            <div>
+            <div data-error-key={`cat_${idx}_categoryName`}>
               <label className="block text-xs font-medium text-gray-600 mb-1">Category Name</label>
               <SearchableSelect
                 options={CATEGORIES}
@@ -311,7 +324,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
             </div>
 
             {/* Category Date */}
-            <div>
+            <div data-error-key={`cat_${idx}_date`}>
               <label className="block text-xs font-medium text-gray-600 mb-1">Category Date</label>
               <input
                 type="date"
@@ -344,7 +357,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
 
             {/* Financials */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-              <div>
+              <div data-error-key={`cat_${idx}_entryFee`}>
                 <label className="block text-xs font-medium text-gray-600 mb-1">My Entry Fee (₹)</label>
                 <input
                   type="number"
@@ -365,7 +378,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
                 )}
               </div>
 
-              <div>
+              <div data-error-key={`cat_${idx}_prizeAmount`}>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Amount Won (₹)</label>
                 <input
                   type="number"

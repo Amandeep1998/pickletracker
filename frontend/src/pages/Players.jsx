@@ -935,7 +935,7 @@ export default function Players() {
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
         <div className="relative flex items-center gap-4">
           <div>
-            <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-0.5">Community</p>
+            <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-0.5">Nearby Players</p>
             <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight">Players</h1>
             <p className="text-slate-400 text-xs mt-0.5">
               {totalPlayers > 0 ? `${totalPlayers} player${totalPlayers !== 1 ? 's' : ''} across ${sortedCities.length} cit${sortedCities.length !== 1 ? 'ies' : 'y'}` : 'Discover the pickleball community'}
@@ -979,7 +979,7 @@ export default function Players() {
       <div className="mb-3 bg-[#f4f8e8] border border-[#91BE4D]/30 rounded-xl px-4 py-3 flex gap-3">
         <span className="text-lg flex-shrink-0 mt-0.5">🏅</span>
         <div className="text-sm text-[#3a5c0a] space-y-1">
-          <p><span className="font-semibold">Your card updates automatically</span> — every tournament and medal you log on PickleTracker reflects on your community card instantly.</p>
+          <p><span className="font-semibold">Your card updates automatically</span> — every tournament and medal you log on PickleTracker reflects on your player card instantly.</p>
           <p>Have older wins that aren't showing? Tap <span className="font-semibold">Update my card</span> above to manually add past tournaments and medals.</p>
         </div>
       </div>
@@ -1127,7 +1127,7 @@ export default function Players() {
       {showEditProfile && (
         <EditMyCommunityProfileModal
           onClose={() => setShowEditProfile(false)}
-          onSaved={() => { fetchPlayers(); showToast('Your community profile has been updated!'); }}
+          onSaved={() => { fetchPlayers(); showToast('Your player profile has been updated!'); }}
         />
       )}
       {consentRequest && (

@@ -82,7 +82,7 @@ export default function MobileMenu({ onOpenLocationModal }) {
               style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}>NEW</span>
           </NavLink>
           <NavLink to="/expenses"   className={navLinkClass} onClick={() => setIsOpen(false)}>Gear</NavLink>
-          <NavLink to="/players"    className={navLinkClass} onClick={() => setIsOpen(false)}>Community</NavLink>
+          <NavLink to="/players"    className={navLinkClass} onClick={() => setIsOpen(false)}>Nearby Players</NavLink>
           <NavLink to="/profile"    className={navLinkClass} onClick={() => setIsOpen(false)}>Profile</NavLink>
           {isAdmin && (
             <NavLink to="/admin" className={({ isActive }) =>

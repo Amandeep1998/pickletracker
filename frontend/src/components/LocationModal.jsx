@@ -153,7 +153,7 @@ export default function LocationModal({ onSave, onSkip }) {
           <div className="w-10 h-10 rounded-xl bg-[#f4f8e8] flex items-center justify-center text-xl flex-shrink-0">📍</div>
           <div>
             <p className="font-bold text-gray-900">Where are you based?</p>
-            <p className="text-xs text-gray-400 mt-0.5">See nearby players and get a personalised community view</p>
+            <p className="text-xs text-gray-400 mt-0.5">See nearby players and get a personalised Nearby Players view</p>
           </div>
           <button onClick={onSkip} className="ml-auto text-gray-300 hover:text-gray-500 flex-shrink-0 mt-0.5">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

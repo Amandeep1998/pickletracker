@@ -3,7 +3,7 @@ import * as api from '../services/api';
 import SessionForm from '../components/SessionForm';
 import Modal from '../components/Modal';
 
-const TYPE_LABELS = { tournament: 'Tournament', casual: 'Casual Play', practice: 'Practice' };
+const TYPE_LABELS = { tournament: 'Tournament', casual: 'Casual Play', practice: 'Drill' };
 const TYPE_COLORS = {
   tournament: 'bg-purple-100 text-purple-700',
   casual:     'bg-blue-50 text-blue-700',
