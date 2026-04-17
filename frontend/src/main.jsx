@@ -8,61 +8,116 @@ import App from './App';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 
-if (import.meta.env.PROD && import.meta.env.VITE_COMMIT) {
-  console.info('[PickleTracker] deployment', import.meta.env.VITE_COMMIT.slice(0, 7));
-}
+/** Bump this string to force another one-time SW unregister + Cache Storage clear + reload for all users. */
+const PWA_CACHE_PURGE_VERSION = '2026-04-19-v1';
+const PWA_CACHE_PURGE_KEY = `pt-pwa-purge-${PWA_CACHE_PURGE_VERSION}`;
 
-registerSW({
-  immediate: true,
-  // When a new build is deployed, reload so the app does not stay on precached old UI.
-  onNeedRefresh() {
+/**
+ * Incognito looks "fresh" because it has no SW/cache; main Chrome profile can keep an old precached bundle.
+ * Once per version: unregister SW, wipe Cache API, reload once, then the new JS runs normally.
+ */
+async function purgeStalePwaShellOnce() {
+  if (!import.meta.env.PROD) return false;
+  try {
+    if (localStorage.getItem(PWA_CACHE_PURGE_KEY)) return false;
+  } catch {
+    return false;
+  }
+
+  let didWork = false;
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const reg of regs) {
+        await reg.unregister();
+        didWork = true;
+      }
+    }
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      for (const key of keys) {
+        await caches.delete(key);
+        didWork = true;
+      }
+    }
+  } catch {
+    /* continue: still mark complete to avoid loops */
+  }
+
+  try {
+    localStorage.setItem(PWA_CACHE_PURGE_KEY, '1');
+  } catch {
+    /* ignore */
+  }
+
+  if (didWork) {
     window.location.reload();
-  },
-});
-
-// Desktop tabs often keep an old service worker until explicitly checked; refresh when user returns.
-function pingServiceWorkerUpdate() {
-  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.getRegistration().then((reg) => {
-    if (reg) reg.update();
-  });
-}
-if (typeof document !== 'undefined') {
-  pingServiceWorkerUpdate();
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') pingServiceWorkerUpdate();
-  });
+    return true;
+  }
+  return false;
 }
 
-if (import.meta.env.VITE_POSTHOG_KEY) {
-  posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
-    api_host: 'https://app.posthog.com',
-    autocapture: false, // only track explicit events we fire
-    capture_pageview: true,
+async function bootstrap() {
+  if (await purgeStalePwaShellOnce()) {
+    return;
+  }
+
+  if (import.meta.env.PROD && import.meta.env.VITE_COMMIT) {
+    console.info('[PickleTracker] deployment', import.meta.env.VITE_COMMIT.slice(0, 7));
+  }
+
+  registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      window.location.reload();
+    },
   });
+
+  function pingServiceWorkerUpdate() {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.getRegistration().then((reg) => {
+      if (reg) reg.update();
+    });
+  }
+  if (typeof document !== 'undefined') {
+    pingServiceWorkerUpdate();
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') pingServiceWorkerUpdate();
+    });
+  }
+
+  if (import.meta.env.VITE_POSTHOG_KEY) {
+    posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
+      api_host: 'https://app.posthog.com',
+      autocapture: false,
+      capture_pageview: true,
+    });
+  }
+
+  if (import.meta.env.VITE_SENTRY_DSN) {
+    Sentry.init({
+      dsn: import.meta.env.VITE_SENTRY_DSN,
+      integrations: [
+        new BrowserTracing(),
+        new Replay({
+          maskAllText: false,
+          blockAllMedia: false,
+        }),
+      ],
+      tracesSampleRate: 0.1,
+      replaysSessionSampleRate: 0.1,
+      replaysOnErrorSampleRate: 1.0,
+      environment: import.meta.env.MODE,
+    });
+  }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(
+    <React.StrictMode>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </React.StrictMode>
+  );
 }
 
-if (import.meta.env.VITE_SENTRY_DSN) {
-  Sentry.init({
-    dsn: import.meta.env.VITE_SENTRY_DSN,
-    integrations: [
-      new BrowserTracing(),
-      new Replay({
-        maskAllText: false,    // show actual text in replays
-        blockAllMedia: false,  // show images/media
-      }),
-    ],
-    tracesSampleRate: 0.1,
-    replaysSessionSampleRate: 0.1,  // record 10% of all sessions
-    replaysOnErrorSampleRate: 1.0,  // record 100% of sessions that hit an error
-    environment: import.meta.env.MODE,
-  });
-}
-
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React.StrictMode>
-);
+bootstrap();
