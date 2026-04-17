@@ -8,7 +8,13 @@ import App from './App';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 
-registerSW({ immediate: true });
+registerSW({
+  immediate: true,
+  // When a new build is deployed, reload so the app does not stay on precached old UI.
+  onNeedRefresh() {
+    window.location.reload();
+  },
+});
 
 if (import.meta.env.VITE_POSTHOG_KEY) {
   posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
