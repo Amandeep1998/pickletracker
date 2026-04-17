@@ -29,8 +29,14 @@ export default function Signup() {
     clearError();
     const result = await handleSignup(form);
     if (result.success) {
-      setSuccess('Account created! Redirecting to login...');
-      setTimeout(() => navigate('/login'), 1500);
+      if (result.autoLoggedIn) {
+        // Context has set `user`; the effect above will navigate to /dashboard.
+        setSuccess('Welcome! Setting up your dashboard…');
+      } else {
+        // Legacy fallback: backend didn't auto-login, send them to /login.
+        setSuccess('Account created! Redirecting to login…');
+        setTimeout(() => navigate('/login'), 1500);
+      }
     } else {
       setError(result.message);
     }

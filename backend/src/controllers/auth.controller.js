@@ -48,14 +48,23 @@ const signup = async (req, res, next) => {
     }
 
     const hash = await bcrypt.hash(password, 12);
-    await User.create({
+    const createdUser = await User.create({
       name: name.trim(),
       email,
       password: hash,
       isGoogleUser: false,
     });
 
-    res.status(201).json({ success: true, message: 'Account created successfully' });
+    // Auto-login on signup: issue a token + public user payload so the client
+    // can set up a session immediately and skip the manual login step.
+    const token = signUserToken(createdUser);
+
+    res.status(201).json({
+      success: true,
+      message: 'Account created successfully',
+      token,
+      user: publicUser(createdUser),
+    });
   } catch (err) {
     next(err);
   }

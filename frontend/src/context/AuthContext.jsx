@@ -165,9 +165,21 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      await api.signup(data);
+      const res = await api.signup(data);
+      const { token, user: userData } = res.data || {};
+      // Backend now auto-logs in on signup. If for any reason the token/user
+      // aren't returned (older backend), fall back to a non-authed success so
+      // the caller can route the user to /login.
+      if (token && userData) {
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(userData));
+        identifyUser(userData);
+        posthog.capture('user_signed_up', { method: 'email' });
+        setUser(userData);
+        return { success: true, autoLoggedIn: true };
+      }
       posthog.capture('user_signed_up', { method: 'email' });
-      return { success: true };
+      return { success: true, autoLoggedIn: false };
     } catch (err) {
       const msg = err.response?.data?.errors?.[0] || err.response?.data?.message || 'Signup failed';
       setError(msg);

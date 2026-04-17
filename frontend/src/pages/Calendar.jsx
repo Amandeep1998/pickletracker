@@ -353,14 +353,28 @@ export default function Calendar() {
           </div>
         </div>
 
-        {/* Helper hint */}
-        <div className="flex items-center gap-2 px-4 py-2 bg-[#f7faf3] border-b border-[#91BE4D]/20">
-          <svg className="w-3.5 h-3.5 text-[#4a6e10] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <p className="text-[11px] sm:text-xs text-[#3d6210] font-medium leading-snug">
-            Tap any date to add a session or tournament.
-          </p>
+        {/* Helper hint — bold, eye-catching bar that guides users to tap a date */}
+        <div className="relative overflow-hidden px-4 py-3 border-b border-[#91BE4D]/30 bg-gradient-to-r from-[#f4f8e8] via-[#eef5e6] to-[#fdf2e4]">
+          {/* Soft decorative blob */}
+          <div className="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-[#91BE4D]/15 blur-2xl pointer-events-none" />
+          <div className="absolute -left-6 -bottom-10 w-24 h-24 rounded-full bg-[#ec9937]/15 blur-2xl pointer-events-none" />
+
+          <div className="relative flex items-center gap-3">
+            {/* Pointing-down hand: the icon itself is the directional cue toward the grid below */}
+            <div className="flex-shrink-0 w-10 h-10 rounded-full bg-white shadow-[0_2px_6px_rgba(28,53,10,0.12)] border border-[#91BE4D]/40 flex items-center justify-center">
+              <span className="text-xl animate-bounce" style={{ animationDuration: '1.8s' }}>👇</span>
+            </div>
+
+            {/* Two-line copy: bold primary + muted helper */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm sm:text-[15px] font-extrabold text-[#2d5507] leading-tight tracking-tight">
+                Tap any date below
+              </p>
+              <p className="text-[11px] sm:text-xs text-[#4a6e10]/90 font-semibold mt-0.5 leading-snug">
+                to quickly log a session or tournament
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Legend */}

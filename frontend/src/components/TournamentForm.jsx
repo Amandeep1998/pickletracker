@@ -411,15 +411,24 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
           </div>
         ))}
 
-        {/* Add Category Button */}
-        <div className="flex justify-end mt-4">
+        {/* Add Category — explanatory hint + secondary button */}
+        <div className="mt-4 bg-[#f7faf3] border border-[#91BE4D]/30 rounded-lg px-3 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-start gap-2 text-xs text-[#3d6210] leading-relaxed">
+            <span className="text-base leading-none mt-0.5" aria-hidden="true">💡</span>
+            <p>
+              Played multiple events in the same tournament? Add a category for each one you entered
+              <span className="text-gray-500"> (e.g. Men&apos;s Doubles, Mixed Doubles) </span>
+              — each can have its own date, medal and fees.
+            </p>
+          </div>
           <button
             type="button"
             onClick={addCategory}
-            className="w-full sm:w-fit hover:opacity-90 text-white font-semibold px-4 py-2 min-h-[40px] rounded text-sm tracking-wide transition-opacity flex items-center justify-center gap-2"
-            style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
+            className="w-full sm:w-auto flex-shrink-0 bg-white hover:bg-[#f4f8e8] text-[#4a6e10] font-semibold px-4 py-2 min-h-[40px] rounded-lg text-sm tracking-wide border-2 border-dashed border-[#91BE4D] hover:border-[#2d7005] transition-colors flex items-center justify-center gap-2"
           >
-            <span>+</span>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
             <span>Add Category</span>
           </button>
         </div>
