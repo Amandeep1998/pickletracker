@@ -178,11 +178,11 @@ export default function Landing() {
                   Built for Indian pickleball players
                 </span>
                 <h1 className="text-4xl sm:text-5xl lg:text-[3.6rem] font-extrabold text-white leading-[1.12] mb-5 tracking-[-0.01em]">
-                  Play better.<br />
-                  Track smarter.
+                  Play. Log.<br />
+                  Improve. Repeat.
                 </h1>
                 <p className="text-base sm:text-lg text-slate-300 leading-relaxed mb-9 max-w-lg mx-auto lg:mx-0">
-                  Log sessions, tag skills, track tournaments, and manage court fees — all in one place built for serious Indian pickleball players.
+                  Track your games, tournaments, and expenses—all in one place.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
                   <Link
