@@ -29,15 +29,18 @@ const EMPTY_CATEGORY = {
   entryFee: '',
 };
 
-const EMPTY_FORM = {
-  name: '',
-  location: null,
-  categories: [{ ...EMPTY_CATEGORY }],
-  rating: null,
-  wentWell: [],
-  wentWrong: [],
-  notes: '',
-};
+/** Fresh object every call — never reuse a shared constant as useState(initial) (shallow updates mutate nested arrays). */
+function getEmptyForm() {
+  return {
+    name: '',
+    location: null,
+    categories: [{ ...EMPTY_CATEGORY }],
+    rating: null,
+    wentWell: [],
+    wentWrong: [],
+    notes: '',
+  };
+}
 
 /** Normalize API / ISO strings so <input type="date"> always gets YYYY-MM-DD. */
 function toInputDateStr(value) {
@@ -47,7 +50,7 @@ function toInputDateStr(value) {
 }
 
 export default function TournamentForm({ initial, onSubmit, onCancel, loading }) {
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(() => getEmptyForm());
   const [errors, setErrors] = useState({});
   const [voiceLocationQuery, setVoiceLocationQuery] = useState('');
 
@@ -64,23 +67,26 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
           entryFee: cat.entryFee ?? '',
         })),
         rating: initial.rating || null,
-        wentWell: initial.wentWell || [],
-        wentWrong: initial.wentWrong || [],
+        wentWell: [...(initial.wentWell || [])],
+        wentWrong: [...(initial.wentWrong || [])],
         notes: initial.notes || '',
       });
+    } else {
+      setForm(getEmptyForm());
     }
   }, [initial]);
 
   const handleCategoryChange = (idx, field, value) => {
     setForm((prev) => {
-      const updated = { ...prev };
-      const cat = { ...updated.categories[idx] };
+      const cat = { ...prev.categories[idx] };
       if (field === 'medal' && value === 'None') {
         cat.prizeAmount = 0;
       }
       cat[field] = value;
-      updated.categories[idx] = cat;
-      return updated;
+      return {
+        ...prev,
+        categories: prev.categories.map((c, i) => (i === idx ? cat : c)),
+      };
     });
     setErrors((prev) => ({ ...prev, [`cat_${idx}_${field}`]: '' }));
   };
