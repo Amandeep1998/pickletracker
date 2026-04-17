@@ -16,6 +16,20 @@ registerSW({
   },
 });
 
+// Desktop tabs often keep an old service worker until explicitly checked; refresh when user returns.
+function pingServiceWorkerUpdate() {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.getRegistration().then((reg) => {
+    if (reg) reg.update();
+  });
+}
+if (typeof document !== 'undefined') {
+  pingServiceWorkerUpdate();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') pingServiceWorkerUpdate();
+  });
+}
+
 if (import.meta.env.VITE_POSTHOG_KEY) {
   posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
     api_host: 'https://app.posthog.com',
