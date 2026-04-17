@@ -1,9 +1,51 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 import Footer from '../components/Footer';
 import BrandLogo from '../components/BrandLogo';
+
+// Lightweight, dependency-free strength estimator used for the signup meter only.
+// Kept intentionally simple: the backend is the source of truth for validation.
+function evaluatePasswordStrength(password) {
+  const hasLetter = /[A-Za-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSymbol = /[^A-Za-z0-9]/.test(password);
+  const hasMixedCase = /[a-z]/.test(password) && /[A-Z]/.test(password);
+  const length = password.length;
+
+  // 0 = empty, 1 = weak, 2 = fair, 3 = good, 4 = strong
+  let score = 0;
+  if (length === 0) score = 0;
+  else if (length < 8) score = 1;
+  else {
+    score = 2;
+    if (hasLetter && hasNumber) score += 1;
+    if (hasSymbol || hasMixedCase) score += 1;
+    if (length >= 14) score = Math.min(4, score + 0);
+    if (length < 10) score = Math.min(score, 3);
+  }
+
+  const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+  const colors = [
+    'bg-gray-200',
+    'bg-red-400',
+    'bg-orange-400',
+    'bg-[#91BE4D]',
+    'bg-[#2d7005]',
+  ];
+
+  return {
+    score,
+    label: labels[score],
+    color: colors[score],
+    rules: {
+      length: length >= 8,
+      lettersAndNumbers: hasLetter && hasNumber,
+    },
+    meetsMinimum: length >= 8 && hasLetter && hasNumber,
+  };
+}
 
 export default function Signup() {
   const { user, handleSignup, loading, error: contextError, clearError } = useAuth();
@@ -12,6 +54,8 @@ export default function Signup() {
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const strength = useMemo(() => evaluatePasswordStrength(form.password), [form.password]);
 
   useEffect(() => {
     if (user) navigate('/dashboard', { replace: true });
@@ -109,11 +153,63 @@ export default function Signup() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                <input type="password" name="password" value={form.password} onChange={handleChange} required minLength={6} className={inputClass} placeholder="At least 6 characters" />
+                <input
+                  type="password"
+                  name="password"
+                  value={form.password}
+                  onChange={handleChange}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => setPasswordFocused(false)}
+                  required
+                  minLength={8}
+                  maxLength={128}
+                  className={inputClass}
+                  placeholder="At least 8 characters"
+                  aria-describedby="password-strength-help"
+                />
+
+                {/* Strength meter + rule checklist — only after the user starts typing */}
+                {(form.password.length > 0 || passwordFocused) && (
+                  <div id="password-strength-help" className="mt-2 space-y-1.5">
+                    {/* 4-segment bar */}
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4].map((seg) => (
+                        <div
+                          key={seg}
+                          className={`flex-1 h-1.5 rounded-full transition-colors ${
+                            strength.score >= seg ? strength.color : 'bg-gray-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`text-[11px] font-semibold ${
+                        strength.score <= 1 ? 'text-red-500'
+                        : strength.score === 2 ? 'text-orange-500'
+                        : strength.score === 3 ? 'text-[#4a6e10]'
+                        : 'text-[#2d7005]'
+                      }`}>
+                        {form.password.length === 0 ? 'Password strength' : strength.label}
+                      </p>
+                    </div>
+
+                    <ul className="text-[11px] space-y-0.5">
+                      <li className={`flex items-center gap-1.5 ${strength.rules.length ? 'text-[#4a6e10]' : 'text-gray-400'}`}>
+                        <span className="w-3 inline-flex justify-center">{strength.rules.length ? '✓' : '•'}</span>
+                        At least 8 characters
+                      </li>
+                      <li className={`flex items-center gap-1.5 ${strength.rules.lettersAndNumbers ? 'text-[#4a6e10]' : 'text-gray-400'}`}>
+                        <span className="w-3 inline-flex justify-center">{strength.rules.lettersAndNumbers ? '✓' : '•'}</span>
+                        Contains letters and numbers
+                      </li>
+                    </ul>
+                  </div>
+                )}
               </div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !strength.meetsMinimum}
                 className="w-full disabled:opacity-60 hover:opacity-90 text-white font-bold py-3 rounded text-sm tracking-wide transition-opacity"
                 style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
               >

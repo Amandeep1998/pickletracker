@@ -89,9 +89,10 @@ export default function ResetPassword() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
-                        minLength={6}
+                        minLength={8}
+                        maxLength={128}
                         className={inputClass + ' pr-10'}
-                        placeholder="At least 6 characters"
+                        placeholder="At least 8 characters"
                       />
                       <button
                         type="button"
@@ -111,6 +112,7 @@ export default function ResetPassword() {
                         )}
                       </button>
                     </div>
+                    <p className="text-[11px] text-gray-400 mt-1">Use at least 8 characters with letters and numbers.</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>

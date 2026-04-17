@@ -239,8 +239,17 @@ const forgotPassword = async (req, res, next) => {
 const resetPassword = async (req, res, next) => {
   try {
     const { token, password } = req.body;
-    if (!token || !password || password.length < 6) {
+    // Mirrors signupSchema: ≥ 8 chars AND must contain both letters and numbers.
+    // Grandfathering still applies — this only fires when a user explicitly
+    // changes their password via the reset flow.
+    if (!token || !password) {
       return res.status(400).json({ success: false, message: 'Invalid request' });
+    }
+    if (password.length < 8 || password.length > 128) {
+      return res.status(400).json({ success: false, message: 'Password must be between 8 and 128 characters' });
+    }
+    if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({ success: false, message: 'Password must contain both letters and numbers' });
     }
 
     const hashed = crypto.createHash('sha256').update(token).digest('hex');

@@ -10,10 +10,20 @@ const signupSchema = Joi.object({
     'string.email': 'Please provide a valid email',
     'any.required': 'Email is required',
   }),
-  password: Joi.string().min(6).required().messages({
-    'string.min': 'Password must be at least 6 characters',
-    'any.required': 'Password is required',
-  }),
+  // New accounts only — existing users with shorter passwords are grandfathered
+  // in because loginSchema (below) does not enforce a minimum length.
+  password: Joi.string()
+    .min(8)
+    .max(128)
+    .pattern(/[A-Za-z]/, 'letter')
+    .pattern(/[0-9]/, 'number')
+    .required()
+    .messages({
+      'string.min': 'Password must be at least 8 characters',
+      'string.max': 'Password cannot exceed 128 characters',
+      'string.pattern.name': 'Password must contain both letters and numbers',
+      'any.required': 'Password is required',
+    }),
 });
 
 const loginSchema = Joi.object({
