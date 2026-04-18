@@ -1,8 +1,8 @@
 const Joi = require('joi');
 
 const expenseSchema = Joi.object({
-  type: Joi.string().valid('gear').required().messages({
-    'any.only': 'Type must be gear',
+  type: Joi.string().valid('gear', 'travel').required().messages({
+    'any.only': 'Type must be gear or travel',
     'any.required': 'Expense type is required',
   }),
   title: Joi.string().trim().min(1).max(100).required().messages({
@@ -22,6 +22,19 @@ const expenseSchema = Joi.object({
       'any.required': 'Date is required',
       'string.pattern.base': 'Date must be in YYYY-MM-DD format',
     }),
+
+  // Travel-only fields (all optional)
+  tournamentId:    Joi.string().allow('', null).optional(),
+  fromCity:        Joi.string().trim().max(100).allow('').optional(),
+  toCity:          Joi.string().trim().max(100).allow('').optional(),
+  isInternational: Joi.boolean().optional(),
+  transport:       Joi.number().min(0).optional(),
+  localCommute:    Joi.number().min(0).optional(),
+  accommodation:   Joi.number().min(0).optional(),
+  food:            Joi.number().min(0).optional(),
+  equipment:       Joi.number().min(0).optional(),
+  visaDocs:        Joi.number().min(0).optional(),
+  travelInsurance: Joi.number().min(0).optional(),
 });
 
 const validate = (schema) => (req, res, next) => {

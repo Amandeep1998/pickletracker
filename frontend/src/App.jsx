@@ -11,6 +11,7 @@ import Tournaments from './pages/Tournaments';
 import Calendar from './pages/Calendar';
 import Sessions from './pages/Sessions';
 import Expenses from './pages/Expenses';
+import Travel from './pages/Travel';
 import Admin from './pages/Admin';
 import Landing from './pages/Landing';
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -41,6 +42,7 @@ export default function App() {
           <Route path="/calendar" element={<Calendar />} />
           <Route path="/sessions" element={<Sessions />} />
           <Route path="/expenses" element={<Expenses />} />
+          <Route path="/travel" element={<Travel />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/players" element={<Players />} />
           <Route path="/coach" element={<Coach />} />

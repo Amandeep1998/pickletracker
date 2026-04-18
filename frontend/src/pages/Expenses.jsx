@@ -18,7 +18,6 @@ export default function Expenses() {
   const fetchExpenses = async () => {
     try {
       const res = await api.getExpenses();
-      // Only show gear items (filter out any legacy court_booking entries)
       setExpenses(res.data.data.filter((e) => e.type === 'gear'));
     } catch {
       setApiError('Failed to load gear expenses');
@@ -29,8 +28,8 @@ export default function Expenses() {
 
   useEffect(() => { fetchExpenses(); }, []);
 
-  const openAdd = () => { setMode('add'); setSelectedExpense(null); setApiError(''); setModalOpen(true); };
-  const openEdit = (e) => { setMode('edit'); setSelectedExpense(e); setApiError(''); setModalOpen(true); };
+  const openAdd  = () => { setMode('add');  setSelectedExpense(null); setApiError(''); setModalOpen(true); };
+  const openEdit = (e) => { setMode('edit'); setSelectedExpense(e);    setApiError(''); setModalOpen(true); };
   const closeModal = () => { setModalOpen(false); setSelectedExpense(null); setApiError(''); };
 
   const handleAdd = async (data) => {

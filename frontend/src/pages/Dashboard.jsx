@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   BarChart,
@@ -45,6 +45,7 @@ export default function Dashboard() {
   const [includeTournaments, setIncludeTournaments] = useState(true);
   const [includeCourtFees, setIncludeCourtFees] = useState(true);
   const [includeGear, setIncludeGear] = useState(false);
+  const [includeTravel, setIncludeTravel] = useState(false);
 
   // Profile nudge — hidden if user already has phone+city, or if dismissed this session
   const nudgeKey = `profileNudgeDismissed_${user?.id}`;
@@ -118,7 +119,7 @@ export default function Dashboard() {
     });
   }, [tournaments, filterYear, filterMonth]);
 
-  // Gear expenses in the selected year+month window
+  // All expenses in the selected year+month window
   const filteredExpenses = useMemo(() => {
     return expenses.filter((e) => {
       const [year, month] = e.date.split('-');
@@ -152,8 +153,15 @@ export default function Dashboard() {
     const gearTotal = filteredExpenses
       .filter((e) => e.type === 'gear')
       .reduce((s, e) => s + e.amount, 0);
+    const travelTotal = filteredExpenses
+      .filter((e) => e.type === 'travel')
+      .reduce((s, e) => s + e.amount, 0);
 
-    const totalExpenses = tournamentExpenses + courtFeesTotal + (includeGear ? gearTotal : 0);
+    const totalExpenses =
+      tournamentExpenses +
+      courtFeesTotal +
+      (includeGear ? gearTotal : 0) +
+      (includeTravel ? travelTotal : 0);
 
     return {
       earnings,
@@ -161,7 +169,7 @@ export default function Dashboard() {
       profit: earnings - totalExpenses,
       count: filteredTournaments.length,
     };
-  }, [filteredTournaments, filteredExpenses, filteredSessions, includeTournaments, includeCourtFees, includeGear]);
+  }, [filteredTournaments, filteredExpenses, filteredSessions, includeTournaments, includeCourtFees, includeGear, includeTravel]);
 
   // Monthly chart data for the selected year
   const chartData = useMemo(() => {
@@ -190,8 +198,11 @@ export default function Dashboard() {
       const gear = includeGear
         ? monthExpenses.filter((e) => e.type === 'gear').reduce((s, e) => s + e.amount, 0)
         : 0;
+      const travel = includeTravel
+        ? monthExpenses.filter((e) => e.type === 'travel').reduce((s, e) => s + e.amount, 0)
+        : 0;
 
-      const totalExp = tournamentExp + courtFees + gear;
+      const totalExp = tournamentExp + courtFees + gear + travel;
       const earnings = includeTournaments
         ? monthTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0)
         : 0;
@@ -202,7 +213,7 @@ export default function Dashboard() {
         Profit: +(earnings - totalExp).toFixed(2),
       };
     });
-  }, [tournaments, expenses, allSessions, filterYear, includeTournaments, includeCourtFees, includeGear]);
+  }, [tournaments, expenses, allSessions, filterYear, includeTournaments, includeCourtFees, includeGear, includeTravel]);
 
   // Per-category profit breakdown — uses filteredTournaments so year/month filter applies
   const categoryBreakdown = useMemo(() => {
@@ -395,7 +406,7 @@ export default function Dashboard() {
       )}
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
+      <div className="grid grid-cols-4 gap-2 mb-4">
         <button
           onClick={() => navigate('/sessions')}
           className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-[#91BE4D]/30 bg-[#91BE4D]/5 hover:bg-[#91BE4D]/10 transition-colors text-center"
@@ -416,6 +427,13 @@ export default function Dashboard() {
         >
           <span className="text-xl">🎒</span>
           <span className="text-xs font-bold text-gray-600 leading-tight">Add Gear</span>
+        </button>
+        <button
+          onClick={() => navigate('/travel')}
+          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-teal-200 bg-teal-50 hover:bg-teal-100 transition-colors text-center"
+        >
+          <span className="text-xl">✈️</span>
+          <span className="text-xs font-bold text-teal-700 leading-tight">Log Travel</span>
         </button>
       </div>
 
@@ -607,6 +625,16 @@ export default function Dashboard() {
           >
             {includeGear ? '✓' : '+'} Gear
           </button>
+          <button
+            onClick={() => setIncludeTravel((v) => !v)}
+            className={`text-xs px-3 py-1.5 rounded font-semibold tracking-wide transition-colors border ${
+              includeTravel
+                ? 'bg-teal-500 text-white border-teal-500'
+                : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400 hover:text-teal-600'
+            }`}
+          >
+            {includeTravel ? '✓' : '+'} Travel
+          </button>
         </div>
       </div>
 
@@ -654,6 +682,79 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
       )}
+
+      {/* Travel Spend Widget */}
+      {(() => {
+        const yearTravel = expenses.filter(
+          (e) => e.type === 'travel' && e.date?.startsWith(filterYear)
+        ).sort((a, b) => b.date.localeCompare(a.date));
+        const yearTravelTotal = yearTravel.reduce((s, e) => s + e.amount, 0);
+
+        return (
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">✈️</span>
+                <h2 className="text-sm sm:text-base font-semibold text-gray-700">
+                  Travel Spend — {filterYear}
+                </h2>
+                {yearTravelTotal > 0 && (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-600 border border-teal-200">
+                    {formatINR(yearTravelTotal)}
+                  </span>
+                )}
+              </div>
+              <Link
+                to="/travel"
+                className="text-xs text-teal-600 hover:text-teal-800 font-semibold transition-colors"
+              >
+                {yearTravel.length > 0 ? 'View all →' : 'Log a trip →'}
+              </Link>
+            </div>
+
+            {yearTravel.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <p className="text-sm text-gray-400 mb-3">No travel logged for {filterYear}</p>
+                <Link
+                  to="/travel"
+                  className="hover:opacity-90 text-white font-semibold px-4 py-2 rounded-lg text-xs tracking-wide transition-opacity"
+                  style={{ background: 'linear-gradient(to right, #0d9488, #14b8a6)' }}
+                >
+                  + Log your first trip
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {yearTravel.slice(0, 3).map((e) => (
+                  <div key={e._id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800 truncate">{e.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-gray-400">
+                          {new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </p>
+                        {e.fromCity && e.toCity && (
+                          <p className="text-xs text-gray-500">{e.fromCity} → {e.toCity}</p>
+                        )}
+                        {e.isInternational && (
+                          <span className="text-xs px-1.5 py-0.5 bg-teal-50 text-teal-600 rounded-full border border-teal-200 font-medium">Intl</span>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-sm font-bold text-teal-600 flex-shrink-0">{formatINR(e.amount)}</p>
+                  </div>
+                ))}
+                {yearTravel.length > 3 && (
+                  <p className="text-xs text-gray-400 pt-1 text-center">
+                    +{yearTravel.length - 3} more trip{yearTravel.length - 3 !== 1 ? 's' : ''} —{' '}
+                    <Link to="/travel" className="text-teal-600 hover:underline font-medium">view all</Link>
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Per-Category Profit Breakdown */}
       {categoryBreakdown.length > 0 && (

@@ -83,6 +83,17 @@ const sessionSchema = new mongoose.Schema(
       ref: 'Tournament',
       default: null,
     },
+    // Casual-only: how the session was played
+    playFormat: {
+      type: String,
+      enum: ['singles', 'doubles', 'both'],
+      default: null,
+    },
+    // Drill-only fields
+    drillFocus:  { type: [String], default: [] },
+    drillMode:   { type: String, enum: ['solo', 'partner', 'group'], default: null },
+    coached:     { type: Boolean, default: false },
+    duration:    { type: Number, min: 1, default: null },
   },
   { timestamps: true }
 );
