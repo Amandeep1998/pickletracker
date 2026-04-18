@@ -9,7 +9,7 @@ import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 
 /** Bump this string to force another one-time SW unregister + Cache Storage clear + reload for all users. */
-const PWA_CACHE_PURGE_VERSION = '2026-04-19-v1';
+const PWA_CACHE_PURGE_VERSION = '2026-04-19-v2';
 const PWA_CACHE_PURGE_KEY = `pt-pwa-purge-${PWA_CACHE_PURGE_VERSION}`;
 
 /**
@@ -66,12 +66,22 @@ async function bootstrap() {
     console.info('[PickleTracker] deployment', import.meta.env.VITE_COMMIT.slice(0, 7));
   }
 
-  registerSW({
-    immediate: true,
-    onNeedRefresh() {
+  registerSW({ immediate: true });
+
+  /**
+   * With registerType: 'autoUpdate' + skipWaiting + clientsClaim, a new SW activates silently
+   * but the current tab keeps running the OLD JS bundle until the user manually reloads.
+   * Listening for `controllerchange` lets us reload once as soon as the new SW takes control,
+   * so installed PWAs (especially on mobile home screens) always show the latest UI.
+   */
+  if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+    let reloadingForNewServiceWorker = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloadingForNewServiceWorker) return;
+      reloadingForNewServiceWorker = true;
       window.location.reload();
-    },
-  });
+    });
+  }
 
   function pingServiceWorkerUpdate() {
     if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
@@ -84,6 +94,8 @@ async function bootstrap() {
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') pingServiceWorkerUpdate();
     });
+    // Covers users who keep the PWA foregrounded for hours without backgrounding it.
+    setInterval(pingServiceWorkerUpdate, 30 * 60 * 1000);
   }
 
   if (import.meta.env.VITE_POSTHOG_KEY) {
