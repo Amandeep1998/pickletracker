@@ -9,7 +9,7 @@ export const ShareCard = React.forwardRef(function ShareCard({ items, userName }
   const formatDate = (dateStr) => {
     const [y, m, d] = dateStr.split('-');
     return new Date(y, m - 1, d).toLocaleDateString('en-IN', {
-      day: 'numeric', month: 'short', year: 'numeric',
+      day: 'numeric', month: 'short',
     });
   };
 
@@ -19,7 +19,7 @@ export const ShareCard = React.forwardRef(function ShareCard({ items, userName }
     const diff = Math.round((target - today) / 86400000);
     if (diff === 0) return 'Today';
     if (diff === 1) return 'Tomorrow';
-    return `${diff} days`;
+    return `in ${diff} days`;
   };
 
   return (
@@ -50,51 +50,95 @@ export const ShareCard = React.forwardRef(function ShareCard({ items, userName }
       </div>
 
       {/* Headline */}
-      <div style={{ marginBottom: 20 }}>
-        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
-          {firstName}'s upcoming tournaments
-        </p>
-        <p style={{ color: 'white', fontSize: 21, fontWeight: 900, lineHeight: 1.25, margin: 0 }}>
-          I'm playing{' '}
-          <span style={{ color: '#c8e875' }}>{items.length}</span>
-          {items.length === 1 ? ' tournament' : ' tournaments'} soon 🏆
-        </p>
-      </div>
-
-      {/* Tournament rows */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 22 }}>
-        {items.slice(0, 6).map((item, i) => (
-          <div
-            key={i}
-            style={{
-              background: 'rgba(255,255,255,0.07)',
-              borderRadius: 12,
-              padding: '10px 14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              border: '1px solid rgba(145,190,77,0.18)',
-            }}
-          >
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ color: 'white', fontSize: 13, fontWeight: 700, margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {item.tournament.name}
-              </p>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, margin: 0 }}>
-                {item.category.categoryName}
-                {item.tournament.location?.name ? ` · ${item.tournament.location.name}` : ''}
-              </p>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: 10, flexShrink: 0 }}>
-              <span style={{ background: 'rgba(145,190,77,0.22)', color: '#c8e875', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap' }}>
-                {getDaysUntil(item.date)}
-              </span>
-              <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, marginTop: 3 }}>
-                {formatDate(item.date)}
-              </span>
-            </div>
+      {(() => {
+        const totalCats = items.reduce((s, i) => s + i.categories.length, 0);
+        const multipleCats = totalCats > items.length;
+        return (
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+              {firstName}'s upcoming tournaments
+            </p>
+            <p style={{ color: 'white', fontSize: 20, fontWeight: 900, lineHeight: 1.3, margin: 0 }}>
+              I'm playing{' '}
+              <span style={{ color: '#c8e875' }}>{items.length}</span>
+              {items.length === 1 ? ' tournament' : ' tournaments'}
+              {multipleCats && (
+                <span>
+                  {' '}across{' '}
+                  <span style={{ color: '#ffd580' }}>{totalCats}</span>
+                  {' categories'}
+                </span>
+              )}
+              {' '}soon 🏆
+            </p>
           </div>
-        ))}
+        );
+      })()}
+
+      {/* Tournament rows — one per tournament, categories listed below */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 22 }}>
+        {items.slice(0, 5).map((item, i) => {
+          // Group categories by date for compact display
+          const dateGroups = {};
+          item.categories.forEach((cat) => {
+            const d = cat.date;
+            if (!dateGroups[d]) dateGroups[d] = [];
+            dateGroups[d].push(cat.categoryName);
+          });
+          const sortedDates = Object.keys(dateGroups).sort();
+          const showDatePerCat = sortedDates.length > 1; // categories on different dates
+
+          return (
+            <div
+              key={i}
+              style={{
+                background: 'rgba(255,255,255,0.07)',
+                borderRadius: 12,
+                padding: '10px 14px',
+                border: '1px solid rgba(145,190,77,0.18)',
+              }}
+            >
+              {/* Tournament name + countdown */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                <p style={{ color: 'white', fontSize: 13, fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                  {item.tournament.name}
+                </p>
+                <span style={{ background: 'rgba(145,190,77,0.22)', color: '#c8e875', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {getDaysUntil(item.earliestDate)}
+                </span>
+              </div>
+
+              {/* Location */}
+              {item.tournament.location?.name && (
+                <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, margin: '3px 0 4px' }}>
+                  📍 {item.tournament.location.name}
+                </p>
+              )}
+
+              {/* Categories — with date if they span multiple days */}
+              <div style={{ marginTop: 5, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {showDatePerCat
+                  ? sortedDates.map((d) => (
+                      <div key={d} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, margin: 0 }}>
+                          {dateGroups[d].join(' · ')}
+                        </p>
+                        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10 }}>{formatDate(d)}</span>
+                      </div>
+                    ))
+                  : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, margin: 0 }}>
+                        {item.categories.map((c) => c.categoryName).join(' · ')}
+                      </p>
+                      <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10 }}>{formatDate(item.earliestDate)}</span>
+                    </div>
+                  )
+                }
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Footer */}
@@ -149,7 +193,7 @@ export default function TournamentShareModal({ items, onClose }) {
         await navigator.share({
           files: [file],
           title: 'My Upcoming Tournaments',
-          text: 'Check out the pickleball tournaments I\'m playing soon! 🏆',
+          text: "Check out the pickleball tournaments I'm playing soon! 🏆",
         });
       } else {
         // Desktop fallback — just download
@@ -178,6 +222,9 @@ export default function TournamentShareModal({ items, onClose }) {
     );
   }
 
+  // Total category count for the subtitle
+  const totalCategories = items.reduce((sum, item) => sum + item.categories.length, 0);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60" />
@@ -189,7 +236,11 @@ export default function TournamentShareModal({ items, onClose }) {
         <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
           <div>
             <p className="text-base font-bold text-gray-900">Share Upcoming Tournaments</p>
-            <p className="text-xs text-gray-400 mt-0.5">{items.length} tournament{items.length !== 1 ? 's' : ''} · Download or share</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {items.length} tournament{items.length !== 1 ? 's' : ''}
+              {totalCategories > items.length ? `, ${totalCategories} categories` : ''}
+              {' '}· Download or share
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -201,7 +252,7 @@ export default function TournamentShareModal({ items, onClose }) {
           </button>
         </div>
 
-        {/* Card preview — full width, scrollable if tall */}
+        {/* Card preview */}
         <div className="overflow-y-auto max-h-[55vh] bg-gray-50 flex justify-center py-4 px-4">
           <ShareCard ref={cardRef} items={items} userName={user?.name} />
         </div>

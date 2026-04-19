@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { NavLink, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -13,8 +13,7 @@ import {
 } from 'recharts';
 import * as api from '../services/api';
 import { formatINR } from '../utils/format';
-import { ShareCard } from '../components/TournamentShareModal';
-import { toPng } from 'html-to-image';
+import TournamentShareModal from '../components/TournamentShareModal';
 
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -39,8 +38,7 @@ export default function Dashboard() {
   const [expenses, setExpenses] = useState([]);
   const [allSessions, setAllSessions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const cardRef = useRef(null);
-  const [shareStatus, setShareStatus] = useState('idle');
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [slowLoad, setSlowLoad] = useState(false);
   const [error, setError] = useState('');
   const [filterYear, setFilterYear] = useState(String(currentYear));
@@ -289,54 +287,22 @@ export default function Dashboard() {
     return top ? top[0] : null;
   }, [allSessions]);
 
-  // Upcoming tournaments for share card
+  // Upcoming tournaments grouped by tournament (not flattened per category)
   const todayStr = new Date().toISOString().split('T')[0];
   const upcomingTournaments = useMemo(() => {
-    const items = [];
+    const map = {};
     tournaments.forEach((t) => {
-      t.categories.forEach((cat) => {
-        const d = cat.date ? cat.date.split('T')[0] : null;
-        if (d && d >= todayStr) items.push({ tournament: t, category: cat, date: d });
-      });
+      const upcomingCats = (t.categories || [])
+        .map((cat) => ({ ...cat, date: cat.date ? cat.date.split('T')[0] : null }))
+        .filter((cat) => cat.date && cat.date >= todayStr);
+      if (!upcomingCats.length) return;
+      const earliestDate = upcomingCats.map((c) => c.date).sort()[0];
+      map[t._id] = { tournament: t, categories: upcomingCats, earliestDate };
     });
-    return items.sort((a, b) => (a.date < b.date ? -1 : 1)).slice(0, 8);
+    return Object.values(map)
+      .sort((a, b) => (a.earliestDate < b.earliestDate ? -1 : 1))
+      .slice(0, 6);
   }, [tournaments, todayStr]);
-
-  const handleShareDownload = useCallback(async () => {
-    if (!cardRef.current) return;
-    setShareStatus('generating');
-    try {
-      const dataUrl = await toPng(cardRef.current, { cacheBust: true, pixelRatio: 2 });
-      const a = document.createElement('a');
-      a.download = 'my-upcoming-tournaments.png';
-      a.href = dataUrl;
-      a.click();
-    } finally {
-      setShareStatus('idle');
-    }
-  }, []);
-
-  const handleShareNative = useCallback(async () => {
-    if (!cardRef.current) return;
-    setShareStatus('generating');
-    try {
-      const dataUrl = await toPng(cardRef.current, { cacheBust: true, pixelRatio: 2 });
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], 'my-upcoming-tournaments.png', { type: 'image/png' });
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: 'My Upcoming Tournaments', text: 'Check out the pickleball tournaments I\'m playing soon! 🏆' });
-      } else {
-        const a = document.createElement('a');
-        a.download = 'my-upcoming-tournaments.png';
-        a.href = dataUrl;
-        a.click();
-      }
-    } catch {
-      // user cancelled — not an error
-    } finally {
-      setShareStatus('idle');
-    }
-  }, []);
 
   // Greeting based on time of day
   const greeting = (() => {
@@ -583,12 +549,25 @@ export default function Dashboard() {
           <p className="text-white/50 text-[10px] uppercase tracking-widest font-semibold mb-1">
             {firstName}'s upcoming tournaments
           </p>
-          {upcomingTournaments.length > 0 ? (
-            <p className="text-white font-black text-base leading-tight">
-              Playing <span style={{ color: '#c8e875' }}>{upcomingTournaments.length}</span>{' '}
-              tournament{upcomingTournaments.length !== 1 ? 's' : ''} soon 🏆
-            </p>
-          ) : (
+          {upcomingTournaments.length > 0 ? (() => {
+            const totalCats = upcomingTournaments.reduce((s, t) => s + t.categories.length, 0);
+            const multipleCats = totalCats > upcomingTournaments.length;
+            return (
+              <p className="text-white font-black text-base leading-tight">
+                Playing{' '}
+                <span style={{ color: '#c8e875' }}>{upcomingTournaments.length}</span>
+                {upcomingTournaments.length === 1 ? ' tournament' : ' tournaments'}
+                {multipleCats && (
+                  <span className="font-black">
+                    {' '}across{' '}
+                    <span style={{ color: '#ffd580' }}>{totalCats}</span>
+                    {' categories'}
+                  </span>
+                )}
+                {' '}soon 🏆
+              </p>
+            );
+          })() : (
             <p className="text-white/60 text-sm font-semibold">No upcoming tournaments yet</p>
           )}
         </div>
@@ -605,22 +584,22 @@ export default function Dashboard() {
             </NavLink>
           ) : (
             upcomingTournaments.slice(0, 4).map((item, i) => {
-              const d = new Date(item.date + 'T00:00:00');
+              const d = new Date(item.earliestDate + 'T00:00:00');
               const now = new Date(); now.setHours(0, 0, 0, 0);
               const diff = Math.round((d - now) / 86400000);
               const label = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : `${diff}d`;
+              const catNames = item.categories.map((c) => c.categoryName).join(' · ');
               return (
-                <div key={i} className="flex items-center justify-between py-2 px-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(145,190,77,0.15)' }}>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-white text-xs font-bold truncate">{item.tournament.name}</p>
-                    <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                      {item.category.categoryName}
-                      {item.tournament.location?.name ? ` · ${item.tournament.location.name}` : ''}
-                    </p>
+                <div key={i} className="py-2 px-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(145,190,77,0.15)' }}>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-white text-xs font-bold truncate flex-1">{item.tournament.name}</p>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(145,190,77,0.2)', color: '#c8e875' }}>
+                      {label}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full ml-2 flex-shrink-0" style={{ background: 'rgba(145,190,77,0.2)', color: '#c8e875' }}>
-                    {label}
-                  </span>
+                  <p className="text-[10px] mt-0.5 truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                    {catNames}{item.tournament.location?.name ? ` · ${item.tournament.location.name}` : ''}
+                  </p>
                 </div>
               );
             })
@@ -632,38 +611,21 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Share buttons */}
+        {/* Share button */}
         {upcomingTournaments.length > 0 && (
-          <div className="relative px-4 pb-4 pt-2 flex gap-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="relative px-4 pb-4 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
             <button
-              onClick={handleShareDownload}
-              disabled={shareStatus === 'generating'}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50"
-              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)' }}
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
-              </svg>
-              {shareStatus === 'generating' ? 'Wait...' : 'Download'}
-            </button>
-            <button
-              onClick={handleShareNative}
-              disabled={shareStatus === 'generating'}
-              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              onClick={() => setShareModalOpen(true)}
+              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90"
               style={{ background: 'linear-gradient(to right, rgba(45,112,5,0.9), rgba(145,190,77,0.7), rgba(168,96,16,0.8))', border: '1px solid rgba(145,190,77,0.3)' }}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
               </svg>
-              Share
+              Share Upcoming Tournaments
             </button>
           </div>
         )}
-      </div>
-
-      {/* Hidden ShareCard for image capture — off-screen, never visible */}
-      <div style={{ position: 'fixed', left: -9999, top: -9999, pointerEvents: 'none', zIndex: -1 }}>
-        <ShareCard ref={cardRef} items={upcomingTournaments} userName={user?.name} />
       </div>
 
 
@@ -837,6 +799,14 @@ export default function Dashboard() {
         <div className="mt-6 text-center text-gray-400 text-sm">
           No tournaments found for the selected period.
         </div>
+      )}
+
+      {/* Share modal — same popup as Calendar */}
+      {shareModalOpen && (
+        <TournamentShareModal
+          items={upcomingTournaments}
+          onClose={() => setShareModalOpen(false)}
+        />
       )}
 
       {/* Profile completion nudge — bottom of page */}

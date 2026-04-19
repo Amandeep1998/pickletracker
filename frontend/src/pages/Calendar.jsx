@@ -138,7 +138,10 @@ export default function Calendar() {
         const d = cat.date ? cat.date.split('T')[0] : null;
         if (!d) return;
         if (!map[d]) map[d] = [];
-        map[d].push({ tournament: t, category: cat });
+        // Deduplicate by tournament id so multi-category tournaments appear once per day cell
+        if (!map[d].find((ev) => String(ev.tournament._id) === String(t._id))) {
+          map[d].push({ tournament: t, category: cat });
+        }
       });
     });
     return map;
@@ -183,16 +186,20 @@ export default function Calendar() {
     };
   }, [sessions, tournaments, viewYear, viewMonth]);
 
-  // Upcoming tournaments only — for share card (up to 8)
+  // Upcoming tournaments grouped by tournament (not flattened per category)
   const upcomingTournaments = useMemo(() => {
-    const items = [];
+    const map = {};
     tournaments.forEach((t) => {
-      t.categories.forEach((cat) => {
-        const d = cat.date ? cat.date.split('T')[0] : null;
-        if (d && d >= todayStr) items.push({ tournament: t, category: cat, date: d });
-      });
+      const upcomingCats = (t.categories || [])
+        .map((cat) => ({ ...cat, date: cat.date ? cat.date.split('T')[0] : null }))
+        .filter((cat) => cat.date && cat.date >= todayStr);
+      if (!upcomingCats.length) return;
+      const earliestDate = upcomingCats.map((c) => c.date).sort()[0];
+      map[t._id] = { tournament: t, categories: upcomingCats, earliestDate };
     });
-    return items.sort((a, b) => (a.date < b.date ? -1 : 1)).slice(0, 8);
+    return Object.values(map)
+      .sort((a, b) => (a.earliestDate < b.earliestDate ? -1 : 1))
+      .slice(0, 6);
   }, [tournaments, todayStr]);
 
   // Upcoming events — next 5 sessions + tournament dates from today
@@ -522,7 +529,7 @@ export default function Calendar() {
                         {daySessions.length > 1 && ` ×${daySessions.length}`}
                       </div>
                     ))}
-                    {events.slice(0, 1).map((ev, i) => (
+                    {events.slice(0, 2).map((ev, i) => (
                       <div
                         key={i}
                         onClick={(e) => { e.stopPropagation(); setSelectedTournament(ev.tournament); }}
@@ -533,11 +540,16 @@ export default function Calendar() {
                         {ev.tournament.name}
                       </div>
                     ))}
-                    {(events.length + daySessions.length) > 2 && (
-                      <div className="text-[8px] sm:text-[10px] text-gray-400 px-1 font-medium">
-                        +{events.length + daySessions.length - 2}
-                      </div>
-                    )}
+                    {(() => {
+                      const shownSessions = Math.min(daySessions.length, 1);
+                      const shownEvents = Math.min(events.length, 2);
+                      const remaining = (daySessions.length - shownSessions) + (events.length - shownEvents);
+                      return remaining > 0 ? (
+                        <div className="text-[8px] sm:text-[10px] text-gray-400 px-1 font-medium">
+                          +{remaining} more
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 )}
               </div>
