@@ -872,12 +872,26 @@ export default function Players() {
     return map;
   }, [friendRequests, friends, pendingFriendIds]);
 
+  // The current user appears in the /api/players response. We pull it out so it
+  // can be shown in a dedicated "Your Card" section at the top, and exclude it
+  // from the city grid below to avoid duplication.
+  const myPlayerCard = useMemo(() => {
+    if (!user?.id) return null;
+    return players.find((p) => String(p.id) === String(user.id)) || null;
+  }, [players, user?.id]);
+
   // ── City grouping & distance sorting ──
   const filteredPlayers = useMemo(() => {
-    if (!debouncedSearch.trim()) return players;
-    const q = debouncedSearch.toLowerCase();
-    return players.filter((p) => (p.name || '').toLowerCase().includes(q));
-  }, [players, debouncedSearch]);
+    let list = players;
+    if (user?.id) {
+      list = list.filter((p) => String(p.id) !== String(user.id));
+    }
+    const q = debouncedSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter((p) => (p.name || '').toLowerCase().includes(q));
+    }
+    return list;
+  }, [players, debouncedSearch, user?.id]);
 
   const { playersByCity, sortedCities } = useMemo(() => {
     // Group by city
@@ -1038,17 +1052,8 @@ export default function Players() {
         </div>
       </div>
 
-      {/* Update profile + friend request CTA */}
+      {/* Friend Requests toggle — kept inline at top so the badge for incoming requests stays visible */}
       <div className="mb-5 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setShowEditProfile(true)}
-          className="flex items-center gap-2 text-sm font-semibold text-white px-4 py-2 rounded-xl hover:opacity-90 transition-opacity"
-          style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-          Update my card
-        </button>
         <button
           type="button"
           onClick={() => setShowFriendRequests((v) => !v)}
@@ -1063,20 +1068,59 @@ export default function Players() {
           )}
         </button>
       </div>
-      {/* Player card info */}
-      <div className="mb-3 bg-[#f4f8e8] border border-[#91BE4D]/30 rounded-xl px-4 py-3 flex gap-3">
-        <span className="text-lg flex-shrink-0 mt-0.5">🏅</span>
-        <div className="text-sm text-[#3a5c0a] space-y-1">
-          <p><span className="font-semibold">Your card updates automatically</span> — every tournament and medal you log on PickleTracker reflects on your player card instantly.</p>
-          <p>Have older wins that aren't showing? Tap <span className="font-semibold">Update my card</span> above to manually add past tournaments and medals.</p>
-        </div>
-      </div>
 
-      <div className="mb-5 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
-        <p className="text-sm text-blue-800 leading-relaxed">
-          <span className="font-semibold">Add Friends:</span> send a friend request to follow each other&apos;s upcoming calendar schedule and stay in sync on events 😉
-        </p>
-      </div>
+      {/* ── Your Card — always shown first so the user sees their own card before friends/others ── */}
+      {myPlayerCard && (
+        <section className="mb-6">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Your Card</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">This is what other players see</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowEditProfile(true)}
+              className="flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-2 rounded-lg hover:opacity-90 transition-opacity"
+              style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+              Update my card
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            <PlayerMiniCard
+              player={myPlayerCard}
+              onClick={() => setSelectedId(myPlayerCard.id)}
+              friendState="self"
+              onAddFriend={() => {}}
+              currentUserId={user?.id}
+              isSendingFriendRequest={false}
+            />
+          </div>
+          <div className="mt-3 bg-[#f4f8e8] border border-[#91BE4D]/30 rounded-xl px-4 py-3 flex gap-3">
+            <span className="text-lg flex-shrink-0 mt-0.5">🏅</span>
+            <div className="text-sm text-[#3a5c0a] space-y-1">
+              <p><span className="font-semibold">Your card updates automatically</span> — every tournament and medal you log on PickleTracker reflects on your player card instantly.</p>
+              <p>Have older wins that aren&apos;t showing? Tap <span className="font-semibold">Update my card</span> above to manually add past tournaments and medals.</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Fallback "Update my card" CTA + info bar for the brief moment the players list is still loading */}
+      {!myPlayerCard && (
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowEditProfile(true)}
+            className="flex items-center gap-2 text-sm font-semibold text-white px-4 py-2 rounded-xl hover:opacity-90 transition-opacity"
+            style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+            Update my card
+          </button>
+        </div>
+      )}
 
       {/* Incoming friend requests panel */}
       {showFriendRequests && (
@@ -1130,6 +1174,13 @@ export default function Players() {
           </div>
         </div>
       )}
+
+      {/* Add-friend explainer — placed right above the Friends section so the context flows naturally */}
+      <div className="mb-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+        <p className="text-sm text-blue-800 leading-relaxed">
+          <span className="font-semibold">Add Friends:</span> send a friend request to follow each other&apos;s upcoming calendar schedule and stay in sync on events 😉
+        </p>
+      </div>
 
       {/* Friends section */}
       <FriendsSection friends={friends} onViewCalendar={setFriendCalendarTarget} onRemoveFriend={handleRemoveFriend} />
