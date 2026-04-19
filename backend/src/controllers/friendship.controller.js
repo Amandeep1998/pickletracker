@@ -172,26 +172,56 @@ const listFriends = async (req, res, next) => {
       status: 'accepted',
       $or: [{ requesterId: userId }, { recipientId: userId }],
     })
-      .populate('requesterId', 'name email profilePhoto city state')
-      .populate('recipientId', 'name email profilePhoto city state')
+      .populate('requesterId', 'name email profilePhoto city state duprSingles duprDoubles playingSince manualAchievements')
+      .populate('recipientId', 'name email profilePhoto city state duprSingles duprDoubles playingSince manualAchievements')
       .sort({ updatedAt: -1 })
       .lean();
 
-    const friends = links
-      // Guard against orphaned friendships where one user account was deleted
-      .filter((row) => row.requesterId && row.recipientId)
-      .map((row) => {
-        const friend = idsEqual(row.requesterId._id, userId) ? row.recipientId : row.requesterId;
-        return {
-          friendshipId: row._id,
-          id: friend._id,
-          name: friend.name,
-          email: friend.email,
-          profilePhoto: friend.profilePhoto || null,
-          city: friend.city || null,
-          state: friend.state || null,
-        };
-      });
+    const validLinks = links.filter((row) => row.requesterId && row.recipientId);
+    const friendIds = validLinks.map((row) => {
+      const friend = idsEqual(row.requesterId._id, userId) ? row.recipientId : row.requesterId;
+      return friend._id;
+    });
+
+    // Fetch medal counts for all friends in one query
+    const medalAgg = await Tournament.aggregate([
+      { $match: { userId: { $in: friendIds } } },
+      { $unwind: '$categories' },
+      { $match: { 'categories.medal': { $in: ['Gold', 'Silver', 'Bronze'] } } },
+      {
+        $group: {
+          _id: { userId: '$userId', medal: '$categories.medal' },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Build a map: userId string → { Gold, Silver, Bronze }
+    const medalMap = {};
+    for (const row of medalAgg) {
+      const uid = String(row._id.userId);
+      if (!medalMap[uid]) medalMap[uid] = { Gold: 0, Silver: 0, Bronze: 0 };
+      medalMap[uid][row._id.medal] = row.count;
+    }
+
+    const friends = validLinks.map((row) => {
+      const friend = idsEqual(row.requesterId._id, userId) ? row.recipientId : row.requesterId;
+      const medals = medalMap[String(friend._id)] || { Gold: 0, Silver: 0, Bronze: 0 };
+      return {
+        friendshipId: row._id,
+        id: friend._id,
+        name: friend.name,
+        email: friend.email,
+        profilePhoto: friend.profilePhoto || null,
+        city: friend.city || null,
+        state: friend.state || null,
+        duprSingles: friend.duprSingles || null,
+        duprDoubles: friend.duprDoubles || null,
+        playingSince: friend.playingSince || null,
+        manualAchievements: friend.manualAchievements || [],
+        medals,
+      };
+    });
 
     res.json({ success: true, data: friends });
   } catch (err) {

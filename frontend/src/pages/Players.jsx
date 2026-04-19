@@ -4,6 +4,8 @@ import * as api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import LocationModal from '../components/LocationModal';
+import SearchableSelect from '../components/SearchableSelect';
+import { CATEGORIES } from '../utils/format';
 
 // ── Coordinates for major Indian cities (for distance sorting) ───────────────
 const CITY_COORDS = {
@@ -296,15 +298,19 @@ function PlayerMiniCard({ player, onClick, friendState, onAddFriend, currentUser
   };
 
   return (
-    <div className="w-full rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-all duration-200 bg-white flex flex-col">
+    <div className="w-full rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200 bg-white flex flex-col">
 
       {/* Clickable upper area */}
-      <div onClick={onClick} className="cursor-pointer flex-1">
+      <div onClick={onClick} className="cursor-pointer flex-1 active:opacity-90">
         {/* Green top — fixed height */}
         <div className="relative px-3 flex flex-col items-center justify-center"
           style={{ background: 'linear-gradient(160deg, #0f2206 0%, #1c3a07 50%, #2a1a00 100%)', minHeight: 164 }}>
           <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-10"
             style={{ background: 'radial-gradient(circle, #91BE4D 0%, transparent 70%)' }} />
+          {/* Chevron hint */}
+          <div className="absolute top-2.5 right-2.5 text-white/30">
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+          </div>
           <div className="w-14 h-14 rounded-full flex-shrink-0 mb-2.5"
             style={{ background: 'linear-gradient(135deg, #2d7005, #91BE4D 45%, #ec9937)', padding: 2.5 }}>
             <div className="w-full h-full rounded-full overflow-hidden bg-[#1c3a07] flex items-center justify-center">
@@ -609,8 +615,13 @@ function EditMyCommunityProfileModal({ onClose, onSaved }) {
                       <input className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#91BE4D]" placeholder="Tournament name" value={row.tournamentName || ''} onChange={(e) => setForm((f) => { const copy = [...(f.manualAchievements || [])]; copy[idx] = { ...copy[idx], tournamentName: e.target.value }; return { ...f, manualAchievements: copy }; })} />
                       <button type="button" onClick={() => setForm((f) => ({ ...f, manualAchievements: (f.manualAchievements || []).filter((_, i) => i !== idx) }))} className="text-gray-400 hover:text-red-500 flex-shrink-0"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <input className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#91BE4D]" placeholder="Category" value={row.categoryName || ''} onChange={(e) => setForm((f) => { const copy = [...(f.manualAchievements || [])]; copy[idx] = { ...copy[idx], categoryName: e.target.value }; return { ...f, manualAchievements: copy }; })} />
+                    <SearchableSelect
+                      options={CATEGORIES}
+                      value={row.categoryName || ''}
+                      onChange={(v) => setForm((f) => { const copy = [...(f.manualAchievements || [])]; copy[idx] = { ...copy[idx], categoryName: v }; return { ...f, manualAchievements: copy }; })}
+                      placeholder="Category (e.g. Mixed Doubles 4.0)"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
                       <select className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#91BE4D]" value={row.medal || 'Gold'} onChange={(e) => setForm((f) => { const copy = [...(f.manualAchievements || [])]; copy[idx] = { ...copy[idx], medal: e.target.value }; return { ...f, manualAchievements: copy }; })}><option>Gold</option><option>Silver</option><option>Bronze</option></select>
                       <input type="date" className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#91BE4D]" value={row.date || ''} onChange={(e) => setForm((f) => { const copy = [...(f.manualAchievements || [])]; copy[idx] = { ...copy[idx], date: e.target.value }; return { ...f, manualAchievements: copy }; })} />
                     </div>
@@ -645,33 +656,110 @@ function FriendsSection({ friends, onViewCalendar, onRemoveFriend }) {
           {friends.length} friend{friends.length !== 1 ? 's' : ''}
         </span>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {friends.map((f) => {
           const initials = (f.name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+          const medals = f.medals || { Gold: 0, Silver: 0, Bronze: 0 };
+          const totalMedals = (medals.Gold || 0) + (medals.Silver || 0) + (medals.Bronze || 0);
+          const rarity = rarityLabel(totalMedals);
+          const achievements = (f.manualAchievements || []).filter((a) => a.tournamentName).slice(0, 3);
+
           return (
-            <div key={f.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-              <div className="relative px-4 py-4 flex flex-col items-center" style={{ background: 'linear-gradient(160deg, #0f2206 0%, #1c3a07 50%, #2a1a00 100%)' }}>
-                <div className="absolute top-0 right-0 w-16 h-16 opacity-10 rounded-full" style={{ background: 'radial-gradient(circle, #91BE4D 0%, transparent 70%)' }} />
-                <div className="w-12 h-12 rounded-full flex-shrink-0 mb-2" style={{ background: 'linear-gradient(135deg, #2d7005, #91BE4D 45%, #ec9937)', padding: 2.5 }}>
+            <div key={f.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+              {/* Dark header — horizontal layout */}
+              <div className="relative px-4 py-4 flex items-center gap-3"
+                style={{ background: 'linear-gradient(160deg, #0f2206 0%, #1c3a07 50%, #2a1a00 100%)' }}>
+                <div className="absolute top-0 right-0 w-24 h-24 opacity-10 rounded-full"
+                  style={{ background: 'radial-gradient(circle, #91BE4D 0%, transparent 70%)' }} />
+
+                {/* Avatar */}
+                <div className="w-14 h-14 rounded-full flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #2d7005, #91BE4D 45%, #ec9937)', padding: 2.5 }}>
                   <div className="w-full h-full rounded-full overflow-hidden bg-[#1c3a07] flex items-center justify-center">
-                    {f.profilePhoto ? <img src={f.profilePhoto} alt={f.name} className="w-full h-full object-cover" /> : <span className="text-sm font-black text-[#91BE4D]">{initials}</span>}
+                    {f.profilePhoto
+                      ? <img src={f.profilePhoto} alt={f.name} className="w-full h-full object-cover" />
+                      : <span className="text-base font-black text-[#91BE4D]">{initials}</span>}
                   </div>
                 </div>
-                <p className="text-white font-bold text-sm text-center leading-tight line-clamp-1 w-full">{f.name}</p>
-                {f.city && <p className="text-[#91BE4D] text-[10px] mt-0.5">📍 {f.city}</p>}
-                <span className="mt-1.5 text-[9px] font-bold bg-[#91BE4D]/20 text-[#91BE4D] border border-[#91BE4D]/30 px-2 py-0.5 rounded-full">✓ Friends</span>
+
+                {/* Name + meta */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-white font-bold text-base leading-tight truncate">{f.name}</p>
+                    <span className="text-[9px] font-bold bg-[#91BE4D]/20 text-[#91BE4D] border border-[#91BE4D]/30 px-1.5 py-0.5 rounded-full flex-shrink-0">✓ Friends</span>
+                  </div>
+                  {(f.city || f.state) && (
+                    <p className="text-[#91BE4D] text-[11px] font-medium mt-0.5">📍 {[f.city, f.state].filter(Boolean).join(', ')}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {(f.duprSingles || f.duprDoubles) && (
+                      <span className="text-[#ec9937] text-[10px] font-bold">
+                        DUPR {f.duprSingles ? `S ${f.duprSingles}` : ''}{f.duprSingles && f.duprDoubles ? ' · ' : ''}{f.duprDoubles ? `D ${f.duprDoubles}` : ''}
+                      </span>
+                    )}
+                    {f.playingSince && (
+                      <span className="text-white/40 text-[10px]">Since {f.playingSince}</span>
+                    )}
+                    {rarity && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{ color: rarity.color, background: rarity.bg, border: `1px solid ${rarity.color}40` }}>
+                        {rarity.text}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="px-3 py-3">
-                <button onClick={() => onViewCalendar(f)} className="w-full flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-xl transition-opacity hover:opacity-90 text-white" style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}>
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                  View Calendar
-                </button>
-                <button
-                  onClick={() => onRemoveFriend(f)}
-                  className="w-full mt-2 text-xs font-semibold py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  Remove Friend
-                </button>
+
+              {/* White content */}
+              <div className="px-4 py-3 space-y-3">
+
+                {/* Medal tally — always visible */}
+                <div className="flex items-center justify-around bg-gray-50 rounded-xl py-2.5 px-2">
+                  {['Gold', 'Silver', 'Bronze'].map((m) => (
+                    <div key={m} className="flex flex-col items-center">
+                      <span className="text-base leading-none">{MEDAL_EMOJI[m]}</span>
+                      <span className="text-base font-black text-gray-800 leading-tight mt-0.5">{medals[m] || 0}</span>
+                      <span className="text-[9px] text-gray-400 uppercase tracking-wide">{m}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Past achievements */}
+                {achievements.length > 0 && (
+                  <div className="space-y-1">
+                    {achievements.map((a, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-2">
+                        <span className="text-sm flex-shrink-0">{MEDAL_EMOJI[a.medal] || '🏅'}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-gray-800 truncate">{a.tournamentName}</p>
+                          {a.categoryName && <p className="text-[10px] text-gray-400 truncate">{a.categoryName}</p>}
+                        </div>
+                        {a.date && (
+                          <span className="text-[10px] text-gray-400 flex-shrink-0">
+                            {new Date(a.date + 'T00:00:00').toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className="flex gap-2 pt-0.5">
+                  <button
+                    onClick={() => onViewCalendar(f)}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-xl transition-opacity hover:opacity-90 text-white"
+                    style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    View Calendar
+                  </button>
+                  <button
+                    onClick={() => onRemoveFriend(f)}
+                    className="px-3 text-xs font-semibold rounded-xl border border-red-200 text-red-500 hover:bg-red-50 transition-colors">
+                    Remove
+                  </button>
+                </div>
               </div>
             </div>
           );
