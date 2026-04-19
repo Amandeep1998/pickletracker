@@ -60,7 +60,6 @@ export default function LocationAutocomplete({ value, onSelect, onClear, voiceQu
     autocompleteService.current.getPlacePredictions(
       {
         input: debouncedQuery,
-        componentRestrictions: { country: 'in' },
         types: ['establishment'],
       },
       (results, status) => {
