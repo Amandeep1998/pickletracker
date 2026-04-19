@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { NavLink, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -13,6 +13,8 @@ import {
 } from 'recharts';
 import * as api from '../services/api';
 import { formatINR } from '../utils/format';
+import { ShareCard } from '../components/TournamentShareModal';
+import { toPng } from 'html-to-image';
 
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -36,8 +38,9 @@ export default function Dashboard() {
   const [tournaments, setTournaments] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [allSessions, setAllSessions] = useState([]);
-  const [recentSessions, setRecentSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const cardRef = useRef(null);
+  const [shareStatus, setShareStatus] = useState('idle');
   const [slowLoad, setSlowLoad] = useState(false);
   const [error, setError] = useState('');
   const [filterYear, setFilterYear] = useState(String(currentYear));
@@ -68,7 +71,6 @@ export default function Dashboard() {
         setTournaments(tRes.data.data);
         setExpenses(eRes.data.data);
         setAllSessions(sRes.data.data);
-        setRecentSessions(sRes.data.data.slice(0, 3));
       })
       .catch(() => setError('Failed to load data'))
       .finally(() => {
@@ -287,6 +289,55 @@ export default function Dashboard() {
     return top ? top[0] : null;
   }, [allSessions]);
 
+  // Upcoming tournaments for share card
+  const todayStr = new Date().toISOString().split('T')[0];
+  const upcomingTournaments = useMemo(() => {
+    const items = [];
+    tournaments.forEach((t) => {
+      t.categories.forEach((cat) => {
+        const d = cat.date ? cat.date.split('T')[0] : null;
+        if (d && d >= todayStr) items.push({ tournament: t, category: cat, date: d });
+      });
+    });
+    return items.sort((a, b) => (a.date < b.date ? -1 : 1)).slice(0, 8);
+  }, [tournaments, todayStr]);
+
+  const handleShareDownload = useCallback(async () => {
+    if (!cardRef.current) return;
+    setShareStatus('generating');
+    try {
+      const dataUrl = await toPng(cardRef.current, { cacheBust: true, pixelRatio: 2 });
+      const a = document.createElement('a');
+      a.download = 'my-upcoming-tournaments.png';
+      a.href = dataUrl;
+      a.click();
+    } finally {
+      setShareStatus('idle');
+    }
+  }, []);
+
+  const handleShareNative = useCallback(async () => {
+    if (!cardRef.current) return;
+    setShareStatus('generating');
+    try {
+      const dataUrl = await toPng(cardRef.current, { cacheBust: true, pixelRatio: 2 });
+      const blob = await (await fetch(dataUrl)).blob();
+      const file = new File([blob], 'my-upcoming-tournaments.png', { type: 'image/png' });
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'My Upcoming Tournaments', text: 'Check out the pickleball tournaments I\'m playing soon! 🏆' });
+      } else {
+        const a = document.createElement('a');
+        a.download = 'my-upcoming-tournaments.png';
+        a.href = dataUrl;
+        a.click();
+      }
+    } catch {
+      // user cancelled — not an error
+    } finally {
+      setShareStatus('idle');
+    }
+  }, []);
+
   // Greeting based on time of day
   const greeting = (() => {
     const h = new Date().getHours();
@@ -298,22 +349,28 @@ export default function Dashboard() {
 
   const statCards = [
     {
-      label: 'Total Earnings',
-      value: formatINR(totals.earnings),
-      gradient: 'from-[#91BE4D] to-[#6a9020]',
-      icon: '🏆',
-    },
-    {
       label: 'Total Expenses',
       value: formatINR(totals.totalExpenses),
       gradient: 'from-[#ec9937] to-[#c07010]',
       icon: '💸',
     },
     {
+      label: 'Total Earnings',
+      value: formatINR(totals.earnings),
+      gradient: 'from-[#91BE4D] to-[#6a9020]',
+      icon: '🏆',
+    },
+    {
       label: 'Net Profit',
       value: formatINR(totals.profit),
       gradient: totals.profit >= 0 ? 'from-blue-500 to-indigo-600' : 'from-rose-600 to-red-700',
       icon: '📊',
+    },
+    {
+      label: 'Sessions',
+      value: filteredSessions.length,
+      gradient: 'from-violet-500 to-purple-600',
+      icon: '🎯',
     },
     {
       label: 'Tournaments',
@@ -377,186 +434,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Profile completion nudge */}
-      {showNudge && (
-        <div className="bg-[#f4f8e8] border border-[#91BE4D]/30 rounded-xl px-4 py-3 mb-4 flex items-start gap-3">
-          <span className="text-lg flex-shrink-0 mt-0.5">✨</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-[#272702]">Make PickleTracker work harder for you</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Add your city to personalise your profile and appear in the Nearby Players directory.
-            </p>
-            <NavLink
-              to="/profile"
-              className="inline-block mt-2 text-xs font-bold text-[#4a6e10] hover:underline"
-            >
-              Complete my profile →
-            </NavLink>
-          </div>
-          <button
-            onClick={dismissNudge}
-            className="flex-shrink-0 text-gray-400 hover:text-gray-600 p-1 rounded transition-colors"
-            aria-label="Dismiss"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-4 gap-2 mb-4">
-        <button
-          onClick={() => navigate('/sessions')}
-          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-[#91BE4D]/30 bg-[#91BE4D]/5 hover:bg-[#91BE4D]/10 transition-colors text-center"
-        >
-          <span className="text-xl">🎯</span>
-          <span className="text-xs font-bold text-[#4a6e10] leading-tight">Log Session</span>
-        </button>
-        <button
-          onClick={() => navigate('/tournaments')}
-          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-[#ec9937]/30 bg-[#ec9937]/5 hover:bg-[#ec9937]/10 transition-colors text-center"
-        >
-          <span className="text-xl">🏆</span>
-          <span className="text-xs font-bold text-orange-700 leading-tight">Tournament</span>
-        </button>
-        <button
-          onClick={() => navigate('/expenses')}
-          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors text-center"
-        >
-          <span className="text-xl">🎒</span>
-          <span className="text-xs font-bold text-gray-600 leading-tight">Add Gear</span>
-        </button>
-        <button
-          onClick={() => navigate('/travel')}
-          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-teal-200 bg-teal-50 hover:bg-teal-100 transition-colors text-center"
-        >
-          <span className="text-xl">✈️</span>
-          <span className="text-xs font-bold text-teal-700 leading-tight">Log Travel</span>
-        </button>
-      </div>
-
-      {/* Performance Snapshot */}
-      {allSessions.length > 0 && (
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-3 text-center">
-            <p className="text-2xl font-black" style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-              {streak}
-            </p>
-            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">Day Streak</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-3 text-center">
-            <p className="text-2xl font-black" style={{ background: 'linear-gradient(to right, #2d7005, #ec9937)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-              {weekStats.avg ?? '—'}
-            </p>
-            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">Week Avg</p>
-          </div>
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-3 text-center">
-            <p className="text-xs font-bold text-orange-600 leading-tight truncate" title={focusArea || 'None'}>
-              {focusArea ? focusArea.split(' ').slice(0, 2).join(' ') : '—'}
-            </p>
-            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide mt-0.5">Focus Area</p>
-          </div>
-        </div>
-      )}
-
-      {/* Recent Sessions Widget */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-md px-4 py-4 mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-base">📓</span>
-            <p className="text-sm font-bold text-gray-800">Performance Journal</p>
-          </div>
-          <NavLink to="/sessions" className="text-xs font-semibold text-[#4a6e10] hover:underline">
-            View all →
-          </NavLink>
-        </div>
-        {recentSessions.length === 0 ? (
-          <div className="text-center py-4">
-            <p className="text-xs text-gray-400 mb-2">No sessions logged yet</p>
-            <NavLink
-              to="/sessions"
-              className="inline-block text-xs font-bold px-4 py-1.5 rounded-lg hover:opacity-90 text-white transition-opacity"
-              style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
-            >
-              Log your first session
-            </NavLink>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {recentSessions.map((s) => {
-              const EMOJI = { 1: '😫', 2: '😕', 3: '😐', 4: '😊', 5: '🔥' };
-              const TYPE_ICON = { tournament: '🏆', casual: '🎾', practice: '🎯' };
-              const TYPE_LABEL = { tournament: 'Tournament', casual: 'Casual', practice: 'Drill' };
-              const [y, m, d] = s.date.split('-');
-              const dateLabel = new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-              return (
-                <div key={s._id} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm">{TYPE_ICON[s.type]}</span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-gray-700">{TYPE_LABEL[s.type]}</p>
-                      <p className="text-[10px] text-gray-400">{dateLabel}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {s.wentWrong?.[0] && (
-                      <span className="text-[10px] bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded-full border border-orange-100 font-medium hidden sm:inline">
-                        ✗ {s.wentWrong[0]}
-                      </span>
-                    )}
-                    <span className="text-lg">{EMOJI[s.rating]}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Next Tournament Widget */}
-      {nextTournament && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-md px-4 py-4 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0 text-lg">
-              🗓️
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Next Tournament</p>
-              <p className="text-sm font-semibold text-gray-900 mt-0.5">{nextTournament.tournament.name}</p>
-              <p className="text-xs text-gray-500">
-                {nextTournament.cat.categoryName}
-                {nextTournament.tournament.location?.name && (
-                  <span className="text-gray-400"> · {nextTournament.tournament.location.name}</span>
-                )}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 sm:flex-col sm:items-end">
-            <div className={`text-xs font-semibold px-3 py-1.5 rounded-full ${
-              nextTournament.diffDays === 0
-                ? 'bg-green-100 text-green-700'
-                : nextTournament.diffDays <= 7
-                ? 'bg-orange-50 text-orange-600'
-                : 'bg-blue-50 text-blue-600'
-            }`}>
-              {nextTournament.diffDays === 0
-                ? 'Today!'
-                : nextTournament.diffDays === 1
-                ? 'Tomorrow'
-                : `In ${nextTournament.diffDays} days`}
-            </div>
-            <p className="text-xs text-gray-400">
-              {new Date(nextTournament.dateStr + 'T00:00:00').toLocaleDateString('en-IN', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              })}
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Time filters */}
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
@@ -592,7 +469,7 @@ export default function Dashboard() {
       </div>
 
       {/* Expense filter toggles */}
-      <div className="flex items-center gap-2 flex-wrap mb-6">
+      <div className="flex items-center gap-2 flex-wrap mb-4">
         <span className="text-xs text-gray-500 font-medium">Include in expenses:</span>
         <div className="flex gap-2 flex-wrap">
           <button
@@ -639,7 +516,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
         {statCards.map((card) => (
           <div key={card.label} className={`rounded-2xl p-4 sm:p-5 bg-gradient-to-br ${card.gradient} shadow-md`}>
             <div className="text-xl sm:text-2xl mb-2 filter drop-shadow-sm">{card.icon}</div>
@@ -649,13 +526,149 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Monthly Chart */}
-      {tournaments.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-6 sm:p-12 text-center text-gray-400">
-          <p className="text-base sm:text-lg">No tournament data yet.</p>
-          <p className="text-xs sm:text-sm mt-1">Add your first tournament to see analytics.</p>
+      {/* Quick Actions */}
+      <div className="grid grid-cols-4 gap-2 mb-4">
+        <button
+          onClick={() => navigate('/sessions')}
+          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-[#91BE4D]/30 bg-[#91BE4D]/5 hover:bg-[#91BE4D]/10 transition-colors text-center"
+        >
+          <span className="text-xl">🎯</span>
+          <span className="text-xs font-bold text-[#4a6e10] leading-tight">Log Session</span>
+        </button>
+        <button
+          onClick={() => navigate('/tournaments')}
+          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-[#ec9937]/30 bg-[#ec9937]/5 hover:bg-[#ec9937]/10 transition-colors text-center"
+        >
+          <span className="text-xl">🏆</span>
+          <span className="text-xs font-bold text-orange-700 leading-tight">Tournament</span>
+        </button>
+        <button
+          onClick={() => navigate('/expenses')}
+          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors text-center"
+        >
+          <span className="text-xl">🎒</span>
+          <span className="text-xs font-bold text-gray-600 leading-tight">Add Gear</span>
+        </button>
+        <button
+          onClick={() => navigate('/travel')}
+          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-teal-200 bg-teal-50 hover:bg-teal-100 transition-colors text-center"
+        >
+          <span className="text-xl">✈️</span>
+          <span className="text-xs font-bold text-teal-700 leading-tight">Log Travel</span>
+        </button>
+      </div>
+
+
+      {/* Upcoming Tournaments Share Widget */}
+      <div className="rounded-2xl overflow-hidden mb-6 shadow-md relative" style={{ background: 'linear-gradient(145deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}>
+        {/* Decorative blobs */}
+        <div className="absolute pointer-events-none" style={{ top: -40, right: -40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(145,190,77,0.1)' }} />
+        <div className="absolute pointer-events-none" style={{ bottom: -30, left: -30, width: 120, height: 120, borderRadius: '50%', background: 'rgba(236,153,55,0.08)' }} />
+
+        {/* Branding row */}
+        <div className="relative flex items-center justify-between px-4 pt-4 pb-0">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(145,190,77,0.15)', border: '1px solid rgba(145,190,77,0.3)' }}>
+              <span className="text-[10px] font-black text-[#c8e875]">PT</span>
+            </div>
+            <span className="text-[10px] font-bold text-[#91BE4D] uppercase tracking-widest">PickleTracker</span>
+          </div>
+          <NavLink to="/calendar" className="text-[10px] text-white/40 hover:text-white/60 transition-colors">
+            View calendar →
+          </NavLink>
         </div>
-      ) : (
+
+        {/* Headline */}
+        <div className="relative px-4 pt-3 pb-3">
+          <p className="text-white/50 text-[10px] uppercase tracking-widest font-semibold mb-1">
+            {firstName}'s upcoming tournaments
+          </p>
+          {upcomingTournaments.length > 0 ? (
+            <p className="text-white font-black text-base leading-tight">
+              Playing <span style={{ color: '#c8e875' }}>{upcomingTournaments.length}</span>{' '}
+              tournament{upcomingTournaments.length !== 1 ? 's' : ''} soon 🏆
+            </p>
+          ) : (
+            <p className="text-white/60 text-sm font-semibold">No upcoming tournaments yet</p>
+          )}
+        </div>
+
+        {/* Tournament rows */}
+        <div className="relative px-4 pb-3 space-y-2">
+          {upcomingTournaments.length === 0 ? (
+            <NavLink
+              to="/tournaments"
+              className="block text-center text-xs font-bold py-2.5 rounded-xl transition-colors"
+              style={{ color: '#c8e875', border: '1px solid rgba(145,190,77,0.3)', background: 'rgba(255,255,255,0.04)' }}
+            >
+              + Add a tournament
+            </NavLink>
+          ) : (
+            upcomingTournaments.slice(0, 4).map((item, i) => {
+              const d = new Date(item.date + 'T00:00:00');
+              const now = new Date(); now.setHours(0, 0, 0, 0);
+              const diff = Math.round((d - now) / 86400000);
+              const label = diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : `${diff}d`;
+              return (
+                <div key={i} className="flex items-center justify-between py-2 px-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(145,190,77,0.15)' }}>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white text-xs font-bold truncate">{item.tournament.name}</p>
+                    <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                      {item.category.categoryName}
+                      {item.tournament.location?.name ? ` · ${item.tournament.location.name}` : ''}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full ml-2 flex-shrink-0" style={{ background: 'rgba(145,190,77,0.2)', color: '#c8e875' }}>
+                    {label}
+                  </span>
+                </div>
+              );
+            })
+          )}
+          {upcomingTournaments.length > 4 && (
+            <p className="text-center text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+              +{upcomingTournaments.length - 4} more · <NavLink to="/calendar" className="underline">view all</NavLink>
+            </p>
+          )}
+        </div>
+
+        {/* Share buttons */}
+        {upcomingTournaments.length > 0 && (
+          <div className="relative px-4 pb-4 pt-2 flex gap-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <button
+              onClick={handleShareDownload}
+              disabled={shareStatus === 'generating'}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-50"
+              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)' }}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+              </svg>
+              {shareStatus === 'generating' ? 'Wait...' : 'Download'}
+            </button>
+            <button
+              onClick={handleShareNative}
+              disabled={shareStatus === 'generating'}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: 'linear-gradient(to right, rgba(45,112,5,0.9), rgba(145,190,77,0.7), rgba(168,96,16,0.8))', border: '1px solid rgba(145,190,77,0.3)' }}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              Share
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Hidden ShareCard for image capture — off-screen, never visible */}
+      <div style={{ position: 'fixed', left: -9999, top: -9999, pointerEvents: 'none', zIndex: -1 }}>
+        <ShareCard ref={cardRef} items={upcomingTournaments} userName={user?.name} />
+      </div>
+
+
+      {/* Monthly Chart — only when there's data */}
+      {tournaments.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-6 mb-6">
           <h2 className="text-sm sm:text-base font-semibold text-gray-700 mb-4">
             Monthly Expenses vs Profit — {filterYear}
@@ -683,12 +696,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Travel Spend Widget */}
+      {/* Travel Spend Widget — only when there's data */}
       {(() => {
         const yearTravel = expenses.filter(
           (e) => e.type === 'travel' && e.date?.startsWith(filterYear)
         ).sort((a, b) => b.date.localeCompare(a.date));
         const yearTravelTotal = yearTravel.reduce((s, e) => s + e.amount, 0);
+        if (yearTravel.length === 0) return null;
 
         return (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-6 mb-6">
@@ -704,57 +718,64 @@ export default function Dashboard() {
                   </span>
                 )}
               </div>
-              <Link
-                to="/travel"
-                className="text-xs text-teal-600 hover:text-teal-800 font-semibold transition-colors"
-              >
-                {yearTravel.length > 0 ? 'View all →' : 'Log a trip →'}
+              <Link to="/travel" className="text-xs text-teal-600 hover:text-teal-800 font-semibold transition-colors">
+                View all →
               </Link>
             </div>
-
-            {yearTravel.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-6 text-center">
-                <p className="text-sm text-gray-400 mb-3">No travel logged for {filterYear}</p>
-                <Link
-                  to="/travel"
-                  className="hover:opacity-90 text-white font-semibold px-4 py-2 rounded-lg text-xs tracking-wide transition-opacity"
-                  style={{ background: 'linear-gradient(to right, #0d9488, #14b8a6)' }}
-                >
-                  + Log your first trip
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {yearTravel.slice(0, 3).map((e) => (
-                  <div key={e._id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800 truncate">{e.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-xs text-gray-400">
-                          {new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                        </p>
-                        {e.fromCity && e.toCity && (
-                          <p className="text-xs text-gray-500">{e.fromCity} → {e.toCity}</p>
-                        )}
-                        {e.isInternational && (
-                          <span className="text-xs px-1.5 py-0.5 bg-teal-50 text-teal-600 rounded-full border border-teal-200 font-medium">Intl</span>
-                        )}
-                      </div>
+            <div className="space-y-2">
+              {yearTravel.slice(0, 3).map((e) => (
+                <div key={e._id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{e.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className="text-xs text-gray-400">
+                        {new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </p>
+                      {e.fromCity && e.toCity && (
+                        <p className="text-xs text-gray-500">{e.fromCity} → {e.toCity}</p>
+                      )}
+                      {e.isInternational && (
+                        <span className="text-xs px-1.5 py-0.5 bg-teal-50 text-teal-600 rounded-full border border-teal-200 font-medium">Intl</span>
+                      )}
                     </div>
-                    <p className="text-sm font-bold text-teal-600 flex-shrink-0">{formatINR(e.amount)}</p>
                   </div>
-                ))}
-                {yearTravel.length > 3 && (
-                  <p className="text-xs text-gray-400 pt-1 text-center">
-                    +{yearTravel.length - 3} more trip{yearTravel.length - 3 !== 1 ? 's' : ''} —{' '}
-                    <Link to="/travel" className="text-teal-600 hover:underline font-medium">view all</Link>
-                  </p>
-                )}
-              </div>
-            )}
+                  <p className="text-sm font-bold text-teal-600 flex-shrink-0">{formatINR(e.amount)}</p>
+                </div>
+              ))}
+              {yearTravel.length > 3 && (
+                <p className="text-xs text-gray-400 pt-1 text-center">
+                  +{yearTravel.length - 3} more trip{yearTravel.length - 3 !== 1 ? 's' : ''} —{' '}
+                  <Link to="/travel" className="text-teal-600 hover:underline font-medium">view all</Link>
+                </p>
+              )}
+            </div>
           </div>
         );
       })()}
+
+      {/* Get started prompt — shown only when user has no data at all */}
+      {tournaments.length === 0 && allSessions.length === 0 && expenses.length === 0 && (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-6 text-center mb-6">
+          <p className="text-3xl mb-3">🏆</p>
+          <p className="text-sm font-bold text-gray-700 mb-1">Your stats will appear here</p>
+          <p className="text-xs text-gray-400 mb-4">Start by logging a tournament or a drill session to see your analytics.</p>
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={() => navigate('/tournaments')}
+              className="text-xs font-bold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity"
+              style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}
+            >
+              + Add Tournament
+            </button>
+            <button
+              onClick={() => navigate('/sessions')}
+              className="text-xs font-bold px-4 py-2 rounded-lg border-2 border-[#91BE4D]/40 text-[#4a6e10] hover:bg-[#91BE4D]/5 transition-colors"
+            >
+              + Log Session
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Per-Category Profit Breakdown */}
       {categoryBreakdown.length > 0 && (
@@ -815,6 +836,34 @@ export default function Dashboard() {
       {tournaments.length > 0 && filteredTournaments.length === 0 && (
         <div className="mt-6 text-center text-gray-400 text-sm">
           No tournaments found for the selected period.
+        </div>
+      )}
+
+      {/* Profile completion nudge — bottom of page */}
+      {showNudge && (
+        <div className="bg-[#f4f8e8] border border-[#91BE4D]/30 rounded-xl px-4 py-3 mt-6 flex items-start gap-3">
+          <span className="text-lg flex-shrink-0 mt-0.5">✨</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-[#272702]">Make PickleTracker work harder for you</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Add your city to personalise your profile and appear in the Nearby Players directory.
+            </p>
+            <NavLink
+              to="/profile"
+              className="inline-block mt-2 text-xs font-bold text-[#4a6e10] hover:underline"
+            >
+              Complete my profile →
+            </NavLink>
+          </div>
+          <button
+            onClick={dismissNudge}
+            className="flex-shrink-0 text-gray-400 hover:text-gray-600 p-1 rounded transition-colors"
+            aria-label="Dismiss"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       )}
     </div>

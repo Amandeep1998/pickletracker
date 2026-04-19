@@ -3,6 +3,7 @@ import posthog from 'posthog-js';
 import * as api from '../services/api';
 import TournamentForm from '../components/TournamentForm';
 import SessionForm from '../components/SessionForm';
+import TournamentShareModal from '../components/TournamentShareModal';
 import { formatINR } from '../utils/format';
 import { getMapUrl } from '../utils/mapUrl';
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -68,6 +69,9 @@ export default function Calendar() {
 
   // Floating action button (speed-dial) state
   const [fabOpen, setFabOpen] = useState(false);
+
+  // Share modal
+  const [shareModalOpen, setShareModalOpen] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -135,6 +139,18 @@ export default function Calendar() {
     const courtFees = monthSessions.reduce((s, x) => s + (x.courtFee || 0), 0);
     return { sessions: monthSessions.length, tournaments: monthTournaments.length, courtFees };
   }, [sessions, tournaments, viewYear, viewMonth]);
+
+  // Upcoming tournaments only — for share card (up to 8)
+  const upcomingTournaments = useMemo(() => {
+    const items = [];
+    tournaments.forEach((t) => {
+      t.categories.forEach((cat) => {
+        const d = cat.date ? cat.date.split('T')[0] : null;
+        if (d && d >= todayStr) items.push({ tournament: t, category: cat, date: d });
+      });
+    });
+    return items.sort((a, b) => (a.date < b.date ? -1 : 1)).slice(0, 8);
+  }, [tournaments, todayStr]);
 
   // Upcoming events — next 5 sessions + tournament dates from today
   const upcomingEvents = useMemo(() => {
@@ -474,7 +490,20 @@ export default function Calendar() {
       {/* ── Upcoming Events ── */}
       {upcomingEvents.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4 mb-4">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Upcoming</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Upcoming</p>
+            {upcomingTournaments.length > 0 && (
+              <button
+                onClick={() => setShareModalOpen(true)}
+                className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#91BE4D]/40 text-[#4a6e10] bg-[#91BE4D]/5 hover:bg-[#91BE4D]/10 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Share
+              </button>
+            )}
+          </div>
           <div className="space-y-2">
             {upcomingEvents.map((ev, i) => {
               if (ev.kind === 'session') {
@@ -928,6 +957,14 @@ export default function Calendar() {
         </button>
       </div>
       </>
+      )}
+
+      {/* ── Share Modal ── */}
+      {shareModalOpen && (
+        <TournamentShareModal
+          items={upcomingTournaments}
+          onClose={() => setShareModalOpen(false)}
+        />
       )}
 
     </div>
