@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import * as api from '../services/api';
 import TournamentForm from '../components/TournamentForm';
 import Modal from '../components/Modal';
-import { formatINR, MEDAL_COLORS } from '../utils/format';
+import { formatCurrency, MEDAL_COLORS } from '../utils/format';
+import useCurrency from '../hooks/useCurrency';
 import { getMapUrl } from '../utils/mapUrl';
 import { syncTournamentToCalendar, deleteTournamentFromCalendar, isCalendarConnected } from '../services/googleCalendar';
 import { NavLink } from 'react-router-dom';
 
 export default function Tournaments() {
+  const currency = useCurrency();
   const [tournaments, setTournaments] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
@@ -291,7 +293,7 @@ export default function Tournaments() {
                 <div className="text-right">
                   <p className="text-xs text-gray-400">Total Profit</p>
                   <p className={`text-base sm:text-lg font-bold ${t.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatINR(t.totalProfit)}
+                    {formatCurrency(t.totalProfit, currency)}
                   </p>
                 </div>
               </div>
@@ -303,7 +305,7 @@ export default function Tournaments() {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                       <span className="font-medium text-gray-700 text-sm">{cat.categoryName}</span>
                       <span className="text-xs text-gray-500">
-                        {cat.date ? new Date(cat.date.split('T')[0] + 'T00:00:00').toLocaleDateString('en-IN') : 'No date'}
+                        {cat.date ? new Date(cat.date.split('T')[0] + 'T00:00:00').toLocaleDateString(undefined) : 'No date'}
                       </span>
                       <span className={`w-fit text-xs font-medium px-1.5 py-0.5 rounded ${MEDAL_COLORS[cat.medal]}`}>
                         {cat.medal}
@@ -312,16 +314,16 @@ export default function Tournaments() {
                     <div className="grid grid-cols-3 sm:flex sm:gap-4 text-right gap-2">
                       <div>
                         <p className="text-xs text-gray-400">Entry Fees</p>
-                        <p className="text-xs sm:text-sm font-medium text-gray-700">{formatINR(cat.entryFee)}</p>
+                        <p className="text-xs sm:text-sm font-medium text-gray-700">{formatCurrency(cat.entryFee, currency)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-400">Amount Won</p>
-                        <p className="text-xs sm:text-sm font-medium text-gray-700">{formatINR(cat.prizeAmount)}</p>
+                        <p className="text-xs sm:text-sm font-medium text-gray-700">{formatCurrency(cat.prizeAmount, currency)}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-400">Profit</p>
                         <p className={`text-xs sm:text-sm font-semibold ${(cat.prizeAmount - cat.entryFee) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {formatINR(cat.prizeAmount - cat.entryFee)}
+                          {formatCurrency(cat.prizeAmount - cat.entryFee, currency)}
                         </p>
                       </div>
                     </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { formatINR } from '../utils/format';
+import { formatCurrency, getCurrencySymbol } from '../utils/format';
+import useCurrency from '../hooks/useCurrency';
 
 const COST_BUCKETS = [
   { key: 'transport',     label: 'Transport',           hint: 'Flight / Train / Bus / Fuel' },
@@ -31,6 +32,8 @@ const EMPTY_FORM = {
 };
 
 export default function TravelExpenseForm({ initial, onSubmit, onCancel, loading, tournaments = [] }) {
+  const currency = useCurrency();
+  const symbol = getCurrencySymbol(currency);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
 
@@ -208,7 +211,7 @@ export default function TravelExpenseForm({ initial, onSubmit, onCancel, loading
                 <span className="text-gray-400 font-normal ml-1">· {hint}</span>
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none">₹</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none">{symbol}</span>
                 <input
                   type="number"
                   name={key}
@@ -232,7 +235,7 @@ export default function TravelExpenseForm({ initial, onSubmit, onCancel, loading
       }`}>
         <span className="text-sm font-semibold text-gray-700">Total Trip Cost</span>
         <span className={`text-lg font-black ${total > 0 ? 'text-teal-700' : 'text-gray-400'}`}>
-          {total > 0 ? formatINR(total) : '₹0'}
+          {total > 0 ? formatCurrency(total, currency) : `${symbol}0`}
         </span>
       </div>
 

@@ -2,9 +2,11 @@ import React, { useEffect, useState, useMemo } from 'react';
 import * as api from '../services/api';
 import Modal from '../components/Modal';
 import ExpenseForm from '../components/ExpenseForm';
-import { formatINR } from '../utils/format';
+import { formatCurrency } from '../utils/format';
+import useCurrency from '../hooks/useCurrency';
 
 export default function Expenses() {
+  const currency = useCurrency();
   const [expenses, setExpenses] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
@@ -110,7 +112,7 @@ export default function Expenses() {
             <div>
               <p className="text-xs text-gray-400 font-medium">Total gear spend</p>
               <p className="text-xl font-black" style={{ background: 'linear-gradient(to right, #2d7005, #ec9937)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                {formatINR(total)}
+                {formatCurrency(total, currency)}
               </p>
             </div>
           </div>
@@ -146,10 +148,10 @@ export default function Expenses() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-800 truncate">{e.title}</p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  {new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {new Date(e.date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
                 </p>
               </div>
-              <p className="text-sm font-bold text-orange-600 flex-shrink-0">{formatINR(e.amount)}</p>
+              <p className="text-sm font-bold text-orange-600 flex-shrink-0">{formatCurrency(e.amount, currency)}</p>
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button onClick={() => openEdit(e)} className="text-xs text-blue-600 hover:text-blue-800 font-medium min-h-[36px] px-2 rounded hover:bg-blue-50 transition">Edit</button>
                 {deleteId === e._id ? (

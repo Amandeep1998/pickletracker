@@ -41,7 +41,7 @@ export default function PlayerCard({ profile, tournaments }) {
     .slice(0, 3);
 
   const initials = (name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-  const location = [city, state].filter(Boolean).join(', ') || 'India';
+  const location = [city, state].filter(Boolean).join(', ');
   const since = playingSince ? `Since ${playingSince}` : null;
 
   const handleDownload = async () => {
@@ -123,9 +123,11 @@ export default function PlayerCard({ profile, tournaments }) {
             <p style={{ fontSize: 22, fontWeight: 900, color: '#ffffff', margin: 0, lineHeight: 1.1, letterSpacing: '-0.01em' }}>
               {name || 'Player'}
             </p>
-            <p style={{ fontSize: 11, color: '#91BE4D', margin: '5px 0 0', fontWeight: 600, letterSpacing: '0.04em' }}>
-              📍 {location}
-            </p>
+            {location && (
+              <p style={{ fontSize: 11, color: '#91BE4D', margin: '5px 0 0', fontWeight: 600, letterSpacing: '0.04em' }}>
+                📍 {location}
+              </p>
+            )}
             {since && (
               <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', margin: '3px 0 0', fontWeight: 500 }}>
                 {since}

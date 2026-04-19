@@ -35,6 +35,7 @@ function publicUser(user) {
     playingSince: user.playingSince || null,
     profilePhoto: user.profilePhoto || null,
     manualAchievements: Array.isArray(user.manualAchievements) ? user.manualAchievements : [],
+    currency: user.currency || 'INR',
   };
 }
 
@@ -323,6 +324,13 @@ const updateProfile = async (req, res, next) => {
         }))
         .filter((a) => a.tournamentName && a.categoryName && ['Gold', 'Silver', 'Bronze'].includes(a.medal));
       update.manualAchievements = cleaned;
+    }
+    const VALID_CURRENCIES = ['INR', 'USD', 'AUD', 'EUR', 'GBP', 'CAD', 'SGD', 'MYR', 'PHP'];
+    if (req.body.currency !== undefined) {
+      if (!VALID_CURRENCIES.includes(req.body.currency)) {
+        return res.status(400).json({ success: false, message: 'Invalid currency' });
+      }
+      update.currency = req.body.currency;
     }
     if (whatsappPhone !== undefined) {
       if (whatsappPhone) {

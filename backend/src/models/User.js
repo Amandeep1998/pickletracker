@@ -110,6 +110,11 @@ const userSchema = new mongoose.Schema(
       type: [manualAchievementSchema],
       default: [],
     },
+    currency: {
+      type: String,
+      default: 'INR',
+      enum: ['INR', 'USD', 'AUD', 'EUR', 'GBP', 'CAD', 'SGD', 'MYR', 'PHP'],
+    },
     emailReminders: {
       type: Boolean,
       default: true,

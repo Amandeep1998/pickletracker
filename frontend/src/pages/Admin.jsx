@@ -2,7 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
-import { formatINR } from '../utils/format';
+import { formatCurrency } from '../utils/format';
+import useCurrency from '../hooks/useCurrency';
 import { deleteAdminUser } from '../services/api';
 import AdminUserCalendar from '../components/AdminUserCalendar';
 
@@ -20,7 +21,7 @@ function timeAgo(date) {
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}d ago`;
-  return new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function StatCard({ label, value, sub, color = 'text-gray-900' }) {
@@ -49,6 +50,7 @@ function MedalBadge({ medal, count }) {
 
 export default function Admin() {
   const { user } = useAuth();
+  const currency = useCurrency();
   const navigate = useNavigate();
 
   const [data, setData] = useState(null);
@@ -141,7 +143,7 @@ export default function Admin() {
         <StatCard label="Google Sign-In" value={stats.googleUsers} sub={`${stats.totalUsers - stats.googleUsers} email`} />
         <StatCard
           label="Revenue Tracked"
-          value={formatINR(stats.totalRevenueTracked)}
+          value={formatCurrency(stats.totalRevenueTracked, currency)}
           color="text-green-700"
         />
       </div>
@@ -209,7 +211,7 @@ export default function Admin() {
                   <div className="flex items-center gap-3 mt-1 sm:hidden">
                     <span className="text-xs text-gray-500">{u.tournamentCount} events</span>
                     <span className={`text-xs font-semibold ${u.totalProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                      {formatINR(u.totalProfit)}
+                      {formatCurrency(u.totalProfit, currency)}
                     </span>
                   </div>
                 </div>
@@ -217,7 +219,7 @@ export default function Admin() {
                 {/* Joined — hidden on mobile */}
                 <div className="hidden md:block text-xs text-gray-400 flex-shrink-0 w-24 text-right">
                   <p className="text-gray-500 font-medium">Joined</p>
-                  <p>{new Date(u.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}</p>
+                  <p>{new Date(u.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: '2-digit' })}</p>
                 </div>
 
                 {/* Last active — hidden on mobile */}
@@ -236,7 +238,7 @@ export default function Admin() {
                 <div className="hidden sm:block text-xs text-right flex-shrink-0 w-20">
                   <p className="text-gray-500 font-medium">Net Profit</p>
                   <p className={`font-bold ${u.totalProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    {formatINR(u.totalProfit)}
+                    {formatCurrency(u.totalProfit, currency)}
                   </p>
                 </div>
 
@@ -285,7 +287,7 @@ export default function Admin() {
                         <div className="flex justify-between">
                           <span>Joined</span>
                           <span className="font-medium text-gray-900">
-                            {new Date(u.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            {new Date(u.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -319,16 +321,16 @@ export default function Admin() {
                       <div className="space-y-1.5 text-xs text-gray-600">
                         <div className="flex justify-between">
                           <span>Total earnings</span>
-                          <span className="font-medium text-green-600">{formatINR(u.totalEarnings)}</span>
+                          <span className="font-medium text-green-600">{formatCurrency(u.totalEarnings, currency)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Total entry fees</span>
-                          <span className="font-medium text-red-500">{formatINR(u.totalExpenses)}</span>
+                          <span className="font-medium text-red-500">{formatCurrency(u.totalExpenses, currency)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Net profit</span>
                           <span className={`font-bold ${u.totalProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                            {formatINR(u.totalProfit)}
+                            {formatCurrency(u.totalProfit, currency)}
                           </span>
                         </div>
                       </div>
@@ -367,7 +369,7 @@ export default function Admin() {
                                 <p className="text-xs text-gray-400">{t.categoryCount} {t.categoryCount === 1 ? 'category' : 'categories'}</p>
                               </div>
                               <span className={`text-xs font-semibold flex-shrink-0 ml-2 ${t.profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                {t.profit >= 0 ? '+' : ''}{formatINR(t.profit)}
+                                {t.profit >= 0 ? '+' : ''}{formatCurrency(t.profit, currency)}
                               </span>
                             </div>
                           ))}

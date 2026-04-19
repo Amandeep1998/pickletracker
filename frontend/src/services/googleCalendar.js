@@ -1,5 +1,16 @@
 const CALENDAR_API = 'https://www.googleapis.com/calendar/v3';
 
+const CURRENCY_SYMBOLS = {
+  INR: '₹', USD: '$', AUD: 'A$', EUR: '€', GBP: '£',
+  CAD: 'C$', SGD: 'S$', MYR: 'RM', PHP: '₱',
+};
+function getUserCurrencySymbol() {
+  try {
+    const u = JSON.parse(localStorage.getItem('user') || '{}');
+    return CURRENCY_SYMBOLS[u.currency] || '₹';
+  } catch { return '₹'; }
+}
+
 export function getCalendarToken() {
   const token = localStorage.getItem('gcal_token');
   const expiry = Number(localStorage.getItem('gcal_token_expiry') || 0);
@@ -80,11 +91,12 @@ export async function deleteTournamentFromCalendar(tournament) {
 // --- Internal helpers ---
 
 function buildEvent(tournamentName, cat, location) {
+  const sym = getUserCurrencySymbol();
   const lines = [
-    `Entry Fee: ₹${cat.entryFee}`,
+    `Entry Fee: ${sym}${cat.entryFee}`,
     `Medal: ${cat.medal}`,
-    cat.medal !== 'None' ? `Amount Won: ₹${cat.prizeAmount}` : null,
-    `Profit: ₹${cat.prizeAmount - cat.entryFee}`,
+    cat.medal !== 'None' ? `Amount Won: ${sym}${cat.prizeAmount}` : null,
+    `Profit: ${sym}${cat.prizeAmount - cat.entryFee}`,
   ];
 
   if (location?.name || location?.address) {

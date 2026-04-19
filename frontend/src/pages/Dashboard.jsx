@@ -12,7 +12,8 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import * as api from '../services/api';
-import { formatINR } from '../utils/format';
+import { formatCurrency, getCurrencySymbol } from '../utils/format';
+import useCurrency from '../hooks/useCurrency';
 import TournamentShareModal from '../components/TournamentShareModal';
 import BannerMedalStrip from '../components/BannerMedalStrip';
 import { computeMedalTally } from '../utils/medals';
@@ -35,6 +36,8 @@ const getTournamentDate = (tournament) => {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const currency = useCurrency();
+  const symbol = getCurrencySymbol(currency);
   const navigate = useNavigate();
   const [tournaments, setTournaments] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -323,19 +326,19 @@ export default function Dashboard() {
   const statCards = [
     {
       label: 'Total Expenses',
-      value: formatINR(totals.totalExpenses),
+      value: formatCurrency(totals.totalExpenses, currency),
       gradient: 'from-[#ec9937] to-[#c07010]',
       icon: '💸',
     },
     {
       label: 'Total Earnings',
-      value: formatINR(totals.earnings),
+      value: formatCurrency(totals.earnings, currency),
       gradient: 'from-[#91BE4D] to-[#6a9020]',
       icon: '🏆',
     },
     {
       label: 'Net Profit',
-      value: formatINR(totals.profit),
+      value: formatCurrency(totals.profit, currency),
       gradient: totals.profit >= 0 ? 'from-blue-500 to-indigo-600' : 'from-rose-600 to-red-700',
       icon: '📊',
     },
@@ -650,11 +653,11 @@ export default function Dashboard() {
               <YAxis
                 width={48}
                 tick={{ fontSize: 11 }}
-                tickFormatter={(v) => `₹${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                tickFormatter={(v) => `${symbol}${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
               />
               <Tooltip
                 formatter={(value, name) => [
-                  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(value),
+                  formatCurrency(value, currency),
                   name,
                 ]}
               />
@@ -684,7 +687,7 @@ export default function Dashboard() {
                 </h2>
                 {yearTravelTotal > 0 && (
                   <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-600 border border-teal-200">
-                    {formatINR(yearTravelTotal)}
+                    {formatCurrency(yearTravelTotal, currency)}
                   </span>
                 )}
               </div>
@@ -699,7 +702,7 @@ export default function Dashboard() {
                     <p className="text-sm font-medium text-gray-800 truncate">{e.title}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <p className="text-xs text-gray-400">
-                        {new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        {new Date(e.date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                       </p>
                       {e.fromCity && e.toCity && (
                         <p className="text-xs text-gray-500">{e.fromCity} → {e.toCity}</p>
@@ -709,7 +712,7 @@ export default function Dashboard() {
                       )}
                     </div>
                   </div>
-                  <p className="text-sm font-bold text-teal-600 flex-shrink-0">{formatINR(e.amount)}</p>
+                  <p className="text-sm font-bold text-teal-600 flex-shrink-0">{formatCurrency(e.amount, currency)}</p>
                 </div>
               ))}
               {yearTravel.length > 3 && (
@@ -769,9 +772,9 @@ export default function Dashboard() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0 ml-2">
-                      <span className="text-xs text-gray-400 hidden sm:block">{formatINR(row.earnings)} earned</span>
+                      <span className="text-xs text-gray-400 hidden sm:block">{formatCurrency(row.earnings, currency)} earned</span>
                       <span className={`text-xs sm:text-sm font-semibold ${isProfit ? 'text-green-600' : 'text-red-500'}`}>
-                        {isProfit ? '+' : ''}{formatINR(row.profit)}
+                        {isProfit ? '+' : ''}{formatCurrency(row.profit, currency)}
                       </span>
                     </div>
                   </div>

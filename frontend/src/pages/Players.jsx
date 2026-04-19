@@ -198,7 +198,7 @@ function FriendCalendarModal({ friend, onClose }) {
   }, [friend.id]);
 
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
-  const monthName = new Date(viewYear, viewMonth).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+  const monthName = new Date(viewYear, viewMonth).toLocaleString(undefined, { month: 'long', year: 'numeric' });
   const eventsByDate = useMemo(() => {
     const map = {};
     events.forEach((e) => { const d = e.date?.split('T')[0]; if (d) { if (!map[d]) map[d] = []; map[d].push(e); } });
@@ -272,7 +272,7 @@ function FriendCalendarModal({ friend, onClose }) {
                         <p className="text-xs font-semibold text-gray-800 truncate">{e.title || e.categoryName || (e.kind === 'tournament' ? 'Tournament' : 'Session')}</p>
                         {e.categoryName && e.kind === 'tournament' && <p className="text-[10px] text-gray-400">{e.categoryName}</p>}
                       </div>
-                      <span className="text-[10px] text-gray-400 flex-shrink-0">{new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                      <span className="text-[10px] text-gray-400 flex-shrink-0">{new Date(e.date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
                     </div>
                   ))}
                 </div>
@@ -442,7 +442,9 @@ function PlayerModal({ playerId, onClose, friendState, currentUserId, onSendFrie
                 </div>
               </div>
               <p className="text-white text-xl font-black text-center">{player.name}</p>
-              <p className="text-[#91BE4D] text-xs font-semibold mt-1">📍 {[player.city, player.state].filter(Boolean).join(', ') || 'India'}</p>
+              {([player.city, player.state].filter(Boolean).length > 0) && (
+                <p className="text-[#91BE4D] text-xs font-semibold mt-1">📍 {[player.city, player.state].filter(Boolean).join(', ')}</p>
+              )}
               {(player.duprSingles || player.duprDoubles) && (
                 <p className="text-[#ec9937] text-sm font-black mt-2">
                   {player.duprSingles ? `Singles ${player.duprSingles}` : ''}{player.duprSingles && player.duprDoubles ? ' · ' : ''}{player.duprDoubles ? `Doubles ${player.duprDoubles}` : ''}
@@ -544,7 +546,7 @@ function PlayerModal({ playerId, onClose, friendState, currentUserId, onSendFrie
               )}
 
               <p className="text-[10px] text-gray-300 text-center">
-                Member since {new Date(player.memberSince).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                Member since {new Date(player.memberSince).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
               </p>
             </div>
           </>
@@ -738,7 +740,7 @@ function FriendsSection({ friends, onViewCalendar, onRemoveFriend }) {
                         </div>
                         {a.date && (
                           <span className="text-[10px] text-gray-400 flex-shrink-0">
-                            {new Date(a.date + 'T00:00:00').toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                            {new Date(a.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
                           </span>
                         )}
                       </div>
@@ -1141,7 +1143,7 @@ export default function Players() {
                 <div key={r.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-[#f4f8e8] border border-[#91BE4D]/20">
                   <div>
                     <p className="text-sm font-semibold text-gray-800">{r.user?.name || 'Player'}</p>
-                    <p className="text-xs text-gray-500">{r.user?.city || 'India'}</p>
+                    <p className="text-xs text-gray-500">{r.user?.city || ''}</p>
                   </div>
                   <div className="flex gap-2">
                     <button type="button" onClick={() => handleAcceptRequest(r)} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#4a6e10] text-white hover:bg-[#2d7005] transition-colors">Accept</button>
@@ -1163,7 +1165,7 @@ export default function Players() {
                   <div key={r.id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-orange-50 border border-orange-200">
                     <div>
                       <p className="text-sm font-semibold text-gray-800">{r.user?.name || 'Player'}</p>
-                      <p className="text-xs text-gray-500">{r.user?.city || 'India'}</p>
+                      <p className="text-xs text-gray-500">{r.user?.city || ''}</p>
                     </div>
                     <button
                       type="button"

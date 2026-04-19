@@ -176,7 +176,7 @@ export default function Landing() {
               {/* Text */}
               <div className="flex-1 text-center lg:text-left">
                 <span className="inline-block bg-[#91BE4D]/15 border border-[#91BE4D]/25 text-[#91BE4D] text-[11px] font-bold px-3 py-1.5 rounded-full mb-6 tracking-[0.12em] uppercase">
-                  Built for Indian pickleball players
+                  Built for pickleball players worldwide
                 </span>
                 <h1 className="text-4xl sm:text-5xl lg:text-[3.6rem] font-extrabold text-white leading-[1.12] mb-5 tracking-[-0.01em]">
                   Play. Log.<br />
@@ -234,7 +234,7 @@ export default function Landing() {
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
-                  For players — not organisers
+                  For players of all categories
                 </span>
 
                 <h2 className="text-3xl sm:text-4xl font-extrabold text-[#1c350a] leading-tight tracking-tight mb-4">
@@ -324,7 +324,7 @@ export default function Landing() {
                 Built around how you actually play.
               </h2>
               <p className="text-gray-500 text-base mt-3 leading-relaxed">
-                Not a generic finance app. Built specifically for pickleball players in India.
+                Not a generic finance app. Built specifically for competitive pickleball players.
               </p>
             </div>
 
@@ -424,7 +424,7 @@ export default function Landing() {
             <div className="max-w-xs">
               <div className="mb-4"><BrandLogo size="lg" /></div>
               <p className="text-sm text-slate-400 leading-relaxed">
-                India's tournament tracker for pickleball players. Log matches, track your money, grow your game.
+                The tournament tracker for pickleball players worldwide. Log matches, track your money, grow your game.
               </p>
             </div>
 
@@ -479,7 +479,7 @@ export default function Landing() {
 
           <div className="border-t border-white/5 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
             <p className="text-xs text-slate-600">&copy; {year} PickleTracker. Built for the community.</p>
-            <p className="text-xs text-slate-600">Made with love for Indian pickleball players.</p>
+            <p className="text-xs text-slate-600">Made with love for the pickleball community.</p>
           </div>
         </div>
       </footer>

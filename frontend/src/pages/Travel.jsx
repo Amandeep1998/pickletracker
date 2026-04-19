@@ -2,7 +2,8 @@ import React, { useEffect, useState, useMemo } from 'react';
 import * as api from '../services/api';
 import Modal from '../components/Modal';
 import TravelExpenseForm from '../components/TravelExpenseForm';
-import { formatINR } from '../utils/format';
+import { formatCurrency } from '../utils/format';
+import useCurrency from '../hooks/useCurrency';
 
 const TRAVEL_BUCKETS = [
   { key: 'transport',       label: 'Transport' },
@@ -15,6 +16,7 @@ const TRAVEL_BUCKETS = [
 ];
 
 export default function Travel() {
+  const currency = useCurrency();
   const [trips, setTrips] = useState([]);
   const [tournaments, setTournaments] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
@@ -135,7 +137,7 @@ export default function Travel() {
             <span className="text-2xl">✈️</span>
             <div>
               <p className="text-xs text-gray-400 font-medium">Total travel spend</p>
-              <p className="text-xl font-black text-teal-600">{formatINR(total)}</p>
+              <p className="text-xl font-black text-teal-600">{formatCurrency(total, currency)}</p>
             </div>
           </div>
           <p className="text-xs text-gray-400">{trips.length} trip{trips.length !== 1 ? 's' : ''}</p>
@@ -182,7 +184,7 @@ export default function Travel() {
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <p className="text-xs text-gray-400">
-                        {new Date(e.date + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {new Date(e.date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
                       {e.fromCity && e.toCity && (
                         <p className="text-xs text-gray-500 font-medium">{e.fromCity} → {e.toCity}</p>
@@ -194,7 +196,7 @@ export default function Travel() {
                   </div>
 
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    <p className="text-sm font-bold text-teal-600 mr-1">{formatINR(e.amount)}</p>
+                    <p className="text-sm font-bold text-teal-600 mr-1">{formatCurrency(e.amount, currency)}</p>
                     {bucketBreakdown.length > 0 && (
                       <button
                         onClick={() => setExpandedId(isExpanded ? null : e._id)}
@@ -225,7 +227,7 @@ export default function Travel() {
                       {bucketBreakdown.map((b) => (
                         <div key={b.key} className="flex justify-between text-xs">
                           <span className="text-gray-500">{b.label}</span>
-                          <span className="font-semibold text-teal-700">{formatINR(e[b.key])}</span>
+                          <span className="font-semibold text-teal-700">{formatCurrency(e[b.key], currency)}</span>
                         </div>
                       ))}
                     </div>

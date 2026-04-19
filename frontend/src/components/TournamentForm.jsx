@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CATEGORIES, MEDALS } from '../utils/format';
+import { CATEGORIES, MEDALS, formatCurrency, getCurrencySymbol } from '../utils/format';
+import useCurrency from '../hooks/useCurrency';
 import SearchableSelect from './SearchableSelect';
 import LocationAutocomplete from './LocationAutocomplete';
 import VoiceInput from './VoiceInput';
@@ -50,6 +51,8 @@ function toInputDateStr(value) {
 }
 
 export default function TournamentForm({ initial, onSubmit, onCancel, loading }) {
+  const currency = useCurrency();
+  const symbol = getCurrencySymbol(currency);
   const [form, setForm] = useState(() => getEmptyForm());
   const [errors, setErrors] = useState({});
   const [voiceLocationQuery, setVoiceLocationQuery] = useState('');
@@ -358,7 +361,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
             {/* Financials */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               <div data-error-key={`cat_${idx}_entryFee`}>
-                <label className="block text-xs font-medium text-gray-600 mb-1">My Entry Fee (₹)</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">My Entry Fee ({symbol})</label>
                 <input
                   type="number"
                   value={cat.entryFee}
@@ -379,7 +382,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
               </div>
 
               <div data-error-key={`cat_${idx}_prizeAmount`}>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Amount Won (₹)</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Amount Won ({symbol})</label>
                 <input
                   type="number"
                   value={cat.prizeAmount}
@@ -403,9 +406,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
             <div className="text-xs border-t border-gray-200 pt-2">
               <span className="text-gray-600">Profit: </span>
               <span className={`font-semibold ${(Number(cat.prizeAmount) || 0) - (Number(cat.entryFee) || 0) >= 0 ? 'text-[#91BE4D]' : 'text-red-600'}`}>
-                {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(
-                  (Number(cat.prizeAmount) || 0) - (Number(cat.entryFee) || 0)
-                )}
+                {formatCurrency((Number(cat.prizeAmount) || 0) - (Number(cat.entryFee) || 0), currency)}
               </span>
             </div>
           </div>
@@ -438,7 +439,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
       <div className={`rounded px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium border ${totalProfit >= 0 ? 'bg-[#91BE4D]/10 text-[#4a6e10] border-[#91BE4D]/30' : 'bg-red-50 text-red-700 border-red-200'}`}>
         Total Profit:{' '}
         <span className="font-bold">
-          {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(totalProfit)}
+          {formatCurrency(totalProfit, currency)}
         </span>
       </div>
 

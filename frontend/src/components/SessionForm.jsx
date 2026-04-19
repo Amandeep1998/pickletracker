@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import LocationAutocomplete from './LocationAutocomplete';
+import { getCurrencySymbol } from '../utils/format';
+import useCurrency from '../hooks/useCurrency';
 
 const SKILL_TAGS = [
   'Serve', 'Return of serve', 'Third shot drop', 'Third shot drive',
@@ -74,6 +76,8 @@ const EMPTY = {
 };
 
 export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
+  const currency = useCurrency();
+  const symbol = getCurrencySymbol(currency);
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
 
@@ -349,7 +353,7 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
       {/* ── Court fee (shared) ── */}
       <div>
         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-          Court Fee (₹) <span className="text-gray-400 font-normal normal-case">(optional)</span>
+          Court Fee ({symbol}) <span className="text-gray-400 font-normal normal-case">(optional)</span>
         </label>
         <input
           type="number"

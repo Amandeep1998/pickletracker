@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import * as api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { getCurrencySymbol } from '../utils/format';
+import useCurrency from '../hooks/useCurrency';
 import SessionForm from '../components/SessionForm';
 import Modal from '../components/Modal';
 import BannerMedalStrip from '../components/BannerMedalStrip';
@@ -18,7 +20,7 @@ const RATING_LABEL = { 1: 'Rough', 2: 'Poor', 3: 'Okay', 4: 'Good', 5: 'On fire!
 
 function formatDate(dateStr) {
   const [y, m, d] = dateStr.split('-');
-  return new Date(y, m - 1, d).toLocaleDateString('en-IN', {
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
   });
 }
@@ -33,6 +35,8 @@ function tagFrequency(sessions, field) {
 
 export default function Sessions() {
   const { user } = useAuth();
+  const currency = useCurrency();
+  const symbol = getCurrencySymbol(currency);
   const [sessions, setSessions] = useState([]);
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -366,7 +370,7 @@ export default function Sessions() {
               {s.courtFee > 0 && (
                 <p className="text-xs text-gray-500 flex items-center gap-1 mb-1">
                   <span className="text-gray-400">🏟️ Court fee:</span>
-                  <span className="font-semibold text-gray-700">₹{s.courtFee.toLocaleString('en-IN')}</span>
+                  <span className="font-semibold text-gray-700">{symbol}{s.courtFee.toLocaleString()}</span>
                 </p>
               )}
 

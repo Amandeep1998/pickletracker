@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { getCurrencySymbol } from '../utils/format';
+import useCurrency from '../hooks/useCurrency';
 
 const GEAR_CATEGORIES = [
   'Paddle', 'Shoes', 'Balls', 'Bag', 'Grip tape', 'Apparel', 'Accessories', 'Other',
@@ -7,6 +9,8 @@ const GEAR_CATEGORIES = [
 const EMPTY_FORM = { title: '', amount: '', date: '', category: '' };
 
 export default function ExpenseForm({ initial, onSubmit, onCancel, loading }) {
+  const currency = useCurrency();
+  const symbol = getCurrencySymbol(currency);
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
 
@@ -89,7 +93,7 @@ export default function ExpenseForm({ initial, onSubmit, onCancel, loading }) {
       {/* Amount + Date */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Amount ({symbol})</label>
           <input
             type="number"
             name="amount"

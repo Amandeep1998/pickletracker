@@ -9,6 +9,8 @@ import {
   isMobileBrowser,
 } from '../services/firebase';
 
+const SUPPORTED_CURRENCIES = ['INR', 'USD', 'AUD', 'EUR', 'GBP', 'CAD', 'SGD', 'MYR', 'PHP'];
+
 // Attach PostHog identity to a logged-in user
 function identifyUser(userData) {
   posthog.identify(userData.id || userData._id, {
@@ -39,6 +41,12 @@ export const AuthProvider = ({ children }) => {
   const clearError = () => setError(null);
 
   const clearStoredSession = async () => {
+    // Remove per-user currency detection flag so a different user on this device gets re-detected
+    try {
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      const uid = stored.id || stored._id;
+      if (uid) localStorage.removeItem(`pt_cur_det_${uid}`);
+    } catch {}
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
@@ -53,6 +61,7 @@ export const AuthProvider = ({ children }) => {
     identifyUser(userData);
     posthog.capture(userData.isNewUser ? 'user_signed_up' : 'user_logged_in', { method: 'google' });
     setUser(userData);
+    autoDetectCurrency(userData);
   };
 
   // Validate cached token/user at app bootstrap so deleted DB users are logged out
@@ -161,6 +170,30 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+  // Auto-detect currency from IP once per user per device.
+  // Runs fire-and-forget after login/signup — never blocks auth flow.
+  const autoDetectCurrency = async (userData) => {
+    const userId = userData.id || userData._id;
+    if (!userId) return;
+    const flagKey = `pt_cur_det_${userId}`;
+    if (localStorage.getItem(flagKey)) return;
+    localStorage.setItem(flagKey, '1'); // mark immediately to prevent parallel calls
+    try {
+      const controller = new AbortController();
+      const tid = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch('https://ipapi.co/currency/', { signal: controller.signal });
+      clearTimeout(tid);
+      if (!res.ok) return;
+      const code = (await res.text()).trim().toUpperCase();
+      if (!SUPPORTED_CURRENCIES.includes(code)) return;
+      if (userData.currency === code) return; // already correct, skip the update
+      await api.updateProfile({ currency: code });
+      const updated = { ...userData, currency: code };
+      localStorage.setItem('user', JSON.stringify(updated));
+      setUser(updated);
+    } catch {} // fail silently — currency detection is best-effort
+  };
+
   const handleSignup = async (data) => {
     setLoading(true);
     setError(null);
@@ -176,6 +209,7 @@ export const AuthProvider = ({ children }) => {
         identifyUser(userData);
         posthog.capture('user_signed_up', { method: 'email' });
         setUser(userData);
+        autoDetectCurrency(userData);
         return { success: true, autoLoggedIn: true };
       }
       posthog.capture('user_signed_up', { method: 'email' });
@@ -200,6 +234,7 @@ export const AuthProvider = ({ children }) => {
       identifyUser(userData);
       posthog.capture('user_logged_in', { method: 'email' });
       setUser(userData);
+      autoDetectCurrency(userData);
       return { success: true };
     } catch (err) {
       const msg =

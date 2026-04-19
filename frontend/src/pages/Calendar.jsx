@@ -6,7 +6,8 @@ import TournamentForm from '../components/TournamentForm';
 import SessionForm from '../components/SessionForm';
 import TournamentShareModal from '../components/TournamentShareModal';
 import BannerMedalStrip from '../components/BannerMedalStrip';
-import { formatINR } from '../utils/format';
+import { formatCurrency, getCurrencySymbol } from '../utils/format';
+import useCurrency from '../hooks/useCurrency';
 import { getMapUrl } from '../utils/mapUrl';
 import { computeMedalTally } from '../utils/medals';
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -42,6 +43,8 @@ const SESSION_LABEL = { casual: 'Casual', practice: 'Drill', tournament: 'Tourna
 
 export default function Calendar() {
   const { user } = useAuth();
+  const currency = useCurrency();
+  const symbol = getCurrencySymbol(currency);
   const today = new Date();
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -243,13 +246,13 @@ export default function Calendar() {
 
   const formatDate = (dateStr) => {
     const [year, month, day] = dateStr.split('-');
-    return new Date(year, month - 1, day).toLocaleDateString('en-IN', {
+    return new Date(year, month - 1, day).toLocaleDateString(undefined, {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
   };
   const formatShortDate = (dateStr) => {
     const [year, month, day] = dateStr.split('-');
-    return new Date(year, month - 1, day).toLocaleDateString('en-IN', {
+    return new Date(year, month - 1, day).toLocaleDateString(undefined, {
       weekday: 'short', month: 'short', day: 'numeric',
     });
   };
@@ -260,8 +263,8 @@ export default function Calendar() {
     const diff = Math.round((d - now) / 86400000);
     if (diff === 0) return 'Today';
     if (diff === 1) return 'Tomorrow';
-    if (diff <= 6) return d.toLocaleDateString('en-IN', { weekday: 'short' });
-    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    if (diff <= 6) return d.toLocaleDateString(undefined, { weekday: 'short' });
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
   };
 
   // ── Tournament CRUD ──
@@ -349,7 +352,7 @@ export default function Calendar() {
   if (loading) return <div className="text-center py-24 text-gray-400">Loading calendar...</div>;
   if (error) return <div className="text-center py-24 text-red-500">{error}</div>;
 
-  const monthName = new Date(viewYear, viewMonth).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+  const monthName = new Date(viewYear, viewMonth).toLocaleString(undefined, { month: 'long', year: 'numeric' });
 
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
@@ -396,7 +399,7 @@ export default function Calendar() {
         {[
           { icon: '🎯', label: 'Sessions',    month: monthStats.sessions,    color: 'text-blue-600' },
           { icon: '🏆', label: 'Tournaments', month: monthStats.tournaments, color: 'text-[#4a6e10]' },
-          { icon: '🏟️', label: 'Court Fees',  month: monthStats.courtFees > 0 ? formatINR(monthStats.courtFees) : '—', color: 'text-orange-600' },
+          { icon: '🏟️', label: 'Court Fees',  month: monthStats.courtFees > 0 ? formatCurrency(monthStats.courtFees, currency) : '—', color: 'text-orange-600' },
         ].map((s) => (
           <div key={s.label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-2 py-3 flex flex-col items-center text-center">
             <p className="text-base leading-none mb-1.5">{s.icon}</p>
@@ -679,7 +682,7 @@ export default function Calendar() {
                       </div>
                       <div className="flex-shrink-0 text-right">
                         <span className="text-xl">{RATING_EMOJI[s.rating] || '—'}</span>
-                        {s.courtFee > 0 && <p className="text-xs text-gray-400 mt-0.5">₹{s.courtFee}</p>}
+                        {s.courtFee > 0 && <p className="text-xs text-gray-400 mt-0.5">{symbol}{s.courtFee}</p>}
                       </div>
                     </div>
                   </div>
@@ -707,7 +710,7 @@ export default function Calendar() {
                     </div>
                     <div className="flex-shrink-0 text-right">
                       <p className={`text-sm font-bold ${(tournament.totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                        {formatINR(tournament.totalProfit || 0)}
+                        {formatCurrency(tournament.totalProfit || 0, currency)}
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">profit</p>
                     </div>
@@ -852,8 +855,8 @@ export default function Calendar() {
                   <p className="text-xs text-gray-500 mb-2">{cat.date ? formatDate(cat.date.split('T')[0]) : ''}</p>
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div><p className="text-gray-400">Medal</p><p className="font-medium text-gray-800">{cat.medal}</p></div>
-                    <div><p className="text-gray-400">Entry Fee</p><p className="font-medium text-red-600">{formatINR(cat.entryFee)}</p></div>
-                    <div><p className="text-gray-400">Won</p><p className="font-medium text-green-600">{formatINR(cat.prizeAmount)}</p></div>
+                    <div><p className="text-gray-400">Entry Fee</p><p className="font-medium text-red-600">{formatCurrency(cat.entryFee, currency)}</p></div>
+                    <div><p className="text-gray-400">Won</p><p className="font-medium text-green-600">{formatCurrency(cat.prizeAmount, currency)}</p></div>
                   </div>
                 </div>
               ))}
@@ -862,16 +865,16 @@ export default function Calendar() {
             <div className="bg-blue-50 rounded-xl p-3 mb-4 text-sm">
               <div className="flex justify-between text-gray-600 mb-1">
                 <span>Total Earnings</span>
-                <span className="font-semibold text-gray-900">{formatINR(selectedTournament.totalEarnings || 0)}</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(selectedTournament.totalEarnings || 0, currency)}</span>
               </div>
               <div className="flex justify-between text-gray-600 mb-1">
                 <span>Total Entry Fees</span>
-                <span className="font-semibold text-gray-900">{formatINR(selectedTournament.totalExpenses || 0)}</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(selectedTournament.totalExpenses || 0, currency)}</span>
               </div>
               <div className="flex justify-between border-t border-blue-100 pt-2 mt-2">
                 <span className="font-semibold text-gray-900">Net Profit</span>
                 <span className={`text-base font-bold ${(selectedTournament.totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatINR(selectedTournament.totalProfit || 0)}
+                  {formatCurrency(selectedTournament.totalProfit || 0, currency)}
                 </span>
               </div>
             </div>

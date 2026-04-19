@@ -3,6 +3,7 @@ import posthog from 'posthog-js';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import CITIES_BY_STATE from '../data/indianCities';
+import { CURRENCIES } from '../utils/format';
 
 const ALL_CITIES = [...new Set(Object.values(CITIES_BY_STATE).flat())].sort();
 
@@ -40,6 +41,11 @@ export default function Profile() {
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [photoSaving, setPhotoSaving] = useState(false);
 
+  // Currency preference
+  const [currency, setCurrency] = useState(user?.currency || 'INR');
+  const [currencySaving, setCurrencySaving] = useState(false);
+  const [currencySaved, setCurrencySaved] = useState(false);
+
   // Location & contact (all optional)
   const [locPhone, setLocPhone] = useState('');
   const [locCity, setLocCity] = useState('');
@@ -65,6 +71,7 @@ export default function Profile() {
           setLocPhone(digits.startsWith('91') ? digits.slice(2) : digits);
         }
         if (p.city) setLocCity(p.city);
+        if (p.currency) setCurrency(p.currency);
       })
       .catch(() => setSaveError('Could not load profile.'))
       .finally(() => setLoading(false));
@@ -141,6 +148,20 @@ export default function Profile() {
       setTimeout(() => setLocSaved(false), 3000);
     } finally {
       setLocSaving(false);
+    }
+  };
+
+  const handleSaveCurrency = async (code) => {
+    setCurrency(code);
+    setCurrencySaving(true);
+    setCurrencySaved(false);
+    try {
+      const res = await api.updateProfile({ currency: code });
+      refreshUser(res.data.data);
+      setCurrencySaved(true);
+      setTimeout(() => setCurrencySaved(false), 3000);
+    } finally {
+      setCurrencySaving(false);
     }
   };
 
@@ -388,6 +409,43 @@ export default function Profile() {
                 {locSaving ? 'Saving…' : 'Save'}
               </button>
             </form>
+          </div>
+
+          {/* Currency Preference Card */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5 mt-5">
+            <p className="text-sm font-bold text-gray-900 mb-0.5">Currency</p>
+            <p className="text-xs text-gray-400 mb-4">
+              All money amounts across the app will be shown in your chosen currency.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {CURRENCIES.map((c) => (
+                <button
+                  key={c.code}
+                  type="button"
+                  onClick={() => handleSaveCurrency(c.code)}
+                  disabled={currencySaving}
+                  className={`flex flex-col items-center gap-1 py-2.5 px-1 rounded-xl border-2 text-center transition-all disabled:opacity-50 ${
+                    currency === c.code
+                      ? 'border-[#91BE4D] bg-[#f4f8e8]'
+                      : 'border-gray-200 hover:border-gray-300 bg-white'
+                  }`}
+                >
+                  <span className="text-xl">{c.flag}</span>
+                  <span className={`text-xs font-bold ${currency === c.code ? 'text-[#4a6e10]' : 'text-gray-700'}`}>
+                    {c.symbol} {c.code}
+                  </span>
+                  <span className="text-[10px] text-gray-400 leading-tight">{c.label}</span>
+                </button>
+              ))}
+            </div>
+            {currencySaved && (
+              <div className="mt-3 bg-[#f4f8e8] border border-[#91BE4D]/30 text-[#4a6e10] text-sm rounded-lg px-4 py-2.5 flex items-center gap-2">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                Currency saved!
+              </div>
+            )}
           </div>
 
           {/* Export Card */}

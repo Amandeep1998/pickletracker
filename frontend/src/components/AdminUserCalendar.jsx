@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { getAdminUserTournaments } from '../services/api';
-import { formatINR } from '../utils/format';
+import { formatCurrency } from '../utils/format';
 import { getMapUrl } from '../utils/mapUrl';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -22,19 +22,20 @@ function toDateStr(year, month, day) {
 
 function formatShortDate(dateStr) {
   const [year, month, day] = dateStr.split('-');
-  return new Date(year, month - 1, day).toLocaleDateString('en-IN', {
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
     weekday: 'short', month: 'short', day: 'numeric',
   });
 }
 
 function formatLongDate(dateStr) {
   const [year, month, day] = dateStr.split('-');
-  return new Date(year, month - 1, day).toLocaleDateString('en-IN', {
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   });
 }
 
 export default function AdminUserCalendar({ user, onClose }) {
+  const currency = user?.currency || 'INR';
   const today = new Date();
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -79,7 +80,7 @@ export default function AdminUserCalendar({ user, onClose }) {
   }, [dayPopup.date, eventsByDate]);
 
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
-  const monthName = new Date(viewYear, viewMonth).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+  const monthName = new Date(viewYear, viewMonth).toLocaleString(undefined, { month: 'long', year: 'numeric' });
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
@@ -117,7 +118,7 @@ export default function AdminUserCalendar({ user, onClose }) {
               <div className="hidden sm:flex items-center gap-3 text-xs text-gray-500">
                 <span><span className="font-semibold text-gray-800">{tournaments.length}</span> tournaments</span>
                 <span className={`font-semibold ${totalProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                  {totalProfit >= 0 ? '+' : ''}{formatINR(totalProfit)} net
+                  {totalProfit >= 0 ? '+' : ''}{formatCurrency(totalProfit, currency)} net
                 </span>
               </div>
             )}
@@ -294,7 +295,7 @@ export default function AdminUserCalendar({ user, onClose }) {
                     </div>
                     <div className="flex-shrink-0 text-right">
                       <p className={`text-sm font-bold ${(tournament.totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                        {formatINR(tournament.totalProfit || 0)}
+                        {formatCurrency(tournament.totalProfit || 0, currency)}
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">profit</p>
                     </div>
@@ -360,11 +361,11 @@ export default function AdminUserCalendar({ user, onClose }) {
                     </div>
                     <div>
                       <p className="text-gray-400">Entry Fee</p>
-                      <p className="font-semibold text-red-500">{formatINR(cat.entryFee)}</p>
+                      <p className="font-semibold text-red-500">{formatCurrency(cat.entryFee, currency)}</p>
                     </div>
                     <div>
                       <p className="text-gray-400">Won</p>
-                      <p className="font-semibold text-green-600">{formatINR(cat.prizeAmount)}</p>
+                      <p className="font-semibold text-green-600">{formatCurrency(cat.prizeAmount, currency)}</p>
                     </div>
                   </div>
                 </div>
@@ -374,16 +375,16 @@ export default function AdminUserCalendar({ user, onClose }) {
             <div className="mx-5 mb-5 bg-gray-50 rounded-xl p-3 text-sm">
               <div className="flex justify-between text-gray-600 mb-1">
                 <span>Total Earnings</span>
-                <span className="font-semibold text-gray-900">{formatINR(selectedTournament.totalEarnings || 0)}</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(selectedTournament.totalEarnings || 0, currency)}</span>
               </div>
               <div className="flex justify-between text-gray-600 mb-1">
                 <span>Total Entry Fees</span>
-                <span className="font-semibold text-gray-900">{formatINR(selectedTournament.totalExpenses || 0)}</span>
+                <span className="font-semibold text-gray-900">{formatCurrency(selectedTournament.totalExpenses || 0, currency)}</span>
               </div>
               <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
                 <span className="font-semibold text-gray-900">Net Profit</span>
                 <span className={`text-base font-bold ${(selectedTournament.totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatINR(selectedTournament.totalProfit || 0)}
+                  {formatCurrency(selectedTournament.totalProfit || 0, currency)}
                 </span>
               </div>
             </div>

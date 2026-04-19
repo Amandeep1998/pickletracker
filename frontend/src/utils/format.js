@@ -1,8 +1,32 @@
-export const formatINR = (amount) =>
-  new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-  }).format(amount ?? 0);
+export const CURRENCIES = [
+  { code: 'INR', label: 'Indian Rupee',       symbol: '₹',  flag: '🇮🇳' },
+  { code: 'USD', label: 'US Dollar',           symbol: '$',  flag: '🇺🇸' },
+  { code: 'AUD', label: 'Australian Dollar',   symbol: 'A$', flag: '🇦🇺' },
+  { code: 'EUR', label: 'Euro',                symbol: '€',  flag: '🇪🇺' },
+  { code: 'GBP', label: 'British Pound',       symbol: '£',  flag: '🇬🇧' },
+  { code: 'CAD', label: 'Canadian Dollar',     symbol: 'C$', flag: '🇨🇦' },
+  { code: 'SGD', label: 'Singapore Dollar',    symbol: 'S$', flag: '🇸🇬' },
+  { code: 'MYR', label: 'Malaysian Ringgit',   symbol: 'RM', flag: '🇲🇾' },
+  { code: 'PHP', label: 'Philippine Peso',     symbol: '₱',  flag: '🇵🇭' },
+];
+
+const CURRENCY_LOCALE_MAP = {
+  INR: 'en-IN', USD: 'en-US', AUD: 'en-AU', EUR: 'de-DE',
+  GBP: 'en-GB', CAD: 'en-CA', SGD: 'en-SG', MYR: 'ms-MY', PHP: 'en-PH',
+};
+
+export const getCurrencySymbol = (currency = 'INR') => {
+  const c = CURRENCIES.find((x) => x.code === currency);
+  return c ? c.symbol : currency;
+};
+
+export const formatCurrency = (amount, currency = 'INR') => {
+  const locale = CURRENCY_LOCALE_MAP[currency] || 'en-US';
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(amount ?? 0);
+};
+
+/** @deprecated Use formatCurrency(amount, currency) instead */
+export const formatINR = (amount) => formatCurrency(amount, 'INR');
 
 export const CATEGORIES = [
   // ── Open ──────────────────────────────────────────────────────────────────

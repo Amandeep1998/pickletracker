@@ -8,7 +8,7 @@ export const ShareCard = React.forwardRef(function ShareCard({ items, userName }
 
   const formatDate = (dateStr) => {
     const [y, m, d] = dateStr.split('-');
-    return new Date(y, m - 1, d).toLocaleDateString('en-IN', {
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, {
       day: 'numeric', month: 'short',
     });
   };

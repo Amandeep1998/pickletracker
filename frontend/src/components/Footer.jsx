@@ -56,7 +56,7 @@ export default function Footer() {
               <BrandLogo size="lg" />
             </div>
             <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
-              India's pickleball performance journal. Log sessions, track tournaments, manage gear, and grow your game.
+              Your pickleball performance journal. Log sessions, track tournaments, manage gear, and grow your game.
             </p>
           </div>
 
@@ -109,7 +109,7 @@ export default function Footer() {
 
         <div className="border-t border-white/5 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-xs text-gray-600">&copy; {year} PickleTracker. Built for the community.</p>
-          <p className="text-xs text-gray-600">Made with love for Indian pickleball players.</p>
+          <p className="text-xs text-gray-600">Made with love for the pickleball community.</p>
         </div>
       </div>
     </footer>

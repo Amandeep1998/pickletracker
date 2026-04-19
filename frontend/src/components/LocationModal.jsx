@@ -189,7 +189,7 @@ export default function LocationModal({ onSave, onSkip }) {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-gray-900">Enter city manually</p>
-                  <p className="text-xs text-gray-400">Search and select from all Indian cities</p>
+                  <p className="text-xs text-gray-400">Search and select your city</p>
                 </div>
               </button>
 
