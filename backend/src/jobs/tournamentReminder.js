@@ -17,16 +17,21 @@ function buildEmailHtml({ userName, tournaments }) {
   const firstName = userName?.split(' ')[0] || 'Player';
   const tournamentRows = tournaments
     .map(
-      ({ name, categoryName, location, entryFee }) => `
+      ({ name, categoryName, location, entryFee }) => {
+        const mapsUrl = location
+          ? `https://maps.google.com/?q=${encodeURIComponent(location)}`
+          : null;
+        return `
       <tr>
         <td style="padding:12px 16px;border-bottom:1px solid #e5e7eb;">
           <strong style="color:#1a2e05;font-size:14px;">${name}</strong><br/>
-          <span style="color:#6b7280;font-size:12px;">${categoryName}${location ? ` · ${location}` : ''}</span>
+          <span style="color:#6b7280;font-size:12px;">${categoryName}</span>${location ? `<br/><a href="${mapsUrl}" style="color:#4a6e10;font-size:12px;text-decoration:none;">📍 ${location}</a>` : ''}
         </td>
-        <td style="padding:12px 16px;border-bottom:1px solid #e5e7eb;text-align:right;white-space:nowrap;">
+        <td style="padding:12px 16px;border-bottom:1px solid #e5e7eb;text-align:right;white-space:nowrap;vertical-align:top;">
           ${entryFee ? `<span style="color:#4a6e10;font-size:13px;font-weight:600;">₹${entryFee}</span>` : ''}
         </td>
-      </tr>`
+      </tr>`;
+      }
     )
     .join('');
 
@@ -44,12 +49,16 @@ function buildEmailHtml({ userName, tournaments }) {
             <table width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td>
-                  <div style="display:inline-flex;align-items:center;gap:8px;margin-bottom:16px;">
-                    <div style="width:32px;height:32px;border-radius:8px;background:rgba(145,190,77,0.2);border:1px solid rgba(145,190,77,0.4);display:inline-flex;align-items:center;justify-content:center;">
-                      <span style="color:#c8e875;font-size:12px;font-weight:900;letter-spacing:-0.5px;">PT</span>
-                    </div>
-                    <span style="color:#91BE4D;font-size:11px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;">PickleTracker</span>
-                  </div>
+                  <table cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+                    <tr>
+                      <td style="width:32px;height:32px;border-radius:8px;background:rgba(145,190,77,0.2);border:1px solid rgba(145,190,77,0.4);text-align:center;vertical-align:middle;">
+                        <span style="color:#c8e875;font-size:12px;font-weight:900;letter-spacing:-0.5px;line-height:32px;">PT</span>
+                      </td>
+                      <td style="padding-left:8px;vertical-align:middle;">
+                        <span style="color:#91BE4D;font-size:11px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;">PickleTracker</span>
+                      </td>
+                    </tr>
+                  </table>
                   <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:900;line-height:1.3;">
                     You're playing tomorrow! 🏆
                   </h1>
@@ -78,7 +87,7 @@ function buildEmailHtml({ userName, tournaments }) {
         <tr>
           <td style="padding:20px 32px 28px;">
             <p style="margin:0 0 16px;color:#374151;font-size:14px;line-height:1.6;">
-              Make sure your gear is packed, your entry fees are ready, and your game face is on. Good luck! 🎾
+              Champions aren't made on the day of the match — they're made in every session, every rep, every early morning. Tomorrow is your moment to show what you're built for. Go out there and own the court. 🏆
             </p>
             <a href="${process.env.APP_PUBLIC_URL || 'https://pickletracker.in'}"
                style="display:inline-block;background:linear-gradient(to right,#2d7005,#91BE4D);color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:10px;">
