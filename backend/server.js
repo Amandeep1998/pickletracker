@@ -28,6 +28,7 @@ const playersRoutes = require('./src/routes/players.routes');
 const notificationsRoutes = require('./src/routes/notifications.routes');
 const friendshipRoutes = require('./src/routes/friendship.routes');
 const errorHandler = require('./src/middleware/error.middleware');
+const { startTournamentReminderJob } = require('./src/jobs/tournamentReminder');
 
 const app = express();
 const server = http.createServer(app);
@@ -92,6 +93,7 @@ if (require.main === module) {
   connectDB().then(() => {
     const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    startTournamentReminderJob();
   });
 }
 
