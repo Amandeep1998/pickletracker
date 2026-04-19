@@ -164,9 +164,9 @@ async function runTournamentReminders() {
 }
 
 function startTournamentReminderJob() {
-  // TEMP: 2 PM IST = 08:30 UTC (for testing — change back to '30 2 * * *' for 8 AM IST)
-  cron.schedule('30 8 * * *', runTournamentReminders, { timezone: 'UTC' });
-  console.log('[TournamentReminder] Cron job scheduled — daily at 14:00 IST (testing)');
+  // TEMP: 1:45 PM IST = 08:15 UTC (for testing — change back to '30 2 * * *' for 8 AM IST)
+  cron.schedule('15 8 * * *', runTournamentReminders, { timezone: 'UTC' });
+  console.log('[TournamentReminder] Cron job scheduled — daily at 13:45 IST (testing)');
 }
 
 module.exports = { startTournamentReminderJob, runTournamentReminders };
