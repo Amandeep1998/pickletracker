@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import LocationModal from '../components/LocationModal';
 import SearchableSelect from '../components/SearchableSelect';
+import BannerMedalStrip from '../components/BannerMedalStrip';
 import { CATEGORIES } from '../utils/format';
 
 // ── Coordinates for major Indian cities (for distance sorting) ───────────────
@@ -1036,7 +1037,7 @@ export default function Players() {
         style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}>
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
         <div className="relative flex items-center gap-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-0.5">Nearby Players</p>
             <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight">Players</h1>
             <p className="text-slate-400 text-xs mt-0.5">
@@ -1047,8 +1048,12 @@ export default function Players() {
                 📍 {user.city} · Change
               </button>
             )}
+            {/* Re-using the medals already aggregated by /api/players (which folds in
+                manual past achievements) keeps this banner consistent with the
+                Your Card section below without an extra fetch. */}
+            <BannerMedalStrip medals={myPlayerCard?.medals} className="mt-3" />
           </div>
-          <div className="ml-auto text-4xl select-none">🎾</div>
+          <div className="ml-auto text-4xl select-none hidden sm:block">🎾</div>
         </div>
       </div>
 

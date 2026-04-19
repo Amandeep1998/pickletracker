@@ -1,7 +1,10 @@
 import { useEffect, useState, useMemo } from 'react';
 import * as api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import SessionForm from '../components/SessionForm';
 import Modal from '../components/Modal';
+import BannerMedalStrip from '../components/BannerMedalStrip';
+import { computeMedalTally } from '../utils/medals';
 
 const TYPE_LABELS = { tournament: 'Tournament', casual: 'Casual Play', practice: 'Drill' };
 const TYPE_COLORS = {
@@ -29,7 +32,9 @@ function tagFrequency(sessions, field) {
 }
 
 export default function Sessions() {
+  const { user } = useAuth();
   const [sessions, setSessions] = useState([]);
+  const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -52,6 +57,21 @@ export default function Sessions() {
   };
 
   useEffect(() => { fetchSessions(); }, []);
+
+  // Tournaments are needed only to compute the medal tally shown in the banner.
+  // Failure here is non-fatal — we silently fall back to manualAchievements only.
+  useEffect(() => {
+    let cancelled = false;
+    api.getTournaments()
+      .then((res) => { if (!cancelled) setTournaments(res.data.data || []); })
+      .catch(() => { /* banner medal tally will just exclude tournament wins */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const medalTally = useMemo(
+    () => computeMedalTally(tournaments, user?.manualAchievements),
+    [tournaments, user?.manualAchievements]
+  );
 
   // ── Insights (client-side) ──────────────────────────────────────────────────
   const insights = useMemo(() => {
@@ -145,14 +165,15 @@ export default function Sessions() {
         style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}
       >
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
-        <div className="relative">
+        <div className="relative min-w-0 flex-1">
           <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">Performance Journal</h1>
           <p className="text-slate-400 text-xs sm:text-sm mt-1">Track every session. Spot every pattern.</p>
+          <BannerMedalStrip medals={medalTally} className="mt-3" />
         </div>
         <button
           onClick={openAdd}
-          className="relative flex-shrink-0 hover:opacity-90 text-white font-bold px-4 py-2.5 rounded-xl text-sm tracking-wide transition-opacity shadow-lg"
+          className="relative flex-shrink-0 hover:opacity-90 text-white font-bold px-4 py-2.5 rounded-xl text-sm tracking-wide transition-opacity shadow-lg self-start"
           style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
         >
           + Log Session

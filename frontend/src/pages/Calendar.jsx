@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import posthog from 'posthog-js';
 import * as api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import TournamentForm from '../components/TournamentForm';
 import SessionForm from '../components/SessionForm';
 import TournamentShareModal from '../components/TournamentShareModal';
+import BannerMedalStrip from '../components/BannerMedalStrip';
 import { formatINR } from '../utils/format';
 import { getMapUrl } from '../utils/mapUrl';
+import { computeMedalTally } from '../utils/medals';
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -38,6 +41,7 @@ const SESSION_ICON = { casual: '🎾', practice: '🎯', tournament: '🏆' };
 const SESSION_LABEL = { casual: 'Casual', practice: 'Drill', tournament: 'Tournament' };
 
 export default function Calendar() {
+  const { user } = useAuth();
   const today = new Date();
   const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
 
@@ -219,6 +223,11 @@ export default function Calendar() {
 
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
 
+  const medalTally = useMemo(
+    () => computeMedalTally(tournaments, user?.manualAchievements),
+    [tournaments, user?.manualAchievements]
+  );
+
   const prevMonth = () => {
     if (viewMonth === 0) { setViewYear((y) => y - 1); setViewMonth(11); }
     else setViewMonth((m) => m - 1);
@@ -360,13 +369,14 @@ export default function Calendar() {
         style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}
       >
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
-        <div className="relative">
+        <div className="relative min-w-0">
           <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">Calendar</h1>
           <p className="text-slate-400 text-xs sm:text-sm mt-1">Sessions &amp; tournaments by date</p>
+          <BannerMedalStrip medals={medalTally} className="mt-3" />
         </div>
         {/* Calendar icon decoration */}
-        <div className="relative select-none flex-shrink-0">
+        <div className="relative select-none flex-shrink-0 hidden sm:block">
           <svg width="64" height="64" viewBox="0 0 64 64" fill="none" aria-hidden="true">
             <rect x="4" y="10" width="56" height="50" rx="8" fill="white" fillOpacity="0.08"/>
             <rect x="4" y="10" width="56" height="50" rx="8" stroke="white" strokeOpacity="0.2" strokeWidth="1.5"/>

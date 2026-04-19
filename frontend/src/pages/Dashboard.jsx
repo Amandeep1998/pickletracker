@@ -14,6 +14,8 @@ import {
 import * as api from '../services/api';
 import { formatINR } from '../utils/format';
 import TournamentShareModal from '../components/TournamentShareModal';
+import BannerMedalStrip from '../components/BannerMedalStrip';
+import { computeMedalTally } from '../utils/medals';
 
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -79,6 +81,11 @@ export default function Dashboard() {
 
     return () => clearTimeout(slowTimer);
   }, []);
+
+  const medalTally = useMemo(
+    () => computeMedalTally(tournaments, user?.manualAchievements),
+    [tournaments, user?.manualAchievements]
+  );
 
   // Next upcoming tournament (across all years, nearest future date)
   const nextTournament = useMemo(() => {
@@ -378,8 +385,8 @@ export default function Dashboard() {
       {/* Hero Banner */}
       <div className="rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-4 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}>
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
-        <div className="relative flex items-center justify-between">
-          <div>
+        <div className="relative flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
             <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight">{greeting}, {firstName}!</h1>
             <p className="text-slate-400 text-xs sm:text-sm mt-1">
@@ -387,8 +394,9 @@ export default function Dashboard() {
               {weekStats.count > 0 ? `${weekStats.count} session${weekStats.count !== 1 ? 's' : ''} this week` : 'No sessions yet this week'}
               {weekStats.avg ? ` · avg ${weekStats.avg}/5` : ''}
             </p>
+            <BannerMedalStrip medals={medalTally} className="mt-3" />
           </div>
-          <div className="relative select-none opacity-90 flex-shrink-0">
+          <div className="relative select-none opacity-90 flex-shrink-0 hidden sm:block">
             <svg width="60" height="60" viewBox="0 0 80 80" fill="none" aria-hidden="true">
               <circle cx="40" cy="40" r="36" fill="#C8D636" />
               <circle cx="40" cy="40" r="36" fill="white" opacity="0.12" />
