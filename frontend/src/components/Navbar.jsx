@@ -93,10 +93,13 @@ export default function Navbar() {
             }
             title="Your profile"
           >
-            <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-              style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}>
-              {user?.name?.[0]?.toUpperCase() || '?'}
-            </span>
+            {user?.profilePhoto
+              ? <img src={user.profilePhoto} alt={user.name} className="w-7 h-7 rounded-full object-cover flex-shrink-0 ring-2 ring-[#91BE4D]/40" />
+              : <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                  style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}>
+                  {user?.name?.[0]?.toUpperCase() || '?'}
+                </span>
+            }
             <span>{user?.name?.split(' ')[0]}</span>
           </NavLink>
           <button
@@ -108,8 +111,19 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Mobile Menu */}
-        <MobileMenu onOpenLocationModal={() => setLocationOpen(true)} />
+        {/* Mobile: avatar + hamburger */}
+        <div className="md:hidden flex items-center gap-2">
+          <NavLink to="/profile" className="flex-shrink-0">
+            {user?.profilePhoto
+              ? <img src={user.profilePhoto} alt={user.name} className="w-8 h-8 rounded-full object-cover ring-2 ring-[#91BE4D]/40" />
+              : <span className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                  style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}>
+                  {user?.name?.[0]?.toUpperCase() || '?'}
+                </span>
+            }
+          </NavLink>
+          <MobileMenu onOpenLocationModal={() => setLocationOpen(true)} />
+        </div>
       </div>
 
       {/* Location modal */}

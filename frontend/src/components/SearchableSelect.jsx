@@ -8,66 +8,70 @@ export default function SearchableSelect({ options, value, onChange, placeholder
   const containerRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Filter options based on query
   const filteredOptions = options.filter((opt) =>
     opt.toLowerCase().includes(query.toLowerCase())
   );
 
-  // Calculate fixed position for dropdown so it's never clipped by overflow:hidden/auto parents
+  const computeStyle = () => {
+    if (!containerRef.current) return {};
+    const rect = containerRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownHeight = Math.min(240, filteredOptions.length * 44 + 8);
+    const openUpward = spaceBelow < dropdownHeight + 8 && rect.top > dropdownHeight;
+    return {
+      position: 'fixed',
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+      ...(openUpward
+        ? { bottom: window.innerHeight - rect.top + 4 }
+        : { top: rect.bottom + 4 }),
+    };
+  };
+
   const openDropdown = () => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const dropdownHeight = Math.min(192, filteredOptions.length * 36 + 8); // ~max-h-48
-      const openUpward = spaceBelow < dropdownHeight + 8 && rect.top > dropdownHeight;
-      setDropdownStyle({
-        position: 'fixed',
-        left: rect.left,
-        width: rect.width,
-        zIndex: 9999,
-        ...(openUpward
-          ? { bottom: window.innerHeight - rect.top + 4 }
-          : { top: rect.bottom + 4 }),
-      });
-    }
+    setQuery('');
+    setHighlightedIndex(0);
+    setDropdownStyle(computeStyle());
     setIsOpen(true);
   };
 
-  // Close dropdown when clicking outside
+  const closeDropdown = () => {
+    setIsOpen(false);
+    setQuery('');
+  };
+
+  // Use pointerdown so it fires on both touch and mouse
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setIsOpen(false);
-        setQuery('');
+    const handleOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        closeDropdown();
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('pointerdown', handleOutside);
+    return () => document.removeEventListener('pointerdown', handleOutside);
   }, []);
 
-  // Reset highlighted index when filtered options change
   useEffect(() => {
     setHighlightedIndex(0);
   }, [query]);
 
-  // Recompute position on scroll/resize while open
   useEffect(() => {
     if (!isOpen) return;
     const reposition = () => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const dropdownHeight = Math.min(192, filteredOptions.length * 36 + 8);
-        const openUpward = spaceBelow < dropdownHeight + 8 && rect.top > dropdownHeight;
-        setDropdownStyle((prev) => ({
-          ...prev,
-          left: rect.left,
-          width: rect.width,
-          ...(openUpward
-            ? { bottom: window.innerHeight - rect.top + 4, top: undefined }
-            : { top: rect.bottom + 4, bottom: undefined }),
-        }));
-      }
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const dropdownHeight = Math.min(240, filteredOptions.length * 44 + 8);
+      const openUpward = spaceBelow < dropdownHeight + 8 && rect.top > dropdownHeight;
+      setDropdownStyle((prev) => ({
+        ...prev,
+        left: rect.left,
+        width: rect.width,
+        ...(openUpward
+          ? { bottom: window.innerHeight - rect.top + 4, top: undefined }
+          : { top: rect.bottom + 4, bottom: undefined }),
+      }));
     };
     window.addEventListener('scroll', reposition, true);
     window.addEventListener('resize', reposition);
@@ -79,13 +83,13 @@ export default function SearchableSelect({ options, value, onChange, placeholder
 
   const handleSelect = (option) => {
     onChange(option);
-    setIsOpen(false);
-    setQuery('');
+    closeDropdown();
+    inputRef.current?.blur();
   };
 
   const handleKeyDown = (e) => {
     if (!isOpen) {
-      if (e.key === 'Enter' || e.key === ' ') openDropdown();
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDropdown(); }
       return;
     }
     switch (e.key) {
@@ -102,53 +106,88 @@ export default function SearchableSelect({ options, value, onChange, placeholder
         if (filteredOptions.length > 0) handleSelect(filteredOptions[highlightedIndex]);
         break;
       case 'Escape':
-        setIsOpen(false);
-        setQuery('');
+        closeDropdown();
+        inputRef.current?.blur();
         break;
       default:
         break;
     }
   };
 
+  // Trigger field shown when closed — tapping opens the dropdown without showing keyboard
+  const handleTriggerPointerDown = (e) => {
+    if (isOpen) return; // let outside-click handler take care of closing
+    e.preventDefault();
+    openDropdown();
+    // Focus the hidden search input after a tick so keyboard appears
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
   return (
     <div ref={containerRef} className="relative w-full">
-      {/* Input Field */}
-      <input
-        ref={inputRef}
-        type="text"
-        value={isOpen ? query : value || ''}
-        onChange={(e) => setQuery(e.target.value)}
-        onFocus={openDropdown}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        className="w-full border border-gray-300 rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-        autoComplete="off"
-      />
+      {/* Visible trigger — always shows the selected value */}
+      <div
+        onPointerDown={handleTriggerPointerDown}
+        className={`w-full border rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm cursor-pointer select-none flex items-center justify-between ${
+          isOpen
+            ? 'border-green-500 ring-2 ring-green-500'
+            : 'border-gray-300'
+        } ${value ? 'text-gray-900' : 'text-gray-400'}`}
+      >
+        <span className="truncate">{value || placeholder}</span>
+        <svg
+          className={`w-4 h-4 flex-shrink-0 ml-1 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
 
-      {/* Dropdown — rendered with fixed positioning, never clipped */}
+      {/* Dropdown */}
       {isOpen && (
         <div
           style={dropdownStyle}
-          className="bg-white border border-gray-300 rounded shadow-lg max-h-48 overflow-y-auto"
+          className="bg-white border border-gray-300 rounded-lg shadow-xl overflow-hidden"
         >
-          {filteredOptions.length > 0 ? (
-            filteredOptions.map((option, index) => (
-              <button
-                key={option}
-                onMouseDown={(e) => { e.preventDefault(); handleSelect(option); }}
-                onMouseEnter={() => setHighlightedIndex(index)}
-                className={`w-full text-left px-3 py-2 text-xs sm:text-sm transition ${
-                  index === highlightedIndex
-                    ? 'bg-green-100 text-green-900'
-                    : 'hover:bg-gray-100 text-gray-700'
-                }`}
-              >
-                {option}
-              </button>
-            ))
-          ) : (
-            <div className="px-3 py-2 text-xs sm:text-sm text-gray-500">No categories found</div>
-          )}
+          {/* Search input inside the dropdown */}
+          <div className="p-2 border-b border-gray-100">
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Search…"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
+              className="w-full border border-gray-200 rounded px-2.5 py-1.5 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+            />
+          </div>
+
+          {/* Options list */}
+          <div className="max-h-52 overflow-y-auto overscroll-contain">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option, index) => (
+                <button
+                  key={option}
+                  type="button"
+                  onPointerDown={(e) => { e.preventDefault(); handleSelect(option); }}
+                  onMouseEnter={() => setHighlightedIndex(index)}
+                  className={`w-full text-left px-3 py-3 text-xs sm:text-sm transition-colors ${
+                    index === highlightedIndex
+                      ? 'bg-green-100 text-green-900'
+                      : 'text-gray-700 active:bg-gray-100'
+                  } ${value === option ? 'font-medium' : ''}`}
+                >
+                  {option}
+                </button>
+              ))
+            ) : (
+              <div className="px-3 py-3 text-xs sm:text-sm text-gray-500">No categories found</div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Tournament = require('../models/Tournament');
 const Session = require('../models/Session');
 const socketManager = require('../socket/socketManager');
+const { sendFriendRequestEmail } = require('../services/email.service');
 
 function isObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id);
@@ -35,7 +36,10 @@ const sendFriendRequest = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'You cannot send a request to yourself' });
     }
 
-    const recipient = await User.findById(recipientId).select('_id').lean();
+    const [recipient, requester] = await Promise.all([
+      User.findById(recipientId).select('_id name email').lean(),
+      User.findById(requesterId).select('name').lean(),
+    ]);
     if (!recipient) return res.status(404).json({ success: false, message: 'Player not found' });
 
     const existing = await Friendship.findOne({
@@ -57,12 +61,15 @@ const sendFriendRequest = async (req, res, next) => {
       existing.status = 'pending';
       await existing.save();
       socketManager.emitToUser(recipientId, 'friend:refresh', {});
+      sendFriendRequestEmail({ toEmail: recipient.email, toName: recipient.name, fromName: requester?.name || 'A player' }).catch(() => {});
       return res.status(200).json({ success: true, data: existing });
     }
 
     const friendship = await Friendship.create({ requesterId, recipientId, status: 'pending' });
     // Notify recipient in real time
     socketManager.emitToUser(recipientId, 'friend:refresh', {});
+    // Email notification — fire and forget, never blocks the response
+    sendFriendRequestEmail({ toEmail: recipient.email, toName: recipient.name, fromName: requester?.name || 'A player' }).catch(() => {});
     return res.status(201).json({ success: true, data: friendship });
   } catch (err) {
     next(err);

@@ -99,10 +99,23 @@ export default function MobileMenu({ onOpenLocationModal }) {
         {/* User + Logout */}
         <div className="flex-shrink-0 border-t border-gray-100 bg-gray-50/60 p-4 space-y-3">
           {user && (
-            <>
-              <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-widest mb-1">Logged in as</p>
-              <p className="text-sm font-semibold text-[#272702] truncate">{user.name}</p>
-            </>
+            <NavLink
+              to="/profile"
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 rounded-xl hover:bg-white/60 transition-colors -mx-1 px-1 py-1"
+            >
+              {user.profilePhoto
+                ? <img src={user.profilePhoto} alt={user.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0 ring-2 ring-[#91BE4D]/40" />
+                : <span className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                    style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}>
+                    {(user.name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                  </span>
+              }
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#272702] truncate">{user.name}</p>
+                <p className="text-[11px] text-gray-400 truncate">{user.email}</p>
+              </div>
+            </NavLink>
           )}
           {/* City chip */}
           <button

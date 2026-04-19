@@ -57,4 +57,33 @@ async function sendNotificationEmail({ to, subject, html }) {
   }
 }
 
-module.exports = { sendPasswordResetEmail, sendNotificationEmail };
+async function sendFriendRequestEmail({ toEmail, toName, fromName }) {
+  return sendNotificationEmail({
+    to: toEmail,
+    subject: `${fromName} sent you a friend request on PickleTracker`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px; background: #ffffff;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span style="font-size: 24px; font-weight: bold; color: #91BE4D;">Pickle</span><span style="font-size: 24px; font-weight: bold; color: #ec9937;">Tracker</span>
+        </div>
+        <h2 style="font-size: 20px; color: #272702; margin-bottom: 8px;">You have a new friend request</h2>
+        <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+          Hi ${toName},<br/><br/>
+          <strong style="color: #272702;">${fromName}</strong> wants to connect with you on PickleTracker. Friends can follow each other's upcoming tournament schedules and stay in sync on events.
+        </p>
+        <a href="https://www.pickletracker.in/players" style="display: inline-block; background: #91BE4D; color: #ffffff; font-weight: bold; font-size: 14px; padding: 14px 28px; border-radius: 8px; text-decoration: none; margin-bottom: 24px;">
+          Accept Friend Request
+        </a>
+        <p style="color: #9ca3af; font-size: 12px; line-height: 1.6;">
+          Open the Nearby Players page on PickleTracker to accept or decline this request.
+        </p>
+        <hr style="border: none; border-top: 1px solid #f3f4f6; margin: 24px 0;" />
+        <p style="color: #d1d5db; font-size: 11px; text-align: center;">
+          &copy; ${new Date().getFullYear()} PickleTracker. Built for the community.
+        </p>
+      </div>
+    `,
+  });
+}
+
+module.exports = { sendPasswordResetEmail, sendNotificationEmail, sendFriendRequestEmail };

@@ -1059,23 +1059,6 @@ export default function Players() {
         </div>
       </div>
 
-      {/* Friend Requests toggle — kept inline at top so the badge for incoming requests stays visible */}
-      <div className="mb-5 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setShowFriendRequests((v) => !v)}
-          className="relative flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl border border-[#91BE4D]/40 bg-[#f4f8e8] text-[#4a6e10] hover:bg-[#e9f3d5] transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2h2m10 0V6a2 2 0 00-2-2H9a2 2 0 00-2 2v2m10 0H7" /></svg>
-          Friend Requests
-          {incomingCount > 0 && (
-            <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 rounded-full bg-[#ec9937] text-white text-[10px] font-bold flex items-center justify-center">
-              {incomingCount}
-            </span>
-          )}
-        </button>
-      </div>
-
       {/* ── Your Card — always shown first so the user sees their own card before friends/others ── */}
       {myPlayerCard && (
         <section className="mb-6">
@@ -1113,6 +1096,23 @@ export default function Players() {
           </div>
         </section>
       )}
+
+      {/* Friend Requests toggle — below Your Card */}
+      <div className="mb-5 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setShowFriendRequests((v) => !v)}
+          className="relative flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl border border-[#91BE4D]/40 bg-[#f4f8e8] text-[#4a6e10] hover:bg-[#e9f3d5] transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8h2a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2v-8a2 2 0 012-2h2m10 0V6a2 2 0 00-2-2H9a2 2 0 00-2 2v2m10 0H7" /></svg>
+          Friend Requests
+          {incomingCount > 0 && (
+            <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 rounded-full bg-[#ec9937] text-white text-[10px] font-bold flex items-center justify-center">
+              {incomingCount}
+            </span>
+          )}
+        </button>
+      </div>
 
       {/* Fallback "Update my card" CTA + info bar for the brief moment the players list is still loading */}
       {!myPlayerCard && (
