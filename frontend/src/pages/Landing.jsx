@@ -1,6 +1,7 @@
 import { Link, Navigate } from 'react-router-dom';
 import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
+import LandingTournamentForm from '../components/LandingTournamentForm';
 
 /* ─── Custom Icons ─────────────────────────────────────────── */
 const IconTrophy = () => (
@@ -215,6 +216,80 @@ export default function Landing() {
                   <Ball size={80} opacity={0.85}/>
                   <Ball size={56} opacity={0.65}/>
                 </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        {/* ── Tournament CTA section ───────────────────────── */}
+        <section className="bg-[#f4f8e8] border-b border-[#91BE4D]/20 py-16 sm:py-20">
+          <div className="max-w-6xl mx-auto px-5 sm:px-8">
+            <div className="flex flex-col lg:flex-row items-start gap-12 lg:gap-20">
+
+              {/* Left — copy */}
+              <div className="flex-1">
+                {/* Player badge */}
+                <span className="inline-flex items-center gap-1.5 bg-[#91BE4D]/15 border border-[#91BE4D]/30 text-[#4a6e10] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.1em] uppercase">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  For players — not organisers
+                </span>
+
+                <h2 className="text-3xl sm:text-4xl font-extrabold text-[#1c350a] leading-tight tracking-tight mb-4">
+                  Got a tournament<br className="hidden sm:block"/> coming up?
+                </h2>
+
+                <p className="text-gray-600 text-base leading-relaxed mb-8 max-w-md">
+                  Log your upcoming tournament in 30 seconds. We'll send you a reminder the day before so you never miss a match — and track your profit automatically once you're back.
+                </p>
+
+                {/* Benefits */}
+                <div className="space-y-3.5">
+                  {[
+                    { icon: '🔔', title: 'Day-before reminder', desc: "Email alert so you're never caught off guard" },
+                    { icon: '📊', title: 'Profit tracking', desc: 'See exactly how much you earn vs spend per tournament' },
+                    { icon: '📅', title: 'Your full schedule', desc: 'All upcoming tournaments in one calendar view' },
+                    { icon: '🆓', title: '100% free', desc: 'No credit card. No catch. Always free.' },
+                  ].map(b => (
+                    <div key={b.title} className="flex items-start gap-3">
+                      <span className="text-xl leading-none mt-0.5 flex-shrink-0">{b.icon}</span>
+                      <div>
+                        <span className="text-sm font-bold text-[#1c350a]">{b.title} </span>
+                        <span className="text-sm text-gray-500">{b.desc}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right — form card */}
+              <div className="w-full lg:w-[420px] flex-shrink-0">
+                <div className="bg-white rounded-2xl shadow-xl shadow-green-900/10 border border-[#91BE4D]/20">
+                  {/* Card header — rounded top corners manually so we can remove overflow-hidden (which clips the category dropdown) */}
+                  <div className="px-6 pt-6 pb-4 border-b border-gray-100 rounded-t-2xl">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg,#2d7005,#91BE4D)' }}>
+                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                      </div>
+                      <p className="text-sm font-bold text-gray-900">Log your next tournament</p>
+                    </div>
+                    <p className="text-xs text-gray-400 ml-9">Fill in your details — we'll handle the rest</p>
+                  </div>
+
+                  <div className="px-6 py-5">
+                    <LandingTournamentForm />
+                  </div>
+                </div>
+
+                {/* Trust note below card */}
+                <p className="text-center text-xs text-gray-400 mt-3">
+                  Already tracking?{' '}
+                  <Link to="/login" className="text-[#4a6e10] font-semibold hover:underline">Sign in instead</Link>
+                </p>
               </div>
 
             </div>

@@ -73,7 +73,45 @@ export default function Calendar() {
   // Share modal
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
-  useEffect(() => { fetchData(); }, []);
+  // Pending tournament notification toast + highlight
+  const [pendingToast, setPendingToast] = useState('');
+  const [highlightDate, setHighlightDate] = useState('');
+
+  // On mount: if there's a pending tournament from the landing page form,
+  // create it first then fetch all data once — avoids a race condition where
+  // fetchData() could overwrite the newly created tournament with stale results.
+  useEffect(() => {
+    const raw = localStorage.getItem('pt_pending_tournament');
+
+    if (!raw) {
+      fetchData();
+      return;
+    }
+
+    localStorage.removeItem('pt_pending_tournament');
+    let data;
+    try { data = JSON.parse(raw); } catch { fetchData(); return; }
+
+    api.createTournament(data)
+      .then(() => fetchData())
+      .then(() => {
+        // After data is fresh, navigate to the tournament's month and highlight it
+        const dateStr = data.categories?.[0]?.date;
+        if (dateStr) {
+          const [y, m] = dateStr.split('-').map(Number);
+          setViewYear(y);
+          setViewMonth(m - 1); // 0-indexed
+          setHighlightDate(dateStr);
+          setTimeout(() => setHighlightDate(''), 4000);
+        }
+        setPendingToast(`"${data.name}" saved! You'll get a reminder the day before. 🏆`);
+        setTimeout(() => setPendingToast(''), 6000);
+      })
+      .catch(() => {
+        // Tournament save failed — still load the calendar normally
+        fetchData();
+      });
+  }, []);
 
   const fetchTournaments = async () => {
     const res = await api.getTournaments();
@@ -295,6 +333,15 @@ export default function Calendar() {
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
 
+      {/* Pending tournament saved toast */}
+      {pendingToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#1c350a] text-white text-sm font-semibold px-5 py-3 rounded-2xl shadow-xl animate-fade-in max-w-sm w-full mx-4">
+          <span className="text-base">🏆</span>
+          <span>{pendingToast}</span>
+          <button onClick={() => setPendingToast('')} className="ml-auto text-white/60 hover:text-white text-lg leading-none">&times;</button>
+        </div>
+      )}
+
       {/* Hero Banner */}
       <div
         className="rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-4 flex items-center justify-between overflow-hidden relative"
@@ -431,6 +478,7 @@ export default function Calendar() {
             const isToday = dateStr === todayStr;
             const isFuture = dateStr > todayStr;
             const hasActivity = events.length > 0 || daySessions.length > 0;
+            const isHighlighted = dateStr === highlightDate;
 
             return (
               <div
@@ -439,12 +487,18 @@ export default function Calendar() {
                 className={`relative flex flex-col border-b border-r border-gray-100 min-h-[72px] sm:min-h-[90px] p-1 sm:p-1.5 transition-colors select-none cursor-pointer
                   ${hasActivity ? 'hover:bg-green-50/50' : isFuture ? 'hover:bg-gray-50' : 'hover:bg-gray-50/60'}
                   ${idx % 7 === 0 ? 'border-l-0' : ''}
+                  ${isHighlighted ? 'ring-2 ring-inset ring-[#91BE4D] bg-[#f4f8e8]' : ''}
                 `}
               >
                 {/* Date number */}
-                <div className="flex justify-center mb-1">
-                  <span className={`w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold
-                    ${isToday ? 'bg-[#91BE4D] text-white' : isFuture ? 'text-gray-500' : 'text-gray-700'}
+                <div className="flex justify-center mb-1 relative">
+                  {isHighlighted && (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#91BE4D]/30 animate-ping" />
+                    </span>
+                  )}
+                  <span className={`relative w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full text-xs sm:text-sm font-semibold
+                    ${isHighlighted ? 'bg-[#91BE4D] text-white' : isToday ? 'bg-[#91BE4D] text-white' : isFuture ? 'text-gray-500' : 'text-gray-700'}
                   `}>
                     {day}
                   </span>
