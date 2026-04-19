@@ -29,6 +29,9 @@ const notificationsRoutes = require('./src/routes/notifications.routes');
 const friendshipRoutes = require('./src/routes/friendship.routes');
 const errorHandler = require('./src/middleware/error.middleware');
 const { startTournamentReminderJob } = require('./src/jobs/tournamentReminder');
+const { startResultNudgeJob } = require('./src/jobs/resultNudge');
+const { startWeeklySummaryJob } = require('./src/jobs/weeklySummary');
+const { startMonthlyPnlJob } = require('./src/jobs/monthlyPnl');
 
 const app = express();
 const server = http.createServer(app);
@@ -94,6 +97,9 @@ if (require.main === module) {
     const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
     startTournamentReminderJob();
+    startResultNudgeJob();
+    startWeeklySummaryJob();
+    startMonthlyPnlJob();
   });
 }
 
