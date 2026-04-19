@@ -118,6 +118,7 @@ export default function PlayerCardPage() {
     duprDoubles: form.duprDoubles || null,
     playingSince: form.playingSince || null,
     profilePhoto: photoPreview,
+    manualAchievements: form.manualAchievements || [],
   };
 
   const manualAchievements = Array.isArray(form.manualAchievements) ? form.manualAchievements : [];

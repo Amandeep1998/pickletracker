@@ -7,27 +7,38 @@ export default function PlayerCard({ profile, tournaments }) {
   const cardRef = useRef(null);
   const [downloading, setDownloading] = useState(false);
 
-  const { name, city, state, duprRating, playingSince, profilePhoto } = profile;
+  const { name, city, state, duprRating, playingSince, profilePhoto, manualAchievements } = profile;
 
-  // Medal tally
+  // Medal tally — from logged tournaments + manual past achievements
   const medals = { Gold: 0, Silver: 0, Bronze: 0 };
   (tournaments || []).forEach((t) =>
     t.categories.forEach((c) => { if (medals[c.medal] !== undefined) medals[c.medal]++; })
   );
+  (manualAchievements || []).forEach((a) => {
+    if (medals[a.medal] !== undefined) medals[a.medal]++;
+  });
   const totalMedals = medals.Gold + medals.Silver + medals.Bronze;
 
-  // Last 3 tournaments that have a medal
-  const medalTournaments = [];
+  // Highlights — up to 3 recent medal entries from both sources, sorted by date desc
+  const allHighlights = [];
+  // From logged tournaments
   const seen = new Set();
   for (const t of [...(tournaments || [])].reverse()) {
     if (seen.has(t._id)) continue;
-    const bestCat = t.categories.find((c) => medals[c.medal] !== undefined && c.medal !== 'None');
+    const bestCat = t.categories.find((c) => c.medal && c.medal !== 'None');
     if (bestCat) {
-      medalTournaments.push({ name: t.name, medal: bestCat.medal, category: bestCat.categoryName });
+      allHighlights.push({ name: t.name, medal: bestCat.medal, category: bestCat.categoryName, date: bestCat.date || '' });
       seen.add(t._id);
     }
-    if (medalTournaments.length >= 3) break;
   }
+  // From manual achievements
+  (manualAchievements || [])
+    .filter((a) => a.tournamentName && a.medal && a.medal !== 'None')
+    .forEach((a) => allHighlights.push({ name: a.tournamentName, medal: a.medal, category: a.categoryName || '', date: a.date || '' }));
+  // Sort by date descending, take top 3
+  const medalTournaments = allHighlights
+    .sort((a, b) => (b.date > a.date ? 1 : -1))
+    .slice(0, 3);
 
   const initials = (name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   const location = [city, state].filter(Boolean).join(', ') || 'India';
