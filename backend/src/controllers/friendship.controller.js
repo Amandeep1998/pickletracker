@@ -206,7 +206,14 @@ const listFriends = async (req, res, next) => {
 
     const friends = validLinks.map((row) => {
       const friend = idsEqual(row.requesterId._id, userId) ? row.recipientId : row.requesterId;
-      const medals = medalMap[String(friend._id)] || { Gold: 0, Silver: 0, Bronze: 0 };
+      const tournamentMedals = medalMap[String(friend._id)] || { Gold: 0, Silver: 0, Bronze: 0 };
+      // Fold the friend's manual past achievements into the tally so the friends
+      // list reflects both logged tournaments AND user-entered history.
+      const manual = Array.isArray(friend.manualAchievements) ? friend.manualAchievements : [];
+      const medals = { ...tournamentMedals };
+      for (const a of manual) {
+        if (medals[a.medal] !== undefined) medals[a.medal]++;
+      }
       return {
         friendshipId: row._id,
         id: friend._id,
@@ -218,7 +225,7 @@ const listFriends = async (req, res, next) => {
         duprSingles: friend.duprSingles || null,
         duprDoubles: friend.duprDoubles || null,
         playingSince: friend.playingSince || null,
-        manualAchievements: friend.manualAchievements || [],
+        manualAchievements: manual,
         medals,
       };
     });

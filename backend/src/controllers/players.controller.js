@@ -166,6 +166,16 @@ exports.getPlayers = async (req, res, next) => {
         recentMedalTournaments: [],
         lastActiveDate: null,
       };
+
+      // Fold manual past achievements into the medal tally so the directory card,
+      // sort order and rarity badge reflect both logged tournaments AND user-entered history.
+      const manual = Array.isArray(u.manualAchievements) ? u.manualAchievements : [];
+      const medals = { ...stats.medals };
+      for (const a of manual) {
+        if (medals[a.medal] !== undefined) medals[a.medal]++;
+      }
+      const totalMedals = medals.Gold + medals.Silver + medals.Bronze;
+
       return {
         id: u._id,
         name: u.name,
@@ -177,18 +187,20 @@ exports.getPlayers = async (req, res, next) => {
         duprDoubles: u.duprDoubles ?? null,
         playingSince: u.playingSince || null,
         memberSince: u.createdAt,
-        manualAchievements: Array.isArray(u.manualAchievements) ? u.manualAchievements : [],
+        manualAchievements: manual,
         achievements: [
           ...(autoAchievementsMap[String(u._id)] || []),
-          ...((Array.isArray(u.manualAchievements) ? u.manualAchievements : []).map((a) => ({
+          ...manual.map((a) => ({
             tournamentName: a.tournamentName,
             categoryName: a.categoryName,
             medal: a.medal,
             date: a.date || null,
             source: 'manual',
-          }))),
+          })),
         ],
         ...stats,
+        medals,
+        totalMedals,
       };
     });
 
@@ -229,6 +241,8 @@ exports.getPlayer = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    const manualList = Array.isArray(user.manualAchievements) ? user.manualAchievements : [];
+
     const medals = { Gold: 0, Silver: 0, Bronze: 0 };
     const catCount = {};
     tournaments.forEach((t) => {
@@ -237,18 +251,28 @@ exports.getPlayer = async (req, res, next) => {
         if (c.categoryName) catCount[c.categoryName] = (catCount[c.categoryName] || 0) + 1;
       });
     });
+    // Fold manual past achievements into the medal tally and category counts so
+    // the public profile reflects both logged tournaments AND user-entered history.
+    manualList.forEach((a) => {
+      if (medals[a.medal] !== undefined) medals[a.medal]++;
+      if (a.categoryName) catCount[a.categoryName] = (catCount[a.categoryName] || 0) + 1;
+    });
 
     const topCategories = Object.entries(catCount)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([name, count]) => ({ name, count }));
 
-    const recentMedalTournaments = tournaments
-      .flatMap((t) =>
+    const recentMedalTournaments = [
+      ...tournaments.flatMap((t) =>
         t.categories
           .filter((c) => c.medal && c.medal !== 'None')
           .map((c) => ({ tournamentName: t.name, medal: c.medal, category: c.categoryName, date: c.date }))
-      )
+      ),
+      ...manualList
+        .filter((a) => a.medal && a.medal !== 'None')
+        .map((a) => ({ tournamentName: a.tournamentName, medal: a.medal, category: a.categoryName, date: a.date || null })),
+    ]
       .sort((a, b) => (b.date || '') > (a.date || '') ? 1 : -1)
       .slice(0, 5);
 
@@ -261,7 +285,7 @@ exports.getPlayer = async (req, res, next) => {
         source: 'tournament',
       }))
     );
-    const manualAchievements = (Array.isArray(user.manualAchievements) ? user.manualAchievements : []).map((a) => ({
+    const manualAchievements = manualList.map((a) => ({
       tournamentName: a.tournamentName,
       categoryName: a.categoryName,
       medal: a.medal,
@@ -287,7 +311,7 @@ exports.getPlayer = async (req, res, next) => {
         totalMedals: medals.Gold + medals.Silver + medals.Bronze,
         topCategories,
         recentMedalTournaments,
-        manualAchievements: Array.isArray(user.manualAchievements) ? user.manualAchievements : [],
+        manualAchievements: manualList,
         achievements: [...autoAchievements, ...manualAchievements],
         tournamentNames: [...new Set([...autoAchievements, ...manualAchievements].map((a) => a.tournamentName).filter(Boolean))],
       },
