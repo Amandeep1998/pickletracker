@@ -175,7 +175,12 @@ export default function Calendar() {
       t.categories.some((cat) => cat.date?.startsWith(monthStr))
     );
     const courtFees = monthSessions.reduce((s, x) => s + (x.courtFee || 0), 0);
-    return { sessions: monthSessions.length, tournaments: monthTournaments.length, courtFees };
+
+    return {
+      sessions: monthSessions.length,
+      tournaments: monthTournaments.length,
+      courtFees,
+    };
   }, [sessions, tournaments, viewYear, viewMonth]);
 
   // Upcoming tournaments only — for share card (up to 8)
@@ -369,17 +374,18 @@ export default function Calendar() {
         </div>
       </div>
 
-      {/* Month stats strip */}
+      {/* Stats strip */}
       <div className="grid grid-cols-3 gap-2 mb-4">
         {[
-          { label: 'Sessions', value: monthStats.sessions, icon: '🎯', color: 'text-blue-600' },
-          { label: 'Tournaments', value: monthStats.tournaments, icon: '🏆', color: 'text-[#4a6e10]' },
-          { label: 'Court fees', value: monthStats.courtFees > 0 ? formatINR(monthStats.courtFees) : '—', icon: '🏟️', color: 'text-orange-600' },
+          { icon: '🎯', label: 'Sessions',    month: monthStats.sessions,    color: 'text-blue-600' },
+          { icon: '🏆', label: 'Tournaments', month: monthStats.tournaments, color: 'text-[#4a6e10]' },
+          { icon: '🏟️', label: 'Court Fees',  month: monthStats.courtFees > 0 ? formatINR(monthStats.courtFees) : '—', color: 'text-orange-600' },
         ].map((s) => (
-          <div key={s.label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-3 py-2.5 text-center">
-            <p className="text-base">{s.icon}</p>
-            <p className={`text-sm font-black mt-0.5 ${s.color}`}>{s.value}</p>
-            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">{s.label}</p>
+          <div key={s.label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-2 py-3 flex flex-col items-center text-center">
+            <p className="text-base leading-none mb-1.5">{s.icon}</p>
+            <p className={`text-xl font-black leading-none ${s.color}`}>{s.month}</p>
+            <p className="text-[10px] font-bold text-gray-500 mt-1 leading-tight">{s.label}</p>
+            <p className="text-[9px] font-semibold text-gray-400 mt-0.5 leading-tight">in {monthName}</p>
           </div>
         ))}
       </div>
