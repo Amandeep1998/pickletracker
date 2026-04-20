@@ -8,10 +8,15 @@ export default function LocationAutocomplete({ value, onSelect, onClear, voiceQu
   const [inputValue, setInputValue] = useState(value?.name || '');
   const [predictions, setPredictions] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  // Flip the suggestion list above the input when the on-screen keyboard would
+  // otherwise eat the dropdown. Recomputed every time the dropdown opens or the
+  // visual viewport changes (e.g. keyboard slides in/out on mobile).
+  const [dropUp, setDropUp] = useState(false);
   const autocompleteService = useRef(null);
   const placesService = useRef(null);
   const placesDiv = useRef(null);
   const containerRef = useRef(null);
+  const inputRef = useRef(null);
   // Only true after the user has actually typed — prevents predictions firing on pre-fill
   const isUserTyping = useRef(false);
 
@@ -85,6 +90,45 @@ export default function LocationAutocomplete({ value, onSelect, onClear, voiceQu
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
+  // Decide whether to render the suggestions above the input. On mobile the
+  // OS keyboard shrinks the visual viewport, so a dropdown rendered below the
+  // input often sits entirely behind the keyboard. We measure the available
+  // space below the input against the visible viewport (using
+  // `window.visualViewport` when available — that's what shrinks when the
+  // keyboard opens) and flip the list upward when there isn't enough room.
+  useEffect(() => {
+    if (!showDropdown) return;
+    const DROPDOWN_MAX_HEIGHT = 224; // matches `max-h-56` on the <ul> (14rem)
+    const SAFETY_PADDING = 16;
+
+    const recomputePlacement = () => {
+      const inputEl = inputRef.current;
+      if (!inputEl) return;
+      const rect = inputEl.getBoundingClientRect();
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      const viewportTopOffset = window.visualViewport?.offsetTop ?? 0;
+      const spaceBelow = (viewportHeight + viewportTopOffset) - rect.bottom;
+      const spaceAbove = rect.top - viewportTopOffset;
+      // Drop up only if below is too cramped AND above genuinely has more room
+      // — this avoids flipping in tiny side panels where neither side fits.
+      const shouldDropUp =
+        spaceBelow < DROPDOWN_MAX_HEIGHT + SAFETY_PADDING && spaceAbove > spaceBelow;
+      setDropUp(shouldDropUp);
+    };
+
+    recomputePlacement();
+
+    const vv = window.visualViewport;
+    vv?.addEventListener('resize', recomputePlacement);
+    vv?.addEventListener('scroll', recomputePlacement);
+    window.addEventListener('resize', recomputePlacement);
+    return () => {
+      vv?.removeEventListener('resize', recomputePlacement);
+      vv?.removeEventListener('scroll', recomputePlacement);
+      window.removeEventListener('resize', recomputePlacement);
+    };
+  }, [showDropdown, predictions.length]);
+
   const handleSelect = useCallback((prediction) => {
     isUserTyping.current = false;
     setShowDropdown(false);
@@ -140,6 +184,7 @@ export default function LocationAutocomplete({ value, onSelect, onClear, voiceQu
   return (
     <div className="relative" ref={containerRef}>
       <input
+        ref={inputRef}
         type="text"
         value={inputValue}
         onChange={(e) => {
@@ -165,13 +210,18 @@ export default function LocationAutocomplete({ value, onSelect, onClear, voiceQu
         </button>
       )}
 
-      {/* Predictions dropdown */}
+      {/* Predictions dropdown — flips above the input on mobile when the
+          on-screen keyboard would otherwise hide the suggestions. */}
       {showDropdown && predictions.length > 0 && (
-        <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
+        <ul
+          className={`absolute z-50 left-0 right-0 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto ${
+            dropUp ? 'bottom-full mb-1' : 'top-full mt-1'
+          }`}
+        >
           {predictions.map((p) => (
             <li
               key={p.place_id}
-              onMouseDown={() => handleSelect(p)}
+              onMouseDown={(e) => { e.preventDefault(); handleSelect(p); }}
               className="px-3 py-2 text-xs sm:text-sm text-gray-700 hover:bg-green-50 cursor-pointer"
             >
               <span className="font-medium">{p.structured_formatting.main_text}</span>
