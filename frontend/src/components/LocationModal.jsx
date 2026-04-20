@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import CITIES_BY_STATE from '../data/indianCities';
 
 const ALL_CITIES = [...new Set(Object.values(CITIES_BY_STATE).flat())].sort();
@@ -137,7 +138,7 @@ export default function LocationModal({ onSave, onSkip }) {
     setSaving(false);
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onSkip} />
       <div className="relative bg-white w-full sm:max-w-sm sm:rounded-2xl rounded-t-2xl shadow-2xl"
@@ -285,6 +286,7 @@ export default function LocationModal({ onSave, onSkip }) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
