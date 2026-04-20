@@ -1,16 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import BrandLogo from '../components/BrandLogo';
 
 export default function PrivacyPolicy() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
-          <Link to="/login" className="flex items-center gap-2">
-            <img src="/logo.svg" alt="PickleTracker" className="h-8 w-8 object-contain" />
-            <span className="font-bold text-green-600">Pickle</span>
-            <span className="font-bold text-orange-500 -ml-1.5">Tracker</span>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
+          <Link to="/login">
+            <BrandLogo size="lg" />
           </Link>
         </div>
       </div>
@@ -183,8 +182,8 @@ export default function PrivacyPolicy() {
             </ul>
             <p className="mt-2">
               To exercise any of these rights, email us at{' '}
-              <a href="mailto:amandeepsaini336@gmail.com" className="text-green-600 hover:underline">
-                amandeepsaini336@gmail.com
+              <a href="mailto:pickletracker.app@gmail.com" className="text-green-600 hover:underline">
+                pickletracker.app@gmail.com
               </a>
               . We will respond within 30 days.
             </p>
@@ -232,8 +231,8 @@ export default function PrivacyPolicy() {
             <p>
               For any questions, concerns, or requests regarding this Privacy Policy or your personal data,
               please contact us at{' '}
-              <a href="mailto:amandeepsaini336@gmail.com" className="text-green-600 hover:underline">
-                amandeepsaini336@gmail.com
+              <a href="mailto:pickletracker.app@gmail.com" className="text-green-600 hover:underline">
+                pickletracker.app@gmail.com
               </a>
               . We aim to respond to all privacy-related enquiries within 30 days.
             </p>

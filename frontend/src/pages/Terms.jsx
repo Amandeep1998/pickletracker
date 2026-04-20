@@ -1,16 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import BrandLogo from '../components/BrandLogo';
 
 export default function Terms() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-3">
-          <Link to="/login" className="flex items-center gap-2">
-            <img src="/logo.svg" alt="PickleTracker" className="h-8 w-8 object-contain" />
-            <span className="font-bold text-green-600">Pickle</span>
-            <span className="font-bold text-orange-500 -ml-1.5">Tracker</span>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
+          <Link to="/login">
+            <BrandLogo size="lg" />
           </Link>
         </div>
       </div>
@@ -179,8 +178,8 @@ export default function Terms() {
             <p>
               You may stop using the Service at any time. You may also request deletion of your account and
               all associated data by contacting us at{' '}
-              <a href="mailto:amandeepsaini336@gmail.com" className="text-green-600 hover:underline">
-                amandeepsaini336@gmail.com
+              <a href="mailto:pickletracker.app@gmail.com" className="text-green-600 hover:underline">
+                pickletracker.app@gmail.com
               </a>
               . We will process deletion requests within 30 days.
             </p>
@@ -224,8 +223,8 @@ export default function Terms() {
             <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">16. Contact Us</h2>
             <p>
               For any questions or concerns about these Terms of Service, please contact us at{' '}
-              <a href="mailto:amandeepsaini336@gmail.com" className="text-green-600 hover:underline">
-                amandeepsaini336@gmail.com
+              <a href="mailto:pickletracker.app@gmail.com" className="text-green-600 hover:underline">
+                pickletracker.app@gmail.com
               </a>
               .
             </p>
