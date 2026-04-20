@@ -228,21 +228,6 @@ export default function Calendar() {
     [tournaments, user?.manualAchievements]
   );
 
-  const financialStats = useMemo(() => {
-    const thisMonthPrefix = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    let totalEarnings = 0, totalEntryFees = 0, monthEarnings = 0, monthEntryFees = 0;
-    for (const t of tournaments) {
-      for (const cat of t.categories || []) {
-        totalEarnings += cat.prizeAmount || 0;
-        totalEntryFees += cat.entryFee || 0;
-        if (cat.date?.startsWith(thisMonthPrefix)) {
-          monthEarnings += cat.prizeAmount || 0;
-          monthEntryFees += cat.entryFee || 0;
-        }
-      }
-    }
-    return { totalEarnings, totalEntryFees, monthEarnings, monthEntryFees };
-  }, [tournaments]);
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewYear((y) => y - 1); setViewMonth(11); }
@@ -497,69 +482,30 @@ export default function Calendar() {
 
       {/* Hero Banner */}
       {(() => {
-        const currentMonth = today.toLocaleString('default', { month: 'long' });
         return (
           <div
-            className="rounded-2xl px-5 pt-5 pb-4 sm:px-7 sm:pt-6 sm:pb-5 mb-4 overflow-hidden relative"
+            className="rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-4 flex items-center justify-between overflow-hidden relative"
             style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}
           >
             <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
-
-            {/* Title row */}
-            <div className="relative flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">Calendar</h1>
-                <p className="text-slate-400 text-xs sm:text-sm mt-1">Sessions &amp; tournaments by date</p>
-                <BannerMedalStrip medals={medalTally} className="mt-3" />
-              </div>
-              <div className="relative select-none flex-shrink-0 hidden sm:block opacity-80">
-                <svg width="60" height="60" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-                  <rect x="4" y="10" width="56" height="50" rx="8" fill="white" fillOpacity="0.08"/>
-                  <rect x="4" y="10" width="56" height="50" rx="8" stroke="white" strokeOpacity="0.2" strokeWidth="1.5"/>
-                  <path d="M4 24h56" stroke="white" strokeOpacity="0.25" strokeWidth="1.5"/>
-                  <path d="M22 4v12M42 4v12" stroke="white" strokeOpacity="0.4" strokeWidth="2" strokeLinecap="round"/>
-                  <rect x="12" y="32" width="8" height="8" rx="2" fill="#91BE4D" fillOpacity="0.6"/>
-                  <rect x="28" y="32" width="8" height="8" rx="2" fill="#ec9937" fillOpacity="0.6"/>
-                  <rect x="44" y="32" width="8" height="8" rx="2" fill="#3b82f6" fillOpacity="0.5"/>
-                  <rect x="12" y="46" width="8" height="8" rx="2" fill="#a855f7" fillOpacity="0.5"/>
-                  <rect x="28" y="46" width="8" height="8" rx="2" fill="#91BE4D" fillOpacity="0.35"/>
-                </svg>
-              </div>
+            <div className="relative min-w-0">
+              <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">Calendar</h1>
+              <p className="text-slate-400 text-xs sm:text-sm mt-1">Sessions &amp; tournaments by date</p>
+              <BannerMedalStrip medals={medalTally} className="mt-3" />
             </div>
-
-            {/* Stats strip */}
-            <div className="relative mt-4 pt-3 border-t border-white/20 space-y-2.5">
-              {/* Prize money row */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-white/80">Prize Money Won</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-white/40 mb-0.5">Total</p>
-                  <p className="text-sm font-bold text-green-400">{formatCurrency(financialStats.totalEarnings, currency)}</p>
-                </div>
-                <div className="w-px h-7 bg-white/15 flex-shrink-0" />
-                <div className="text-right">
-                  <p className="text-[10px] text-white/40 mb-0.5">{currentMonth}</p>
-                  <p className="text-sm font-bold text-green-300">{formatCurrency(financialStats.monthEarnings, currency)}</p>
-                </div>
-              </div>
-              {/* Entry fees row */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-white/80">Entry Fees Paid</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-white/40 mb-0.5">Total</p>
-                  <p className="text-sm font-bold text-red-400">{formatCurrency(financialStats.totalEntryFees, currency)}</p>
-                </div>
-                <div className="w-px h-7 bg-white/15 flex-shrink-0" />
-                <div className="text-right">
-                  <p className="text-[10px] text-white/40 mb-0.5">{currentMonth}</p>
-                  <p className="text-sm font-bold text-red-300">{formatCurrency(financialStats.monthEntryFees, currency)}</p>
-                </div>
-              </div>
+            <div className="relative select-none flex-shrink-0 hidden sm:block opacity-80">
+              <svg width="60" height="60" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+                <rect x="4" y="10" width="56" height="50" rx="8" fill="white" fillOpacity="0.08"/>
+                <rect x="4" y="10" width="56" height="50" rx="8" stroke="white" strokeOpacity="0.2" strokeWidth="1.5"/>
+                <path d="M4 24h56" stroke="white" strokeOpacity="0.25" strokeWidth="1.5"/>
+                <path d="M22 4v12M42 4v12" stroke="white" strokeOpacity="0.4" strokeWidth="2" strokeLinecap="round"/>
+                <rect x="12" y="32" width="8" height="8" rx="2" fill="#91BE4D" fillOpacity="0.6"/>
+                <rect x="28" y="32" width="8" height="8" rx="2" fill="#ec9937" fillOpacity="0.6"/>
+                <rect x="44" y="32" width="8" height="8" rx="2" fill="#3b82f6" fillOpacity="0.5"/>
+                <rect x="12" y="46" width="8" height="8" rx="2" fill="#a855f7" fillOpacity="0.5"/>
+                <rect x="28" y="46" width="8" height="8" rx="2" fill="#91BE4D" fillOpacity="0.35"/>
+              </svg>
             </div>
           </div>
         );
