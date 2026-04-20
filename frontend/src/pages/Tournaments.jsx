@@ -81,6 +81,39 @@ export default function Tournaments() {
         }
       }
 
+      if (data.travelExpense) {
+        const linkedId = created?._id ? String(created._id) : '';
+        if (!linkedId) {
+          // Same defensive guard as Calendar.saveTravelExpense — never create
+          // a travel expense that's missing the link back to its tournament.
+          console.error('[handleAdd] Missing created._id — refusing to create unlinked travel expense', created);
+        } else {
+          try {
+            const te = data.travelExpense;
+            const firstDate = created.categories[0]?.date || new Date().toISOString().slice(0, 10);
+            await api.createExpense({
+              type: 'travel',
+              title: `${created.name} – Travel`,
+              amount: te.total,
+              date: firstDate,
+              tournamentId: linkedId,
+              fromCity: te.fromCity,
+              toCity: te.toCity,
+              isInternational: te.isInternational,
+              transport: te.transport,
+              localCommute: te.localCommute,
+              accommodation: te.accommodation,
+              food: te.food,
+              equipment: te.equipment,
+              visaDocs: te.visaDocs,
+              travelInsurance: te.travelInsurance,
+            });
+          } catch (err) {
+            console.error('[handleAdd] Failed to create linked travel expense', err);
+          }
+        }
+      }
+
       closeModal();
       fetchTournaments();
     } catch (err) {
@@ -119,6 +152,37 @@ export default function Tournaments() {
           }
         } catch {
           // Calendar sync failure is silent
+        }
+      }
+
+      if (data.travelExpense) {
+        const linkedId = updated?._id ? String(updated._id) : '';
+        if (!linkedId) {
+          console.error('[handleEdit] Missing updated._id — refusing to create unlinked travel expense', updated);
+        } else {
+          try {
+            const te = data.travelExpense;
+            const firstDate = updated.categories[0]?.date || new Date().toISOString().slice(0, 10);
+            await api.createExpense({
+              type: 'travel',
+              title: `${updated.name} – Travel`,
+              amount: te.total,
+              date: firstDate,
+              tournamentId: linkedId,
+              fromCity: te.fromCity,
+              toCity: te.toCity,
+              isInternational: te.isInternational,
+              transport: te.transport,
+              localCommute: te.localCommute,
+              accommodation: te.accommodation,
+              food: te.food,
+              equipment: te.equipment,
+              visaDocs: te.visaDocs,
+              travelInsurance: te.travelInsurance,
+            });
+          } catch (err) {
+            console.error('[handleEdit] Failed to create linked travel expense', err);
+          }
         }
       }
 
@@ -169,6 +233,31 @@ export default function Tournaments() {
       setDeleteLoading(false);
     }
   };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const fmtDate = (dateStr) => {
+    if (!dateStr) return 'No date';
+    const [y, m, d] = dateStr.split('T')[0].split('-');
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+    });
+  };
+  const getLatestDate = (t) => {
+    const dates = (t.categories || []).map((c) => c.date).filter(Boolean).sort();
+    return dates.at(-1) || '';
+  };
+  const getEarliestDate = (t) => {
+    const dates = (t.categories || []).map((c) => c.date).filter(Boolean).sort();
+    return dates[0] || '';
+  };
+  const isUpcoming = (t) => getLatestDate(t) >= today;
+
+  const upcomingTournaments = tournaments
+    .filter((t) => isUpcoming(t))
+    .sort((a, b) => getEarliestDate(a).localeCompare(getEarliestDate(b)));
+  const pastTournaments = tournaments
+    .filter((t) => !isUpcoming(t))
+    .sort((a, b) => getLatestDate(b).localeCompare(getLatestDate(a)));
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -260,113 +349,154 @@ export default function Tournaments() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3 sm:space-y-4">
-          {tournaments.map((t) => (
-            <div
-              key={t._id}
-              className="bg-white rounded-xl shadow-md border border-gray-100 p-4 sm:p-5 border-l-4 border-l-[#91BE4D]"
-            >
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{t.name}</h3>
-                  {t.location?.name && (
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <svg className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      <span className="text-xs text-gray-500 truncate">{t.location.name}</span>
-                      {getMapUrl(t.location) && (
-                        <a
-                          href={getMapUrl(t.location)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-blue-500 hover:text-blue-700 hover:underline flex-shrink-0"
-                        >
-                          Map
-                        </a>
-                      )}
-                    </div>
-                  )}
+        <div className="space-y-6">
+          {[
+            { label: 'Upcoming', list: upcomingTournaments, upcoming: true },
+            { label: 'Past', list: pastTournaments, upcoming: false },
+          ].map(({ label, list, upcoming }) =>
+            list.length === 0 ? null : (
+              <div key={label} className="space-y-3 sm:space-y-4">
+                {/* Section header */}
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-bold uppercase tracking-widest ${upcoming ? 'text-green-700' : 'text-gray-400'}`}>
+                    {label}
+                  </span>
+                  <div className={`flex-1 h-px ${upcoming ? 'bg-green-100' : 'bg-gray-200'}`} />
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${upcoming ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {list.length}
+                  </span>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-400">Total Profit</p>
-                  <p className={`text-base sm:text-lg font-bold ${t.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(t.totalProfit, currency)}
-                  </p>
-                </div>
-              </div>
 
-              {/* Categories */}
-              <div className="space-y-2 mb-4 pb-4 border-b border-gray-200">
-                {t.categories.map((cat, idx) => (
-                  <div key={idx} className="bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                      <span className="font-medium text-gray-700 text-sm">{cat.categoryName}</span>
-                      <span className="text-xs text-gray-500">
-                        {cat.date ? new Date(cat.date.split('T')[0] + 'T00:00:00').toLocaleDateString(undefined) : 'No date'}
-                      </span>
-                      <span className={`w-fit text-xs font-medium px-1.5 py-0.5 rounded ${MEDAL_COLORS[cat.medal]}`}>
-                        {cat.medal}
-                      </span>
+                {list.map((t) => (
+                  <div
+                    key={t._id}
+                    className={`bg-white rounded-xl shadow-md border border-gray-100 p-4 sm:p-5 border-l-4 ${upcoming ? 'border-l-green-500' : 'border-l-[#91BE4D]'}`}
+                  >
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-gray-900 text-sm sm:text-base">{t.name}</h3>
+                          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${upcoming ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {upcoming ? 'Upcoming' : 'Past'}
+                          </span>
+                        </div>
+                        {t.location?.name && (
+                          <div className="flex items-center gap-1 mt-0.5">
+                            <svg className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-xs text-gray-500 truncate">{t.location.name}</span>
+                            {getMapUrl(t.location) && (
+                              <a
+                                href={getMapUrl(t.location)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-500 hover:text-blue-700 hover:underline flex-shrink-0"
+                              >
+                                Map
+                              </a>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        {upcoming ? (
+                          <p className="text-xs text-gray-400">Entry Fees</p>
+                        ) : (
+                          <p className="text-xs text-gray-400">Total Profit</p>
+                        )}
+                        {upcoming ? (
+                          <p className="text-base sm:text-lg font-bold text-gray-700">
+                            {formatCurrency(t.categories.reduce((s, c) => s + (c.entryFee || 0), 0), currency)}
+                          </p>
+                        ) : (
+                          <p className={`text-base sm:text-lg font-bold ${t.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatCurrency(t.totalProfit, currency)}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div className="grid grid-cols-3 sm:flex sm:gap-4 text-right gap-2">
-                      <div>
-                        <p className="text-xs text-gray-400">Entry Fees</p>
-                        <p className="text-xs sm:text-sm font-medium text-gray-700">{formatCurrency(cat.entryFee, currency)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-400">Amount Won</p>
-                        <p className="text-xs sm:text-sm font-medium text-gray-700">{formatCurrency(cat.prizeAmount, currency)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-400">Profit</p>
-                        <p className={`text-xs sm:text-sm font-semibold ${(cat.prizeAmount - cat.entryFee) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {formatCurrency(cat.prizeAmount - cat.entryFee, currency)}
-                        </p>
-                      </div>
+
+                    {/* Categories */}
+                    <div className="space-y-2 mb-4 pb-4 border-b border-gray-200">
+                      {t.categories.map((cat, idx) => (
+                        <div key={idx} className="bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                            <span className="font-medium text-gray-700 text-sm">{cat.categoryName}</span>
+                            <span className="text-xs text-gray-500">
+                              {fmtDate(cat.date)}
+                            </span>
+                            {!upcoming && (
+                              <span className={`w-fit text-xs font-medium px-1.5 py-0.5 rounded ${MEDAL_COLORS[cat.medal]}`}>
+                                {cat.medal}
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-3 sm:flex sm:gap-4 text-right gap-2">
+                            <div>
+                              <p className="text-xs text-gray-400">Entry Fee</p>
+                              <p className="text-xs sm:text-sm font-medium text-gray-700">{formatCurrency(cat.entryFee, currency)}</p>
+                            </div>
+                            {!upcoming && (
+                              <>
+                                <div>
+                                  <p className="text-xs text-gray-400">Amount Won</p>
+                                  <p className="text-xs sm:text-sm font-medium text-gray-700">{formatCurrency(cat.prizeAmount, currency)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-400">Profit</p>
+                                  <p className={`text-xs sm:text-sm font-semibold ${(cat.prizeAmount - cat.entryFee) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {formatCurrency(cat.prizeAmount - cat.entryFee, currency)}
+                                  </p>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => openEditModal(t)}
+                        className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 font-medium min-h-[40px] px-2 sm:px-3 py-1 rounded hover:bg-blue-50 transition"
+                      >
+                        Edit
+                      </button>
+                      {deleteId === t._id ? (
+                        <span className="flex gap-2 items-center">
+                          <button
+                            onClick={() => handleDelete(t._id)}
+                            disabled={deleteLoading}
+                            className="text-xs sm:text-sm text-red-600 hover:text-red-800 font-medium min-h-[40px] px-2 sm:px-3 py-1 rounded hover:bg-red-50 transition disabled:opacity-60"
+                          >
+                            {deleteLoading ? 'Deleting…' : 'Confirm'}
+                          </button>
+                          <button
+                            onClick={() => setDeleteId(null)}
+                            disabled={deleteLoading}
+                            className="text-xs sm:text-sm text-gray-400 hover:text-gray-600 min-h-[40px] px-2 sm:px-3 py-1 rounded transition disabled:opacity-40"
+                          >
+                            Cancel
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setDeleteId(t._id)}
+                          className="text-xs sm:text-sm text-red-500 hover:text-red-700 font-medium min-h-[40px] px-2 sm:px-3 py-1 rounded hover:bg-red-50 transition"
+                        >
+                          Delete
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
-
-              {/* Actions */}
-              <div className="flex gap-2 pt-2">
-                <button
-                  onClick={() => openEditModal(t)}
-                  className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 font-medium min-h-[40px] px-2 sm:px-3 py-1 rounded hover:bg-blue-50 transition"
-                >
-                  Edit
-                </button>
-                {deleteId === t._id ? (
-                  <span className="flex gap-2 items-center">
-                    <button
-                      onClick={() => handleDelete(t._id)}
-                      disabled={deleteLoading}
-                      className="text-xs sm:text-sm text-red-600 hover:text-red-800 font-medium min-h-[40px] px-2 sm:px-3 py-1 rounded hover:bg-red-50 transition disabled:opacity-60"
-                    >
-                      {deleteLoading ? 'Deleting…' : 'Confirm'}
-                    </button>
-                    <button
-                      onClick={() => setDeleteId(null)}
-                      disabled={deleteLoading}
-                      className="text-xs sm:text-sm text-gray-400 hover:text-gray-600 min-h-[40px] px-2 sm:px-3 py-1 rounded transition disabled:opacity-40"
-                    >
-                      Cancel
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => setDeleteId(t._id)}
-                    className="text-xs sm:text-sm text-red-500 hover:text-red-700 font-medium min-h-[40px] px-2 sm:px-3 py-1 rounded hover:bg-red-50 transition"
-                  >
-                    Delete
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+            )
+          )}
         </div>
       )}
 

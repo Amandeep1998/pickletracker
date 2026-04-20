@@ -74,6 +74,9 @@ export default function Calendar() {
   const [sessionFormLoading, setSessionFormLoading] = useState(false);
   const [sessionFormError, setSessionFormError] = useState('');
 
+  // Edit session modal — opened by tapping a session card in the day popup
+  const [editSessionModal, setEditSessionModal] = useState({ open: false, session: null });
+
   // Floating action button (speed-dial) state
   const [fabOpen, setFabOpen] = useState(false);
 
@@ -102,15 +105,9 @@ export default function Calendar() {
     api.createTournament(data)
       .then(() => fetchData())
       .then(() => {
-        // After data is fresh, navigate to the tournament's month and highlight it
-        const dateStr = data.categories?.[0]?.date;
-        if (dateStr) {
-          const [y, m] = dateStr.split('-').map(Number);
-          setViewYear(y);
-          setViewMonth(m - 1); // 0-indexed
-          setHighlightDate(dateStr);
-          setTimeout(() => setHighlightDate(''), 4000);
-        }
+        // After data is fresh, navigate to the tournament's month and flash
+        // the cell (shared helper — same behaviour as add/edit on Calendar).
+        focusAndHighlightDate(data.categories?.[0]?.date);
         setPendingToast(`"${data.name}" saved! You'll get a reminder the day before. 🏆`);
         setTimeout(() => setPendingToast(''), 6000);
       })
@@ -268,11 +265,84 @@ export default function Calendar() {
   };
 
   // ── Tournament CRUD ──
+
+  // Switch the calendar to the given date's month, scroll the specific day
+  // cell into view, and flash it for ~8 s so the user clearly sees where the
+  // new/edited tournament landed. Works on mobile (the highlight uses
+  // responsive classes; scrollIntoView with `block: 'center'` handles any
+  // viewport) and desktop.
+  const focusAndHighlightDate = (dateStr) => {
+    if (!dateStr) return;
+    const [y, m] = dateStr.split('-').map(Number);
+    if (!y || !m) return;
+    setViewYear(y);
+    setViewMonth(m - 1);
+    setHighlightDate(dateStr);
+    // Defer the scroll until after React has rendered the (possibly new) month
+    // grid and tagged the cell with `data-date`. Two rAFs so we run after the
+    // commit's next paint — reliable across Safari/Chrome/Firefox.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const cell = document.querySelector(`[data-calendar-date="${dateStr}"]`);
+        if (cell && typeof cell.scrollIntoView === 'function') {
+          cell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+    });
+    setTimeout(() => setHighlightDate(''), 8000);
+  };
+
+  // Travel expense logged on the tournament form is a separate Expense record
+  // (type: 'travel') — the Tournament schema has no travel fields, so without
+  // this call the travel data submitted from the Calendar would silently
+  // vanish and never appear on the Travel page. Mirrors Tournaments.jsx.
+  const saveTravelExpense = async (tournament, data) => {
+    if (!data?.travelExpense) return;
+    // Defensive: never create an unlinked travel expense from the tournament
+    // form. If the tournament document we got back from the API somehow
+    // doesn't have an _id (network race, partial response, server-side
+    // rename), surface a hard error and bail rather than silently dropping
+    // the link — that's exactly the kind of orphan the user complained about.
+    const linkedId = tournament?._id ? String(tournament._id) : '';
+    if (!linkedId) {
+      console.error('[saveTravelExpense] Missing tournament._id — refusing to create unlinked travel expense', tournament);
+      return;
+    }
+    try {
+      const te = data.travelExpense;
+      const firstDate = tournament?.categories?.[0]?.date || new Date().toISOString().slice(0, 10);
+      await api.createExpense({
+        type: 'travel',
+        title: `${tournament.name} – Travel`,
+        amount: te.total,
+        date: firstDate,
+        tournamentId: linkedId,
+        fromCity: te.fromCity,
+        toCity: te.toCity,
+        isInternational: te.isInternational,
+        transport: te.transport,
+        localCommute: te.localCommute,
+        accommodation: te.accommodation,
+        food: te.food,
+        equipment: te.equipment,
+        visaDocs: te.visaDocs,
+        travelInsurance: te.travelInsurance,
+      });
+    } catch (err) {
+      // Non-fatal for the tournament save itself, but loud enough to debug if
+      // it ever happens. Previously this was a silent `catch {}` which made
+      // missing-link bugs invisible.
+      console.error('[saveTravelExpense] Failed to create linked travel expense', err);
+    }
+  };
+
   const handleAddTournament = async (data) => {
     setFormLoading(true);
     setAddError('');
     try {
-      await api.createTournament(data);
+      const res = await api.createTournament(data);
+      const created = res?.data?.data;
+      await saveTravelExpense(created, data);
       posthog.capture('tournament_created', {
         category_count: data.categories?.length ?? 1,
         has_feedback: !!(data.rating || data.wentWell?.length || data.wentWrong?.length || data.notes),
@@ -280,9 +350,13 @@ export default function Calendar() {
         went_well_count: data.wentWell?.length ?? 0,
         went_wrong_count: data.wentWrong?.length ?? 0,
         has_notes: !!(data.notes?.trim()),
+        has_travel_expense: !!data.travelExpense,
       });
       setAddModal({ open: false, date: null });
       await fetchTournaments();
+      // Navigate to the new tournament's first category date and flash the
+      // cell so the user sees where it was added.
+      focusAndHighlightDate(created?.categories?.[0]?.date || data?.categories?.[0]?.date);
     } catch (err) {
       const msg = err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add tournament';
       setAddError(msg);
@@ -295,17 +369,23 @@ export default function Calendar() {
     setFormLoading(true);
     setFormError('');
     try {
-      await api.updateTournament(selectedTournament._id, data);
+      const res = await api.updateTournament(selectedTournament._id, data);
+      const updated = res?.data?.data;
+      await saveTravelExpense(updated, data);
       posthog.capture('tournament_edited', {
         has_feedback: !!(data.rating || data.wentWell?.length || data.wentWrong?.length || data.notes),
         has_rating: !!data.rating,
         went_well_count: data.wentWell?.length ?? 0,
         went_wrong_count: data.wentWrong?.length ?? 0,
         has_notes: !!(data.notes?.trim()),
+        has_travel_expense: !!data.travelExpense,
       });
       setIsEditing(false);
       setSelectedTournament(null);
       await fetchTournaments();
+      // Same flash-highlight as on create so the user can see their edit
+      // landed on the right date (especially useful if the date changed).
+      focusAndHighlightDate(updated?.categories?.[0]?.date || data?.categories?.[0]?.date);
     } catch (err) {
       setFormError(err.response?.data?.message || 'Failed to update tournament');
     } finally {
@@ -331,6 +411,39 @@ export default function Calendar() {
       await fetchData();
     } catch (err) {
       setSessionFormError(err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add session');
+    } finally {
+      setSessionFormLoading(false);
+    }
+  };
+
+  const handleEditSession = async (data) => {
+    if (!editSessionModal.session?._id) return;
+    setSessionFormLoading(true);
+    setSessionFormError('');
+    try {
+      await api.updateSession(editSessionModal.session._id, data);
+      setEditSessionModal({ open: false, session: null });
+      await fetchData();
+    } catch (err) {
+      setSessionFormError(err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to update session');
+    } finally {
+      setSessionFormLoading(false);
+    }
+  };
+
+  const handleDeleteSession = async () => {
+    const id = editSessionModal.session?._id;
+    if (!id) return;
+    const ok = typeof window !== 'undefined' ? window.confirm('Delete this session? This cannot be undone.') : true;
+    if (!ok) return;
+    setSessionFormLoading(true);
+    setSessionFormError('');
+    try {
+      await api.deleteSession(id);
+      setEditSessionModal({ open: false, session: null });
+      await fetchData();
+    } catch (err) {
+      setSessionFormError(err.response?.data?.message || 'Failed to delete session');
     } finally {
       setSessionFormLoading(false);
     }
@@ -442,8 +555,14 @@ export default function Calendar() {
           </div>
         </div>
 
-        {/* Helper hint — bold, eye-catching bar that guides users to tap a date */}
-        <div className="relative overflow-hidden px-4 py-3 border-b border-[#91BE4D]/30 bg-gradient-to-r from-[#f4f8e8] via-[#eef5e6] to-[#fdf2e4]">
+        {/* Helper hint — bold, eye-catching bar that guides users to tap a date.
+            `pointer-events-none` is critical: without it, the decorative blobs /
+            animated hand inside can swallow taps meant for the first row of the
+            grid below on iOS/Android. The bar is purely informational anyway. */}
+        <div
+          aria-hidden="true"
+          className="relative overflow-hidden px-4 py-3 border-b border-[#91BE4D]/30 bg-gradient-to-r from-[#f4f8e8] via-[#eef5e6] to-[#fdf2e4] pointer-events-none select-none"
+        >
           {/* Soft decorative blob */}
           <div className="absolute -right-8 -top-8 w-28 h-28 rounded-full bg-[#91BE4D]/15 blur-2xl pointer-events-none" />
           <div className="absolute -left-6 -bottom-10 w-24 h-24 rounded-full bg-[#ec9937]/15 blur-2xl pointer-events-none" />
@@ -492,7 +611,7 @@ export default function Calendar() {
         </div>
 
         {/* Day grid */}
-        <div className="grid grid-cols-7">
+        <div className="grid grid-cols-7" style={{ touchAction: 'manipulation' }}>
           {monthGrid.map((day, idx) => {
             if (!day) {
               return <div key={`blank-${idx}`} className="border-b border-r border-gray-50 min-h-[72px] sm:min-h-[90px] bg-gray-50/40" />;
@@ -507,19 +626,27 @@ export default function Calendar() {
             const isHighlighted = dateStr === highlightDate;
 
             return (
-              <div
+              <button
                 key={dateStr}
+                type="button"
+                data-calendar-date={dateStr}
                 onClick={() => openDayPopup(dateStr)}
-                className={`relative flex flex-col border-b border-r border-gray-100 min-h-[72px] sm:min-h-[90px] p-1 sm:p-1.5 transition-colors select-none cursor-pointer
+                style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+                className={`relative flex flex-col items-stretch text-left border-b border-r border-gray-100 min-h-[72px] sm:min-h-[90px] p-1 sm:p-1.5 select-none cursor-pointer outline-none bg-transparent appearance-none
+                  transition-[transform,background-color,box-shadow] duration-150 ease-out
+                  hover:shadow-sm hover:z-[1]
+                  active:scale-[0.97] active:shadow-inner active:bg-gray-100/80 active:z-[1]
+                  focus-visible:ring-2 focus-visible:ring-[#91BE4D]/60 focus-visible:z-[1]
+                  motion-reduce:transition-none motion-reduce:transform-none
                   ${hasActivity ? 'hover:bg-green-50/50' : isFuture ? 'hover:bg-gray-50' : 'hover:bg-gray-50/60'}
                   ${idx % 7 === 0 ? 'border-l-0' : ''}
-                  ${isHighlighted ? 'ring-2 ring-inset ring-[#91BE4D] bg-[#f4f8e8]' : ''}
+                  ${isHighlighted ? 'ring-2 ring-inset ring-[#91BE4D] bg-[#f4f8e8] z-[2] rounded-md animate-cell-breathe motion-reduce:animate-none' : ''}
                 `}
               >
                 {/* Date number */}
                 <div className="flex justify-center mb-1 relative">
                   {isHighlighted && (
-                    <span className="absolute inset-0 flex items-center justify-center">
+                    <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
                       <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#91BE4D]/30 animate-ping" />
                     </span>
                   )}
@@ -531,7 +658,7 @@ export default function Calendar() {
                 </div>
 
                 {hasActivity && (
-                  <div className="space-y-0.5">
+                  <div className="space-y-0.5 pointer-events-none sm:pointer-events-auto">
                     {daySessions.slice(0, 1).map((s, i) => (
                       <div
                         key={i}
@@ -546,7 +673,7 @@ export default function Calendar() {
                       <div
                         key={i}
                         onClick={(e) => { e.stopPropagation(); setSelectedTournament(ev.tournament); }}
-                        className="text-[8px] sm:text-[11px] bg-[#91BE4D]/15 text-[#4a6e10] rounded px-1 py-0.5 truncate font-semibold sm:hover:bg-green-200 transition cursor-pointer leading-tight"
+                        className="text-[8px] sm:text-[11px] bg-[#91BE4D]/15 text-[#4a6e10] rounded px-1 py-0.5 truncate font-semibold sm:hover:bg-green-200 transition sm:cursor-pointer leading-tight"
                         title={`${ev.tournament.name} – ${ev.category.categoryName}`}
                       >
                         <span className="hidden sm:inline">🏆 </span>
@@ -565,7 +692,7 @@ export default function Calendar() {
                     })()}
                   </div>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -663,9 +790,32 @@ export default function Calendar() {
               )}
               {(sessionsByDate[dayPopup.date] || []).map((s) => {
                 const RATING_EMOJI = { 1: '😫', 2: '😕', 3: '😐', 4: '😊', 5: '🔥' };
-                const TYPE_BG = { casual: 'bg-blue-50 border-blue-100', practice: 'bg-purple-50 border-purple-100', tournament: 'bg-orange-50 border-orange-100' };
+                const TYPE_BG = {
+                  casual: 'bg-blue-50 border-blue-200 hover:bg-blue-100 hover:border-blue-300',
+                  practice: 'bg-purple-50 border-purple-200 hover:bg-purple-100 hover:border-purple-300',
+                  tournament: 'bg-orange-50 border-orange-200 hover:bg-orange-100 hover:border-orange-300',
+                };
+                const PILL_TONE = {
+                  casual: 'bg-blue-100 text-blue-700 group-hover:bg-blue-200',
+                  practice: 'bg-purple-100 text-purple-700 group-hover:bg-purple-200',
+                  tournament: 'bg-orange-100 text-orange-700 group-hover:bg-orange-200',
+                };
+                const DIVIDER_TONE = {
+                  casual: 'border-blue-200/70',
+                  practice: 'border-purple-200/70',
+                  tournament: 'border-orange-200/70',
+                };
+                const bg = TYPE_BG[s.type] || 'bg-gray-50 border-gray-200 hover:bg-gray-100 hover:border-gray-300';
+                const pill = PILL_TONE[s.type] || 'bg-gray-100 text-gray-700 group-hover:bg-gray-200';
+                const divider = DIVIDER_TONE[s.type] || 'border-gray-200';
                 return (
-                  <div key={s._id} className={`rounded-xl px-3 py-2.5 border ${TYPE_BG[s.type] || 'bg-gray-50 border-gray-100'}`}>
+                  <button
+                    key={s._id}
+                    type="button"
+                    onClick={() => { setEditSessionModal({ open: true, session: s }); setSessionFormError(''); closeDayPopup(); }}
+                    aria-label={`Open ${SESSION_LABEL[s.type] || 'session'} session details`}
+                    className={`group w-full text-left rounded-xl px-3 py-2.5 border shadow-sm hover:shadow-md active:scale-[0.99] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#91BE4D]/60 ${bg}`}
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-base">{SESSION_ICON[s.type]}</span>
@@ -685,16 +835,30 @@ export default function Calendar() {
                         {s.courtFee > 0 && <p className="text-xs text-gray-400 mt-0.5">{symbol}{s.courtFee}</p>}
                       </div>
                     </div>
-                  </div>
+                    <div className={`mt-2 pt-2 border-t border-dashed ${divider} flex items-center justify-between gap-2`}>
+                      <span className="text-[11px] font-semibold text-gray-600 tracking-wide uppercase">Tap to view details</span>
+                      <span
+                        className={`inline-flex items-center gap-1 text-[11px] font-semibold rounded-full px-2 py-0.5 transition-colors ${pill}`}
+                        aria-hidden="true"
+                      >
+                        Open
+                        <svg className="w-3 h-3 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </span>
+                    </div>
+                  </button>
                 );
               })}
               {popupByTournament.map(({ tournament, categories }) => (
                 <button
                   key={tournament._id}
+                  type="button"
                   onClick={() => { setSelectedTournament(tournament); closeDayPopup(); }}
-                  className="w-full text-left bg-gray-50 hover:bg-green-50 rounded-xl px-3 py-3 transition border border-transparent hover:border-green-100"
+                  aria-label={`Open ${tournament.name} details`}
+                  className="group w-full text-left bg-white hover:bg-green-50 active:bg-green-100 rounded-xl px-3 py-3 transition-colors border border-gray-200 hover:border-[#91BE4D] shadow-sm hover:shadow-md active:scale-[0.99] outline-none focus-visible:ring-2 focus-visible:ring-[#91BE4D]/60"
                 >
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-gray-900 truncate">{tournament.name}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
@@ -714,6 +878,18 @@ export default function Calendar() {
                       </p>
                       <p className="text-xs text-gray-400 mt-0.5">profit</p>
                     </div>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-dashed border-gray-200 flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-semibold text-[#4a6e10] tracking-wide uppercase">Tap to view details</span>
+                    <span
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#4a6e10] bg-[#91BE4D]/15 group-hover:bg-[#91BE4D]/25 rounded-full px-2 py-0.5 transition-colors"
+                      aria-hidden="true"
+                    >
+                      Open
+                      <svg className="w-3 h-3 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </span>
                   </div>
                 </button>
               ))}
@@ -771,6 +947,52 @@ export default function Calendar() {
                 onCancel={() => { setAddSessionModal({ open: false, date: null }); setSessionFormError(''); }}
                 loading={sessionFormLoading}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Session Modal ── */}
+      {editSessionModal.open && editSessionModal.session && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-xl max-h-[92vh] flex flex-col overflow-hidden" style={{ maxHeight: '92svh' }}>
+            <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-6 pb-2 flex-shrink-0 gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Edit Session</h2>
+                {editSessionModal.session?.date && (
+                  <p className="text-xs text-gray-500 mt-0.5">{formatDate(editSessionModal.session.date)}</p>
+                )}
+              </div>
+              <button
+                onClick={() => { setEditSessionModal({ open: false, session: null }); setSessionFormError(''); }}
+                className="text-gray-400 hover:text-gray-600 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-4 sm:px-6 pb-4 sm:pb-6">
+              {sessionFormError && (
+                <div className="mb-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{sessionFormError}</div>
+              )}
+              <SessionForm
+                initial={editSessionModal.session}
+                onSubmit={handleEditSession}
+                onCancel={() => { setEditSessionModal({ open: false, session: null }); setSessionFormError(''); }}
+                loading={sessionFormLoading}
+              />
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={handleDeleteSession}
+                  disabled={sessionFormLoading}
+                  className="w-full text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 rounded-xl py-2.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Delete session
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -982,7 +1204,7 @@ export default function Calendar() {
 
       {/* ── Floating Action Button (speed-dial) ──
           Hidden whenever a modal/popup is open so it doesn't overlap forms. */}
-      {!dayPopup.open && !addModal.open && !addSessionModal.open && !selectedTournament && (
+      {!dayPopup.open && !addModal.open && !addSessionModal.open && !editSessionModal.open && !selectedTournament && (
       <>
       {/* Scrim */}
       {fabOpen && (

@@ -135,7 +135,7 @@ export default function Admin() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 mb-3">
         <StatCard label="Total Users" value={stats.totalUsers} />
         <StatCard label="Active This Week" value={stats.activeThisWeek} color="text-green-600" />
         <StatCard label="Active This Month" value={stats.activeThisMonth} color="text-yellow-600" />
@@ -146,6 +146,11 @@ export default function Admin() {
           value={formatCurrency(stats.totalRevenueTracked, currency)}
           color="text-green-700"
         />
+      </div>
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-8">
+        <StatCard label="Sessions Logged" value={stats.totalSessions} color="text-blue-600" sub="across all users" />
+        <StatCard label="Gear Spend" value={formatCurrency(stats.totalGearSpend, currency)} color="text-purple-600" sub="all gear expenses" />
+        <StatCard label="Travel Spend" value={formatCurrency(stats.totalTravelSpend, currency)} color="text-orange-600" sub="all travel expenses" />
       </div>
 
       {/* Toolbar */}
@@ -278,16 +283,16 @@ export default function Admin() {
               {/* Expanded detail */}
               {isExpanded && (
                 <div className="border-t border-gray-100 px-4 py-4 bg-gray-50">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-                    {/* Activity stats */}
+                    {/* Col 1: Activity */}
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Activity</p>
                       <div className="space-y-1.5 text-xs text-gray-600">
                         <div className="flex justify-between">
                           <span>Joined</span>
                           <span className="font-medium text-gray-900">
-                            {new Date(u.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}
+                            {new Date(u.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: '2-digit' })}
                           </span>
                         </div>
                         <div className="flex justify-between">
@@ -295,27 +300,65 @@ export default function Admin() {
                           <span className="font-medium text-gray-900">{timeAgo(u.lastActive)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Tournaments played</span>
+                          <span>Tournaments</span>
                           <span className="font-medium text-gray-900">{u.tournamentCount}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Total categories</span>
+                          <span>Categories</span>
                           <span className="font-medium text-gray-900">{u.totalCategories}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Expenses logged</span>
-                          <span className="font-medium text-gray-900">{u.expenseCount}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Upcoming tournaments</span>
+                          <span>Upcoming</span>
                           <span className={`font-medium ${u.upcomingCount > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                             {u.upcomingCount || '—'}
                           </span>
                         </div>
                       </div>
+
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-2">Sessions</p>
+                      <div className="space-y-1.5 text-xs text-gray-600">
+                        <div className="flex justify-between">
+                          <span>Total logged</span>
+                          <span className="font-medium text-blue-600">{u.sessionCount}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Practice</span>
+                          <span className="font-medium text-gray-900">{u.sessionTypes?.practice ?? 0}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Casual</span>
+                          <span className="font-medium text-gray-900">{u.sessionTypes?.casual ?? 0}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Tournament</span>
+                          <span className="font-medium text-gray-900">{u.sessionTypes?.tournament ?? 0}</span>
+                        </div>
+                        {u.avgSessionRating != null && (
+                          <div className="flex justify-between">
+                            <span>Avg rating</span>
+                            <span className="font-medium text-yellow-600">{'★'.repeat(Math.round(u.avgSessionRating))} {u.avgSessionRating}/5</span>
+                          </div>
+                        )}
+                        {u.totalCourtFees > 0 && (
+                          <div className="flex justify-between">
+                            <span>Court fees</span>
+                            <span className="font-medium text-red-500">{formatCurrency(u.totalCourtFees, currency)}</span>
+                          </div>
+                        )}
+                        {u.topSkills?.length > 0 && (
+                          <div className="pt-1">
+                            <p className="text-gray-400 mb-1">Top skills</p>
+                            <div className="flex flex-wrap gap-1">
+                              {u.topSkills.map((s, i) => (
+                                <span key={i} className="bg-blue-50 text-blue-600 border border-blue-100 text-[10px] px-1.5 py-0.5 rounded">{s}</span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Financials + medals */}
+                    {/* Col 2: Financials + Expenses */}
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Financials</p>
                       <div className="space-y-1.5 text-xs text-gray-600">
@@ -324,7 +367,7 @@ export default function Admin() {
                           <span className="font-medium text-green-600">{formatCurrency(u.totalEarnings, currency)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Total entry fees</span>
+                          <span>Entry fees</span>
                           <span className="font-medium text-red-500">{formatCurrency(u.totalExpenses, currency)}</span>
                         </div>
                         <div className="flex justify-between">
@@ -335,8 +378,41 @@ export default function Admin() {
                         </div>
                       </div>
 
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-2">Medals</p>
-                      <div className="flex flex-wrap gap-1.5">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-2">Gear Expenses</p>
+                      <div className="space-y-1.5 text-xs text-gray-600">
+                        <div className="flex justify-between">
+                          <span>Items logged</span>
+                          <span className="font-medium text-purple-600">{u.gearExpenseCount ?? 0}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Total spent</span>
+                          <span className="font-medium text-purple-600">{formatCurrency(u.totalGearSpend ?? 0, currency)}</span>
+                        </div>
+                      </div>
+
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-2">Travel Expenses</p>
+                      <div className="space-y-1.5 text-xs text-gray-600">
+                        <div className="flex justify-between">
+                          <span>Trips logged</span>
+                          <span className="font-medium text-orange-600">{u.travelExpenseCount ?? 0}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Total spent</span>
+                          <span className="font-medium text-orange-600">{formatCurrency(u.totalTravelSpend ?? 0, currency)}</span>
+                        </div>
+                        {(u.internationalTripCount ?? 0) > 0 && (
+                          <div className="flex justify-between">
+                            <span>International</span>
+                            <span className="font-medium text-gray-900">{u.internationalTripCount}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Col 3: Medals + Performance */}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Medals</p>
+                      <div className="flex flex-wrap gap-1.5 mb-3">
                         <MedalBadge medal="Gold" count={u.medals.Gold} />
                         <MedalBadge medal="Silver" count={u.medals.Silver} />
                         <MedalBadge medal="Bronze" count={u.medals.Bronze} />
@@ -347,16 +423,13 @@ export default function Admin() {
 
                       {u.topCategory && (
                         <>
-                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-1">Top Category</p>
-                          <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-md border border-purple-100">
+                          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Top Category</p>
+                          <span className="text-xs bg-purple-50 text-purple-700 px-2 py-1 rounded-md border border-purple-100 inline-block mb-3">
                             {u.topCategory}
                           </span>
                         </>
                       )}
-                    </div>
 
-                    {/* Recent tournaments + monthly chart */}
-                    <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Recent Tournaments</p>
                       {u.recentTournaments.length === 0 ? (
                         <p className="text-xs text-gray-400">No tournaments yet</p>
@@ -366,7 +439,7 @@ export default function Admin() {
                             <div key={i} className="flex items-center justify-between bg-white rounded-lg px-3 py-1.5 border border-gray-100">
                               <div className="min-w-0">
                                 <p className="text-xs font-medium text-gray-900 truncate">{t.name}</p>
-                                <p className="text-xs text-gray-400">{t.categoryCount} {t.categoryCount === 1 ? 'category' : 'categories'}</p>
+                                <p className="text-xs text-gray-400">{t.categoryCount} {t.categoryCount === 1 ? 'cat' : 'cats'}</p>
                               </div>
                               <span className={`text-xs font-semibold flex-shrink-0 ml-2 ${t.profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                                 {t.profit >= 0 ? '+' : ''}{formatCurrency(t.profit, currency)}
@@ -375,11 +448,11 @@ export default function Admin() {
                           ))}
                         </div>
                       )}
+                    </div>
 
-                      {/* 6-month activity bar chart */}
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-3 mb-2">
-                        Activity (6 months)
-                      </p>
+                    {/* Col 4: Activity chart */}
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Activity (6 months)</p>
                       <div className="flex items-end gap-1 h-10">
                         {u.monthlyActivity.map((m, i) => {
                           const max = Math.max(...u.monthlyActivity.map((x) => x.count), 1);

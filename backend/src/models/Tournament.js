@@ -66,6 +66,11 @@ const categorySchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    partnerName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
   },
   { _id: false }
 );

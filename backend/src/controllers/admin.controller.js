@@ -16,17 +16,19 @@ const getUsers = async (req, res, next) => {
 
   const enriched = await Promise.all(
     users.map(async (user) => {
-      const [tournaments, expenses] = await Promise.all([
+      const [tournaments, expenses, sessions] = await Promise.all([
         Tournament.find({ userId: user._id }).lean(),
         Expense.find({ userId: user._id }).lean(),
+        Session.find({ userId: user._id }).lean(),
       ]);
 
       const allCats = tournaments.flatMap((t) => t.categories);
 
-      // Last active = most recent tournament or expense update, falling back to join date
+      // Last active = most recent tournament, expense, or session update
       const activityDates = [
         ...tournaments.map((t) => new Date(t.updatedAt)),
         ...expenses.map((e) => new Date(e.updatedAt)),
+        ...sessions.map((s) => new Date(s.updatedAt)),
       ].sort((a, b) => b - a);
       const lastActive = activityDates[0] || new Date(user.createdAt);
 
@@ -84,6 +86,37 @@ const getUsers = async (req, res, next) => {
         };
       });
 
+      // Sessions
+      const sessionCount = sessions.length;
+      const sessionTypes = {
+        tournament: sessions.filter((s) => s.type === 'tournament').length,
+        casual: sessions.filter((s) => s.type === 'casual').length,
+        practice: sessions.filter((s) => s.type === 'practice').length,
+      };
+      const totalCourtFees = sessions.reduce((s, sess) => s + (sess.courtFee || 0), 0);
+      const avgSessionRating = sessionCount > 0
+        ? Math.round((sessions.reduce((s, sess) => s + (sess.rating || 0), 0) / sessionCount) * 10) / 10
+        : null;
+      const skillCounts = {};
+      for (const sess of sessions) {
+        for (const tag of [...(sess.wentWell || []), ...(sess.drillFocus || [])]) {
+          skillCounts[tag] = (skillCounts[tag] || 0) + 1;
+        }
+      }
+      const topSkills = Object.entries(skillCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([tag]) => tag);
+
+      // Gear & travel expenses
+      const gearExpenses = expenses.filter((e) => e.type === 'gear');
+      const travelExpenses = expenses.filter((e) => e.type === 'travel');
+      const gearExpenseCount = gearExpenses.length;
+      const totalGearSpend = gearExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+      const travelExpenseCount = travelExpenses.length;
+      const totalTravelSpend = travelExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+      const internationalTripCount = travelExpenses.filter((e) => e.isInternational).length;
+
       return {
         _id: user._id,
         name: user.name,
@@ -104,6 +137,16 @@ const getUsers = async (req, res, next) => {
         expenseCount: expenses.length,
         recentTournaments,
         monthlyActivity,
+        sessionCount,
+        sessionTypes,
+        totalCourtFees,
+        avgSessionRating,
+        topSkills,
+        gearExpenseCount,
+        totalGearSpend,
+        travelExpenseCount,
+        totalTravelSpend,
+        internationalTripCount,
       };
     })
   );
@@ -117,6 +160,9 @@ const getUsers = async (req, res, next) => {
     totalTournaments: enriched.reduce((s, u) => s + u.tournamentCount, 0),
     totalRevenueTracked: enriched.reduce((s, u) => s + u.totalEarnings, 0),
     googleUsers: users.filter((u) => u.isGoogleUser).length,
+    totalSessions: enriched.reduce((s, u) => s + u.sessionCount, 0),
+    totalGearSpend: enriched.reduce((s, u) => s + u.totalGearSpend, 0),
+    totalTravelSpend: enriched.reduce((s, u) => s + u.totalTravelSpend, 0),
   };
 
     res.json({ success: true, data: { users: enriched, stats } });

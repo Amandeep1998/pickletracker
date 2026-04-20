@@ -8,8 +8,9 @@ export default function SearchableSelect({ options, value, onChange, placeholder
   const containerRef = useRef(null);
   const inputRef = useRef(null);
 
+  const normalize = (s) => s.toLowerCase().replace(/['\u2018\u2019]/g, '');
   const filteredOptions = options.filter((opt) =>
-    opt.toLowerCase().includes(query.toLowerCase())
+    normalize(opt).includes(normalize(query))
   );
 
   const computeStyle = () => {

@@ -51,12 +51,12 @@ describe('Auth - Signup', () => {
     expect(res.status).toBe(400);
   });
 
-  it('should return 400 when password is shorter than 6 characters', async () => {
+  it('should return 400 when password is shorter than 8 characters', async () => {
     const res = await request(app)
       .post('/api/auth/signup')
-      .send({ ...validUser, password: '12345' });
+      .send({ ...validUser, password: '1234567' });
     expect(res.status).toBe(400);
-    expect(res.body.errors[0]).toMatch(/6 characters/i);
+    expect(res.body.errors[0]).toMatch(/8 characters/i);
   });
 
   it('should return 400 for invalid email format', async () => {

@@ -58,7 +58,7 @@ export default function Signup() {
   const strength = useMemo(() => evaluatePasswordStrength(form.password), [form.password]);
 
   useEffect(() => {
-    if (user) navigate('/dashboard', { replace: true });
+    if (user) navigate('/calendar', { replace: true });
   }, [user, navigate]);
 
   const handleChange = (e) => {
@@ -74,8 +74,8 @@ export default function Signup() {
     const result = await handleSignup(form);
     if (result.success) {
       if (result.autoLoggedIn) {
-        // Context has set `user`; the effect above will navigate to /dashboard.
-        setSuccess('Welcome! Setting up your dashboard…');
+        // Context has set `user`; the effect above will navigate to /calendar.
+        setSuccess('Welcome! Taking you to your calendar…');
       } else {
         // Legacy fallback: backend didn't auto-login, send them to /login.
         setSuccess('Account created! Redirecting to login…');

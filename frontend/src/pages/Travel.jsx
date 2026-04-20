@@ -52,8 +52,45 @@ export default function Travel() {
 
   const total = useMemo(() => trips.reduce((s, e) => s + e.amount, 0), [trips]);
 
+  const tournamentMap = useMemo(() => {
+    const map = {};
+    tournaments.forEach((t) => { map[t._id] = t.name; });
+    return map;
+  }, [tournaments]);
+
+  // Lookup by exact tournament name -> _id, used to self-heal trips that were
+  // logged from the tournament form before `tournamentId` was being saved.
+  // Those trips are titled "<Tournament Name> – Travel" by the Calendar /
+  // Tournaments page; we infer the link so the user sees the badge AND so the
+  // Edit modal preselects the tournament in the dropdown (saving the trip
+  // then writes the id back into the DB and the link becomes permanent).
+  const tournamentNameMap = useMemo(() => {
+    const map = {};
+    tournaments.forEach((t) => { if (t.name) map[t.name] = t._id; });
+    return map;
+  }, [tournaments]);
+
+  const inferTournamentId = (trip) => {
+    if (!trip) return '';
+    if (trip.tournamentId) return String(trip.tournamentId);
+    const title = trip.title || '';
+    // Title pattern produced by Calendar / Tournaments save: "<Name> – Travel"
+    // (the dash is an em-dash U+2013). Match only that exact suffix to avoid
+    // accidentally linking unrelated trips.
+    const match = title.match(/^(.+?)\s+–\s+Travel$/);
+    if (!match) return '';
+    return tournamentNameMap[match[1].trim()] || '';
+  };
+
   const openAdd  = () => { setMode('add');  setSelectedTrip(null); setApiError(''); setModalOpen(true); };
-  const openEdit = (e) => { setMode('edit'); setSelectedTrip(e);   setApiError(''); setModalOpen(true); };
+  const openEdit = (e) => {
+    // Pre-fill the dropdown with the inferred tournament if the trip is
+    // missing `tournamentId`. The user just has to hit Save to persist the
+    // link into the DB, no manual hunting through the dropdown.
+    const inferredId = inferTournamentId(e);
+    const tripWithLink = e.tournamentId ? e : { ...e, tournamentId: inferredId };
+    setMode('edit'); setSelectedTrip(tripWithLink); setApiError(''); setModalOpen(true);
+  };
   const closeModal = () => { setModalOpen(false); setSelectedTrip(null); setApiError(''); };
 
   const handleAdd = async (data) => {
@@ -96,12 +133,6 @@ export default function Travel() {
       setDeleteLoading(false);
     }
   };
-
-  const tournamentMap = useMemo(() => {
-    const map = {};
-    tournaments.forEach((t) => { map[t._id] = t.name; });
-    return map;
-  }, [tournaments]);
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -167,7 +198,14 @@ export default function Travel() {
           {trips.map((e) => {
             const isExpanded = expandedId === e._id;
             const bucketBreakdown = TRAVEL_BUCKETS.filter((b) => (e[b.key] || 0) > 0);
-            const linkedTournament = e.tournamentId ? tournamentMap[e.tournamentId] : null;
+            // Show the tournament name even if `e.tournamentId` is missing on
+            // the doc — old trips logged before the tournament form started
+            // saving the link still match by title here.
+            const inferredId = inferTournamentId(e);
+            const linkedTournament = inferredId ? tournamentMap[inferredId] : null;
+            // Distinguishes "we know the link from the DB" vs "we figured it
+            // out from the title and will persist it on next Edit + Save".
+            const linkIsInferred = !e.tournamentId && !!inferredId;
 
             return (
               <div
@@ -190,7 +228,19 @@ export default function Travel() {
                         <p className="text-xs text-gray-500 font-medium">{e.fromCity} → {e.toCity}</p>
                       )}
                       {linkedTournament && (
-                        <p className="text-xs text-teal-600 font-medium truncate max-w-[160px]">🏆 {linkedTournament}</p>
+                        <span
+                          className={`inline-flex items-center gap-1 text-[11px] font-semibold rounded-full px-2 py-0.5 max-w-[200px] ${
+                            linkIsInferred
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-teal-50 text-teal-700 border border-teal-200'
+                          }`}
+                          title={linkIsInferred
+                            ? 'Auto-linked from trip title — open Edit and tap Save to persist the link'
+                            : `Linked to tournament: ${linkedTournament}`}
+                        >
+                          🏆
+                          <span className="truncate">{linkedTournament}</span>
+                        </span>
                       )}
                     </div>
                   </div>

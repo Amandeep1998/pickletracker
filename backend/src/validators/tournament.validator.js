@@ -67,6 +67,7 @@ const categorySchema = Joi.object({
     'any.required': 'Entry fee is required',
   }),
   calendarEventId: Joi.string().allow(null, '').optional(),
+  partnerName: Joi.string().allow('', null).trim().optional(),
 });
 
 const tournamentSchema = Joi.object({
