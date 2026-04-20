@@ -130,6 +130,12 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
       if (field === 'medal' && value === 'None') {
         cat.prizeAmount = 0;
       }
+      // If a date is moved to the future, clear any results already entered —
+      // the Results step will disappear and the backend would reject medal+no-prize.
+      if (field === 'date' && value > today) {
+        cat.medal = 'None';
+        cat.prizeAmount = 0;
+      }
       cat[field] = value;
       return {
         ...prev,
