@@ -7,6 +7,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
   const [dropdownStyle, setDropdownStyle] = useState({});
   const containerRef = useRef(null);
   const inputRef = useRef(null);
+  const pointerDownPos = useRef(null);
 
   const normalize = (s) => s.toLowerCase().replace(/['\u2018\u2019]/g, '');
   const filteredOptions = options.filter((opt) =>
@@ -115,12 +116,21 @@ export default function SearchableSelect({ options, value, onChange, placeholder
     }
   };
 
-  // Trigger field shown when closed — tapping opens the dropdown without showing keyboard
+  // Only open on a genuine tap — record position on pointerdown, open on pointerup
+  // only if the finger barely moved. This prevents scroll gestures from opening the dropdown.
   const handleTriggerPointerDown = (e) => {
-    if (isOpen) return; // let outside-click handler take care of closing
+    if (isOpen) return;
+    pointerDownPos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleTriggerPointerUp = (e) => {
+    if (isOpen || !pointerDownPos.current) return;
+    const dx = Math.abs(e.clientX - pointerDownPos.current.x);
+    const dy = Math.abs(e.clientY - pointerDownPos.current.y);
+    pointerDownPos.current = null;
+    if (dx > 8 || dy > 8) return; // finger moved — it was a scroll, not a tap
     e.preventDefault();
     openDropdown();
-    // Focus the hidden search input after a tick so keyboard appears
     setTimeout(() => inputRef.current?.focus(), 0);
   };
 
@@ -129,6 +139,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
       {/* Visible trigger — always shows the selected value */}
       <div
         onPointerDown={handleTriggerPointerDown}
+        onPointerUp={handleTriggerPointerUp}
         className={`w-full border rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm cursor-pointer select-none flex items-center justify-between ${
           isOpen
             ? 'border-green-500 ring-2 ring-green-500'
