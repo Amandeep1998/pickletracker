@@ -15,7 +15,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
 
   const mobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
-  const normalize = (s) => s.toLowerCase().replace(/['\u2018\u2019]/g, '');
+  const normalize = (s) => s.toLowerCase().replace(/['\u2018\u2019]/g, '').replace(/\s+/g, ' ').trim();
   const filtered = options.filter((opt) => normalize(opt).includes(normalize(query)));
 
   // ── open / close ────────────────────────────────────────────
@@ -218,8 +218,13 @@ export default function SearchableSelect({ options, value, onChange, placeholder
               </button>
             </div>
 
-            {/* Search box */}
-            <div className="px-4 pb-3 flex-shrink-0">
+            {/* Scrollable options — above the search box */}
+            <div className="overflow-y-auto overscroll-contain flex-1">
+              {renderOptions()}
+            </div>
+
+            {/* Search box — pinned at bottom, above keyboard */}
+            <div className="px-4 pt-2 pb-3 flex-shrink-0 border-t border-gray-100" style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}>
               <input
                 ref={sheetInputRef}
                 type="text"
@@ -229,11 +234,6 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                 autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false"
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
               />
-            </div>
-
-            {/* Scrollable options */}
-            <div className="overflow-y-auto overscroll-contain flex-1" style={{ paddingBottom: 'env(safe-area-inset-bottom, 16px)' }}>
-              {renderOptions()}
             </div>
           </div>
         </div>,
