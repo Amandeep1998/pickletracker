@@ -251,6 +251,14 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
     );
   };
 
+  const scrollToFirstError = (errs) => {
+    const firstKey = Object.keys(errs)[0];
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-error-key="${firstKey}"]`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
+
   const goNext = (e) => {
     // Belt-and-suspenders: when advancing from the last non-terminal step the
     // button re-renders as a submit button in the same position. We prevent
@@ -260,6 +268,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
     const errs = validateStep(currentStepId);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
+      scrollToFirstError(errs);
       return;
     }
     setErrors({});
@@ -281,7 +290,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
       if (Object.keys(errs).length > 0) {
         setErrors(errs);
         setStep(stepIds.indexOf(sid) + 1);
-        scrollToTop();
+        scrollToFirstError(errs);
         return;
       }
     }
