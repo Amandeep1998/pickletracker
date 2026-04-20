@@ -253,10 +253,12 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
 
   const scrollToFirstError = (errs) => {
     const firstKey = Object.keys(errs)[0];
-    requestAnimationFrame(() => {
+    if (!firstKey) return;
+    // setTimeout(0) lets React commit the state update before we query the DOM
+    setTimeout(() => {
       const el = document.querySelector(`[data-error-key="${firstKey}"]`);
       el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    });
+    }, 0);
   };
 
   const goNext = (e) => {
