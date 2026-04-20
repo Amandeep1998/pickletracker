@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
 export default function SearchableSelect({ options, value, onChange, placeholder = 'Select category' }) {
@@ -6,6 +6,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
   const [query, setQuery] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [dropdownStyle, setDropdownStyle] = useState({});
+  const [kbOffset, setKbOffset] = useState(0);
 
   const containerRef = useRef(null);
   const inputRef = useRef(null);
@@ -92,6 +93,25 @@ export default function SearchableSelect({ options, value, onChange, placeholder
     };
   }, [isOpen, filtered.length]);
 
+  // ── mobile: track keyboard height via Visual Viewport API ───
+  useEffect(() => {
+    if (!isOpen || !mobile) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const offset = window.innerHeight - vv.height - vv.offsetTop;
+      setKbOffset(Math.max(0, offset));
+    };
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    update();
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+      setKbOffset(0);
+    };
+  }, [isOpen, mobile]);
+
   useEffect(() => { setHighlightedIndex(0); }, [query]);
 
   // ── keyboard nav ─────────────────────────────────────────────
@@ -169,7 +189,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
 
       {/* ── Mobile bottom sheet ── */}
       {isOpen && mobile && createPortal(
-        <div className="fixed inset-0 z-[9999] flex flex-col justify-end">
+        <div className="fixed inset-0 z-[9999] flex flex-col justify-end" style={{ paddingBottom: kbOffset }}>
           {/* Backdrop */}
           <div className="absolute inset-0 bg-black/50" onClick={close} />
 
