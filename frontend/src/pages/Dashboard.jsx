@@ -17,6 +17,7 @@ import useCurrency from '../hooks/useCurrency';
 import TournamentShareModal from '../components/TournamentShareModal';
 import BannerMedalStrip from '../components/BannerMedalStrip';
 import { computeMedalTally } from '../utils/medals';
+import { InstallAppCard } from '../components/InstallAppButton';
 
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -535,6 +536,7 @@ export default function Dashboard() {
         </button>
       </div>
 
+      <InstallAppCard />
 
       {/* Upcoming Tournaments Share Widget */}
       <div className="rounded-2xl overflow-hidden mb-6 shadow-md relative" style={{ background: 'linear-gradient(145deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}>
