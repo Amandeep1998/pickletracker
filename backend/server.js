@@ -32,6 +32,7 @@ const { startTournamentReminderJob } = require('./src/jobs/tournamentReminder');
 const { startResultNudgeJob } = require('./src/jobs/resultNudge');
 const { startWeeklySummaryJob } = require('./src/jobs/weeklySummary');
 const { startMonthlyPnlJob } = require('./src/jobs/monthlyPnl');
+const { startInactiveUserNudgeJob } = require('./src/jobs/inactiveUserNudge');
 
 const app = express();
 const server = http.createServer(app);
@@ -100,6 +101,7 @@ if (require.main === module) {
     startResultNudgeJob();
     startWeeklySummaryJob();
     startMonthlyPnlJob();
+    startInactiveUserNudgeJob();
   });
 }
 

@@ -55,6 +55,7 @@ export const deleteExpense = (id) => api.delete(`/expenses/${id}`);
 export const getAdminUsers = () => api.get('/admin/users');
 export const getAdminUserTournaments = (userId) => api.get(`/admin/users/${userId}/tournaments`);
 export const deleteAdminUser = (userId) => api.delete(`/admin/users/${userId}`);
+export const broadcastEmail = (template, target) => api.post('/admin/broadcast-email', { template, target });
 
 // Email notifications
 export const getEmailPrefs = () => api.get('/notifications/prefs');

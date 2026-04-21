@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import { formatCurrency } from '../utils/format';
 import useCurrency from '../hooks/useCurrency';
-import { deleteAdminUser } from '../services/api';
+import { deleteAdminUser, broadcastEmail as apiBroadcastEmail } from '../services/api';
 import AdminUserCalendar from '../components/AdminUserCalendar';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
@@ -64,6 +64,14 @@ export default function Admin() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
+  // Broadcast email
+  const [broadcastOpen, setBroadcastOpen] = useState(false);
+  const [broadcastTemplate, setBroadcastTemplate] = useState('tournament_reminder');
+  const [broadcastTarget, setBroadcastTarget] = useState('inactive');
+  const [broadcastConfirm, setBroadcastConfirm] = useState(false);
+  const [broadcastLoading, setBroadcastLoading] = useState(false);
+  const [broadcastResult, setBroadcastResult] = useState(null); // { sent, failed, total }
+
   // Guard: only admin can access
   useEffect(() => {
     if (user && user.email !== ADMIN_EMAIL) {
@@ -99,6 +107,27 @@ export default function Admin() {
       setDeleteLoading(false);
     }
   };
+
+  const handleBroadcast = async () => {
+    setBroadcastLoading(true);
+    setBroadcastResult(null);
+    try {
+      const res = await apiBroadcastEmail(broadcastTemplate, broadcastTarget);
+      setBroadcastResult(res.data);
+      setBroadcastConfirm(false);
+    } catch {
+      setBroadcastResult({ error: true });
+    } finally {
+      setBroadcastLoading(false);
+    }
+  };
+
+  const broadcastAudienceCount = useMemo(() => {
+    if (!data?.users) return 0;
+    if (broadcastTarget === 'all') return data.users.length;
+    if (broadcastTarget === 'inactive') return data.users.filter((u) => u.tournamentCount === 0 && u.sessionCount === 0).length;
+    return data.users.filter((u) => u.tournamentCount > 0 || u.sessionCount > 0).length;
+  }, [data, broadcastTarget]);
 
   const filteredUsers = useMemo(() => {
     if (!data?.users) return [];
@@ -151,6 +180,131 @@ export default function Admin() {
         <StatCard label="Sessions Logged" value={stats.totalSessions} color="text-blue-600" sub="across all users" />
         <StatCard label="Gear Spend" value={formatCurrency(stats.totalGearSpend, currency)} color="text-purple-600" sub="all gear expenses" />
         <StatCard label="Travel Spend" value={formatCurrency(stats.totalTravelSpend, currency)} color="text-orange-600" sub="all travel expenses" />
+      </div>
+
+      {/* Broadcast Email Panel */}
+      <div className="mb-6 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <button
+          onClick={() => { setBroadcastOpen((o) => !o); setBroadcastResult(null); }}
+          className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-gray-900">Broadcast Email</p>
+              <p className="text-xs text-gray-400">Send a one-time email to users</p>
+            </div>
+          </div>
+          <svg className={`w-4 h-4 text-gray-400 transition-transform ${broadcastOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {broadcastOpen && (
+          <div className="border-t border-gray-100 px-5 py-5 bg-gray-50">
+            {/* Template picker */}
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Choose a template</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+              {[
+                {
+                  id: 'tournament_reminder',
+                  icon: '🏆',
+                  title: 'Tournament reminder',
+                  desc: '"Got a tournament coming up? Log it now." Good for all users.',
+                },
+                {
+                  id: 'first_entry',
+                  icon: '🚀',
+                  title: 'First entry nudge',
+                  desc: '"Your dashboard is empty — start in 2 minutes." Best for inactive users.',
+                },
+                {
+                  id: 'monthly_checkin',
+                  icon: '📊',
+                  title: 'Monthly check-in',
+                  desc: '"How\'s your pickleball going? Check your stats." Good for active users.',
+                },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setBroadcastTemplate(t.id)}
+                  className={`text-left p-3.5 rounded-xl border-2 transition-all ${
+                    broadcastTemplate === t.id
+                      ? 'border-green-500 bg-green-50'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <span className="text-xl mb-1.5 block">{t.icon}</span>
+                  <p className={`text-sm font-semibold mb-0.5 ${broadcastTemplate === t.id ? 'text-green-800' : 'text-gray-800'}`}>{t.title}</p>
+                  <p className="text-xs text-gray-500 leading-relaxed">{t.desc}</p>
+                </button>
+              ))}
+            </div>
+
+            {/* Target picker */}
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Target audience</p>
+            <div className="flex flex-wrap gap-2 mb-5">
+              {[
+                { id: 'inactive', label: 'Inactive only', hint: 'No tournaments or sessions logged' },
+                { id: 'active',   label: 'Active only',   hint: 'Have at least 1 tournament or session' },
+                { id: 'all',      label: 'Everyone',      hint: 'All opted-in users' },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setBroadcastTarget(t.id)}
+                  title={t.hint}
+                  className={`text-sm font-medium px-4 py-2 rounded-xl border-2 transition-all ${
+                    broadcastTarget === t.id
+                      ? 'border-green-500 bg-green-600 text-white'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  {t.label}
+                  {data && (
+                    <span className={`ml-1.5 text-xs ${broadcastTarget === t.id ? 'text-green-100' : 'text-gray-400'}`}>
+                      (~{broadcastAudienceCount})
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Result banner */}
+            {broadcastResult && !broadcastResult.error && (
+              <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3 mb-4">
+                <svg className="w-4 h-4 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                <p className="text-sm text-green-800 font-medium">
+                  Sent to <strong>{broadcastResult.sent}</strong> users
+                  {broadcastResult.failed > 0 && ` · ${broadcastResult.failed} failed`}
+                  {' '}(of {broadcastResult.total} matched)
+                </p>
+              </div>
+            )}
+            {broadcastResult?.error && (
+              <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
+                Something went wrong. Please try again.
+              </div>
+            )}
+
+            {/* Send button */}
+            <button
+              onClick={() => setBroadcastConfirm(true)}
+              disabled={broadcastLoading}
+              className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+              Send emails
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -500,6 +654,52 @@ export default function Admin() {
           <div className="text-center py-12 text-gray-400 text-sm">No users match your search.</div>
         )}
       </div>
+
+      {/* Broadcast confirm modal */}
+      {broadcastConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">Send broadcast email</h3>
+                <p className="text-xs text-gray-400">This will send to real users immediately</p>
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-xl px-4 py-3 mb-4 border border-gray-100 space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Template</span>
+                <span className="font-semibold text-gray-900 capitalize">{broadcastTemplate.replace('_', ' ')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Audience</span>
+                <span className="font-semibold text-gray-900 capitalize">{broadcastTarget} (~{broadcastAudienceCount} users)</span>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mb-5">Users who have turned off email reminders will be skipped automatically.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setBroadcastConfirm(false)}
+                disabled={broadcastLoading}
+                className="flex-1 text-sm text-gray-600 font-medium py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBroadcast}
+                disabled={broadcastLoading}
+                className="flex-1 text-sm bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl transition-colors disabled:opacity-60"
+              >
+                {broadcastLoading ? 'Sending...' : 'Send now'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Admin calendar modal */}
       {calendarUser && (
