@@ -9,7 +9,7 @@ import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 
 /** Bump this string to force another one-time SW unregister + Cache Storage clear + reload for all users. */
-const PWA_CACHE_PURGE_VERSION = '2026-04-19-v2';
+const PWA_CACHE_PURGE_VERSION = '2026-04-21-v1';
 const PWA_CACHE_PURGE_KEY = `pt-pwa-purge-${PWA_CACHE_PURGE_VERSION}`;
 
 /**
