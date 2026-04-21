@@ -105,6 +105,7 @@ export default function Tournaments() {
               accommodation: te.accommodation,
               food: te.food,
               equipment: te.equipment,
+              others: te.others,
               visaDocs: te.visaDocs,
               travelInsurance: te.travelInsurance,
             });
@@ -176,6 +177,7 @@ export default function Tournaments() {
               accommodation: te.accommodation,
               food: te.food,
               equipment: te.equipment,
+              others: te.others,
               visaDocs: te.visaDocs,
               travelInsurance: te.travelInsurance,
             };

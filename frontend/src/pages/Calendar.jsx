@@ -323,6 +323,7 @@ export default function Calendar() {
           accommodation: te.accommodation,
           food: te.food,
           equipment: te.equipment,
+          others: te.others,
           visaDocs: te.visaDocs,
           travelInsurance: te.travelInsurance,
         };
@@ -1099,6 +1100,7 @@ export default function Calendar() {
                 { label: 'Accommodation', value: te.accommodation },
                 { label: 'Food', value: te.food },
                 { label: 'Equipment & Baggage', value: te.equipment },
+                { label: 'Others', value: te.others },
                 { label: 'Visa & Docs', value: te.visaDocs },
                 { label: 'Travel Insurance', value: te.travelInsurance },
               ].filter((r) => r.value > 0);

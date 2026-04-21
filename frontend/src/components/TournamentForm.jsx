@@ -39,6 +39,7 @@ const EMPTY_TRAVEL = {
   accommodation: '',
   food: '',
   equipment: '',
+  others: '',
   visaDocs: '',
   travelInsurance: '',
 };
@@ -132,6 +133,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         accommodation: coerceToIntString(te.accommodation),
         food: coerceToIntString(te.food),
         equipment: coerceToIntString(te.equipment),
+        others: coerceToIntString(te.others),
         visaDocs: coerceToIntString(te.visaDocs),
         travelInsurance: coerceToIntString(te.travelInsurance),
       });
@@ -209,6 +211,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
       (Number(travel.accommodation) || 0) +
       (Number(travel.food) || 0) +
       (Number(travel.equipment) || 0) +
+      (Number(travel.others) || 0) +
       (Number(travel.visaDocs) || 0) +
       (Number(travel.travelInsurance) || 0)
     : 0;
@@ -337,6 +340,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         accommodation: Number(travel.accommodation) || 0,
         food: Number(travel.food) || 0,
         equipment: Number(travel.equipment) || 0,
+        others: Number(travel.others) || 0,
         visaDocs: Number(travel.visaDocs) || 0,
         travelInsurance: Number(travel.travelInsurance) || 0,
         total: travelTotal,
@@ -556,61 +560,89 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
             <p className="text-xs text-gray-500 mt-0.5">Medals, prizes and how it felt overall</p>
           </div>
 
-          {form.categories.map((cat, idx) => (
-            <div key={idx} className="bg-[#F3F8F9] border border-gray-200 rounded-lg p-3 sm:p-4 space-y-3">
-              <p className="text-xs font-semibold text-[#272702] uppercase tracking-wide">
-                {cat.categoryName || `Category ${idx + 1}`}
-              </p>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-2">Medal</label>
-                <div className="flex flex-wrap gap-2 sm:gap-3">
-                  {MEDALS.map((m) => (
-                    <label key={m} className="flex items-center gap-1 cursor-pointer min-h-[32px]">
-                      <input
-                        type="radio"
-                        checked={cat.medal === m}
-                        onChange={(e) => handleCategoryChange(idx, 'medal', e.target.value)}
-                        value={m}
-                        className="accent-[#91BE4D]"
-                      />
-                      <span className="text-xs sm:text-sm">{m}</span>
-                    </label>
-                  ))}
+          {form.categories.map((cat, idx) => {
+            const isFuture = cat.date && cat.date > today;
+            const fmtCatDate = (dateStr) => {
+              if (!dateStr) return null;
+              const [y, m, d] = dateStr.split('T')[0].split('-');
+              return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+                weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+              });
+            };
+            return (
+              <div key={idx} className="bg-[#F3F8F9] border border-gray-200 rounded-lg p-3 sm:p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-xs font-semibold text-[#272702] uppercase tracking-wide">
+                    {cat.categoryName || `Category ${idx + 1}`}
+                  </p>
+                  {cat.date && (
+                    <span className="text-[11px] text-gray-400 font-medium flex-shrink-0">{fmtCatDate(cat.date)}</span>
+                  )}
                 </div>
-              </div>
 
-              <div data-error-key={`cat_${idx}_prizeAmount`}>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Amount Won ({symbol})</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={cat.prizeAmount}
-                  onChange={(e) => handleCategoryChange(idx, 'prizeAmount', sanitizeIntInput(e.target.value))}
-                  onKeyDown={(e) => {
-                    if (['e', 'E', '+', '-', '.', ','].includes(e.key)) e.preventDefault();
-                  }}
-                  disabled={cat.medal === 'None'}
-                  className={`${inputClass} disabled:bg-gray-200 disabled:cursor-not-allowed`}
-                  placeholder="0"
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  {cat.medal === 'None' ? 'Select a medal above to enter an amount' : 'Amount won in this event'}
-                </p>
-                {errors[`cat_${idx}_prizeAmount`] && (
-                  <p className="text-red-500 text-xs mt-1">{errors[`cat_${idx}_prizeAmount`]}</p>
+                {isFuture ? (
+                  <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-800 leading-relaxed">
+                    <svg className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>
+                      <span className="font-semibold">{cat.categoryName || `Category ${idx + 1}`}</span> is scheduled for a future date. Once the tournament is over, come back and edit this to fill in your medal and amount won.
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-2">Medal</label>
+                      <div className="flex flex-wrap gap-2 sm:gap-3">
+                        {MEDALS.map((m) => (
+                          <label key={m} className="flex items-center gap-1 cursor-pointer min-h-[32px]">
+                            <input
+                              type="radio"
+                              checked={cat.medal === m}
+                              onChange={(e) => handleCategoryChange(idx, 'medal', e.target.value)}
+                              value={m}
+                              className="accent-[#91BE4D]"
+                            />
+                            <span className="text-xs sm:text-sm">{m}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div data-error-key={`cat_${idx}_prizeAmount`}>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Amount Won ({symbol})</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={cat.prizeAmount}
+                        onChange={(e) => handleCategoryChange(idx, 'prizeAmount', sanitizeIntInput(e.target.value))}
+                        onKeyDown={(e) => {
+                          if (['e', 'E', '+', '-', '.', ','].includes(e.key)) e.preventDefault();
+                        }}
+                        disabled={cat.medal === 'None'}
+                        className={`${inputClass} disabled:bg-gray-200 disabled:cursor-not-allowed`}
+                        placeholder="0"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">
+                        {cat.medal === 'None' ? 'Select a medal above to enter an amount' : 'Amount won in this event'}
+                      </p>
+                      {errors[`cat_${idx}_prizeAmount`] && (
+                        <p className="text-red-500 text-xs mt-1">{errors[`cat_${idx}_prizeAmount`]}</p>
+                      )}
+                    </div>
+
+                    <div className="text-xs border-t border-gray-200 pt-2">
+                      <span className="text-gray-500">Profit: </span>
+                      <span className={`font-semibold ${(Number(cat.prizeAmount) || 0) - (Number(cat.entryFee) || 0) >= 0 ? 'text-[#91BE4D]' : 'text-red-600'}`}>
+                        {formatCurrency((Number(cat.prizeAmount) || 0) - (Number(cat.entryFee) || 0), currency)}
+                      </span>
+                    </div>
+                  </>
                 )}
               </div>
-
-              <div className="text-xs border-t border-gray-200 pt-2">
-                <span className="text-gray-500">Profit: </span>
-                <span className={`font-semibold ${(Number(cat.prizeAmount) || 0) - (Number(cat.entryFee) || 0) >= 0 ? 'text-[#91BE4D]' : 'text-red-600'}`}>
-                  {formatCurrency((Number(cat.prizeAmount) || 0) - (Number(cat.entryFee) || 0), currency)}
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           <div className={`rounded px-3 py-2.5 text-xs sm:text-sm font-medium border ${totalProfit >= 0 ? 'bg-[#91BE4D]/10 text-[#4a6e10] border-[#91BE4D]/30' : 'bg-red-50 text-red-700 border-red-200'}`}>
             Total Profit: <span className="font-bold">{formatCurrency(totalProfit, currency)}</span>
@@ -807,6 +839,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
                     { field: 'accommodation', label: 'Accommodation' },
                     { field: 'food', label: 'Food' },
                     { field: 'equipment', label: 'Equipment & Baggage' },
+                    { field: 'others', label: 'Others' },
                   ].map(({ field, label }) => (
                     <div key={field}>
                       <label className="block text-xs font-medium text-gray-600 mb-1">{label} ({symbol})</label>

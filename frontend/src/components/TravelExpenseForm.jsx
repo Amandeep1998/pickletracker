@@ -8,6 +8,7 @@ const COST_BUCKETS = [
   { key: 'accommodation', label: 'Accommodation',       hint: 'Hotel / Hostel' },
   { key: 'food',          label: 'Food',                hint: 'All meals during trip' },
   { key: 'equipment',     label: 'Equipment & Baggage', hint: 'Extra baggage, gear transport' },
+  { key: 'others',        label: 'Others',              hint: 'Any other miscellaneous expenses' },
 ];
 
 const INTL_BUCKETS = [
@@ -27,6 +28,7 @@ const EMPTY_FORM = {
   accommodation: '',
   food: '',
   equipment: '',
+  others: '',
   visaDocs: '',
   travelInsurance: '',
 };
@@ -51,6 +53,7 @@ export default function TravelExpenseForm({ initial, onSubmit, onCancel, loading
         accommodation:   initial.accommodation || '',
         food:            initial.food || '',
         equipment:       initial.equipment || '',
+        others:          initial.others || '',
         visaDocs:        initial.visaDocs || '',
         travelInsurance: initial.travelInsurance || '',
       });
@@ -104,6 +107,7 @@ export default function TravelExpenseForm({ initial, onSubmit, onCancel, loading
       accommodation:   Number(form.accommodation) || 0,
       food:            Number(form.food) || 0,
       equipment:       Number(form.equipment) || 0,
+      others:          Number(form.others) || 0,
       visaDocs:        Number(form.visaDocs) || 0,
       travelInsurance: Number(form.travelInsurance) || 0,
     };

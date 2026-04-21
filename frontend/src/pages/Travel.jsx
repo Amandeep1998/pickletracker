@@ -11,6 +11,7 @@ const TRAVEL_BUCKETS = [
   { key: 'accommodation',   label: 'Accommodation' },
   { key: 'food',            label: 'Food' },
   { key: 'equipment',       label: 'Equipment & Baggage' },
+  { key: 'others',          label: 'Others' },
   { key: 'visaDocs',        label: 'Visa & Docs' },
   { key: 'travelInsurance', label: 'Insurance' },
 ];
