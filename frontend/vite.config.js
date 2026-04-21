@@ -16,6 +16,20 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        // Always fetch fresh HTML from the network so every deployment reaches
+        // users on their next visit — even if their SW is from an older build.
+        // Falls back to the cached response only when the network is unavailable.
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              networkTimeoutSeconds: 5,
+              cacheName: 'navigation-cache',
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
       includeAssets: ['favicon.svg', 'brand-logo.png', 'brand-logo2.png', 'brand-logo3.png', 'apple-touch-icon.png', 'icon-192.png', 'icon-512.png'],
       manifest: {

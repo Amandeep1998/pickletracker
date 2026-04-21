@@ -8,8 +8,8 @@ import App from './App';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 
-/** Bump this string to force another one-time SW unregister + Cache Storage clear + reload for all users. */
-const PWA_CACHE_PURGE_VERSION = '2026-04-21-v1';
+// Keyed to the Vercel git commit SHA — auto-bumps on every deploy, no manual change needed.
+const PWA_CACHE_PURGE_VERSION = import.meta.env.VITE_COMMIT || 'dev-build';
 const PWA_CACHE_PURGE_KEY = `pt-pwa-purge-${PWA_CACHE_PURGE_VERSION}`;
 
 /**
