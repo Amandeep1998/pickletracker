@@ -428,43 +428,125 @@ export default function Tournaments() {
                     </div>
 
                     {/* Categories */}
-                    <div className="space-y-2 mb-4 pb-4 border-b border-gray-200">
-                      {t.categories.map((cat, idx) => (
-                        <div key={idx} className="bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                            <span className="font-medium text-gray-700 text-sm">{cat.categoryName}</span>
-                            <span className="text-xs text-gray-500">
-                              {fmtDate(cat.date)}
-                            </span>
-                            {!upcoming && (
-                              <span className={`w-fit text-xs font-medium px-1.5 py-0.5 rounded ${MEDAL_COLORS[cat.medal]}`}>
-                                {cat.medal}
-                              </span>
-                            )}
-                          </div>
-                          <div className="grid grid-cols-3 sm:flex sm:gap-4 text-right gap-2">
-                            <div>
-                              <p className="text-xs text-gray-400">Entry Fee</p>
-                              <p className="text-xs sm:text-sm font-medium text-gray-700">{formatCurrency(cat.entryFee, currency)}</p>
+                    <div className="space-y-2 mb-3">
+                      {t.categories.map((cat, idx) => {
+                        const catIsUpcoming = cat.date && cat.date.slice(0, 10) >= today;
+                        const catIsPast = !catIsUpcoming;
+                        return (
+                          <div key={idx} className="bg-slate-50 rounded-xl px-3 py-2.5 border border-slate-100">
+                            {/* Category header row */}
+                            <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                              <span className="font-medium text-gray-700 text-sm">{cat.categoryName}</span>
+                              <span className="text-xs text-gray-400">{fmtDate(cat.date)}</span>
+                              {catIsUpcoming && (
+                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">Upcoming</span>
+                              )}
+                              {catIsPast && cat.medal && cat.medal !== 'None' && (
+                                <span className={`w-fit text-[10px] font-semibold px-1.5 py-0.5 rounded ${MEDAL_COLORS[cat.medal]}`}>
+                                  {cat.medal}
+                                </span>
+                              )}
                             </div>
-                            {!upcoming && (
-                              <>
-                                <div>
-                                  <p className="text-xs text-gray-400">Amount Won</p>
-                                  <p className="text-xs sm:text-sm font-medium text-gray-700">{formatCurrency(cat.prizeAmount, currency)}</p>
-                                </div>
-                                <div>
-                                  <p className="text-xs text-gray-400">Profit</p>
+                            {/* Stats row */}
+                            <div className="grid grid-cols-3 gap-2 text-right">
+                              <div>
+                                <p className="text-xs text-gray-400">Entry Fee</p>
+                                <p className="text-xs sm:text-sm font-medium text-red-600">{formatCurrency(cat.entryFee, currency)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-400">Amount Won</p>
+                                <p className="text-xs sm:text-sm font-medium text-green-600">
+                                  {catIsPast ? formatCurrency(cat.prizeAmount, currency) : '—'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-400">Profit</p>
+                                {catIsPast ? (
                                   <p className={`text-xs sm:text-sm font-semibold ${(cat.prizeAmount - cat.entryFee) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                     {formatCurrency(cat.prizeAmount - cat.entryFee, currency)}
                                   </p>
-                                </div>
-                              </>
+                                ) : (
+                                  <p className="text-xs sm:text-sm font-medium text-gray-400">—</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Travel expense breakdown */}
+                    {t.travelExpense && (() => {
+                      const te = t.travelExpense;
+                      const rows = [
+                        { label: 'Transport', value: te.transport },
+                        { label: 'Local Commute', value: te.localCommute },
+                        { label: 'Accommodation', value: te.accommodation },
+                        { label: 'Food', value: te.food },
+                        { label: 'Equipment & Baggage', value: te.equipment },
+                        { label: 'Others', value: te.others },
+                        { label: 'Visa & Docs', value: te.visaDocs },
+                        { label: 'Travel Insurance', value: te.travelInsurance },
+                      ].filter((r) => r.value > 0);
+                      return (
+                        <div className="bg-sky-50 border border-sky-100 rounded-xl p-3 mb-3 text-sm">
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <svg className="w-3.5 h-3.5 text-sky-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            </svg>
+                            <span className="text-xs font-semibold text-sky-700 uppercase tracking-wide">Travel Expenses</span>
+                            {(te.fromCity || te.toCity) && (
+                              <span className="text-xs text-sky-500 ml-auto">{[te.fromCity, te.toCity].filter(Boolean).join(' → ')}</span>
                             )}
                           </div>
+                          <div className="space-y-1">
+                            {rows.map((r) => (
+                              <div key={r.label} className="flex justify-between text-xs text-sky-800">
+                                <span className="text-sky-600">{r.label}</span>
+                                <span className="font-medium">{formatCurrency(r.value, currency)}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex justify-between text-xs font-semibold text-sky-900 border-t border-sky-200 pt-1.5 mt-1.5">
+                            <span>Travel Total</span>
+                            <span>{formatCurrency(te.amount || te.total || 0, currency)}</span>
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })()}
+
+                    {/* Financial summary */}
+                    {(() => {
+                      const earnings = t.totalEarnings || 0;
+                      const entryFees = t.totalExpenses || 0;
+                      const travelTotal = t.travelExpense?.amount || 0;
+                      const netProfit = earnings - entryFees - travelTotal;
+                      if (earnings === 0 && entryFees === 0 && travelTotal === 0) return null;
+                      return (
+                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-3 text-xs">
+                          <div className="flex justify-between text-gray-600 mb-1">
+                            <span>Total Earnings</span>
+                            <span className="font-semibold text-gray-900">{formatCurrency(earnings, currency)}</span>
+                          </div>
+                          <div className="flex justify-between text-gray-600 mb-1">
+                            <span>Total Entry Fees</span>
+                            <span className="font-semibold text-gray-900">{formatCurrency(entryFees, currency)}</span>
+                          </div>
+                          {travelTotal > 0 && (
+                            <div className="flex justify-between text-gray-600 mb-1">
+                              <span>Travel Expenses</span>
+                              <span className="font-semibold text-gray-900">{formatCurrency(travelTotal, currency)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between border-t border-blue-200 pt-1.5 mt-1.5">
+                            <span className="font-semibold text-gray-900">Net Profit</span>
+                            <span className={`font-bold text-sm ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {formatCurrency(netProfit, currency)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Actions */}
                     <div className="flex gap-2 pt-2">
