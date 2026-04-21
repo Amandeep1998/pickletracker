@@ -1,4 +1,5 @@
 const Tournament = require('../models/Tournament');
+const Expense = require('../models/Expense');
 
 const getTournaments = async (req, res, next) => {
   try {
@@ -46,6 +47,8 @@ const deleteTournament = async (req, res, next) => {
     if (!tournament) {
       return res.status(404).json({ success: false, message: 'Tournament not found' });
     }
+
+    await Expense.deleteMany({ tournamentId: tournament._id });
 
     res.status(200).json({ success: true, message: 'Tournament deleted' });
   } catch (err) {
