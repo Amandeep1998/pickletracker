@@ -297,43 +297,45 @@ export default function Calendar() {
   // (type: 'travel') — the Tournament schema has no travel fields, so without
   // this call the travel data submitted from the Calendar would silently
   // vanish and never appear on the Travel page. Mirrors Tournaments.jsx.
-  const saveTravelExpense = async (tournament, data) => {
-    if (!data?.travelExpense) return;
-    // Defensive: never create an unlinked travel expense from the tournament
-    // form. If the tournament document we got back from the API somehow
-    // doesn't have an _id (network race, partial response, server-side
-    // rename), surface a hard error and bail rather than silently dropping
-    // the link — that's exactly the kind of orphan the user complained about.
+  // existingExpense = the travel expense already saved for this tournament (or null for new tournaments).
+  // Handles all 3 cases: create (new), update (edited), delete (removed).
+  const saveTravelExpense = async (tournament, data, existingExpense = null) => {
     const linkedId = tournament?._id ? String(tournament._id) : '';
     if (!linkedId) {
-      console.error('[saveTravelExpense] Missing tournament._id — refusing to create unlinked travel expense', tournament);
+      console.error('[saveTravelExpense] Missing tournament._id', tournament);
       return;
     }
     try {
       const te = data.travelExpense;
-      const firstDate = tournament?.categories?.[0]?.date || new Date().toISOString().slice(0, 10);
-      await api.createExpense({
-        type: 'travel',
-        title: `${tournament.name} – Travel`,
-        amount: te.total,
-        date: firstDate,
-        tournamentId: linkedId,
-        fromCity: te.fromCity,
-        toCity: te.toCity,
-        isInternational: te.isInternational,
-        transport: te.transport,
-        localCommute: te.localCommute,
-        accommodation: te.accommodation,
-        food: te.food,
-        equipment: te.equipment,
-        visaDocs: te.visaDocs,
-        travelInsurance: te.travelInsurance,
-      });
+      if (te) {
+        const firstDate = tournament?.categories?.[0]?.date || new Date().toISOString().slice(0, 10);
+        const payload = {
+          type: 'travel',
+          title: `${tournament.name} – Travel`,
+          amount: te.total,
+          date: firstDate,
+          tournamentId: linkedId,
+          fromCity: te.fromCity,
+          toCity: te.toCity,
+          isInternational: te.isInternational,
+          transport: te.transport,
+          localCommute: te.localCommute,
+          accommodation: te.accommodation,
+          food: te.food,
+          equipment: te.equipment,
+          visaDocs: te.visaDocs,
+          travelInsurance: te.travelInsurance,
+        };
+        if (existingExpense?._id) {
+          await api.updateExpense(existingExpense._id, payload);
+        } else {
+          await api.createExpense(payload);
+        }
+      } else if (existingExpense?._id) {
+        await api.deleteExpense(existingExpense._id);
+      }
     } catch (err) {
-      // Non-fatal for the tournament save itself, but loud enough to debug if
-      // it ever happens. Previously this was a silent `catch {}` which made
-      // missing-link bugs invisible.
-      console.error('[saveTravelExpense] Failed to create linked travel expense', err);
+      console.error('[saveTravelExpense] Failed', err);
     }
   };
 
@@ -372,7 +374,7 @@ export default function Calendar() {
     try {
       const res = await api.updateTournament(selectedTournament._id, data);
       const updated = res?.data?.data;
-      await saveTravelExpense(updated, data);
+      await saveTravelExpense(updated, data, selectedTournament.travelExpense);
       posthog.capture('tournament_edited', {
         has_feedback: !!(data.rating || data.wentWell?.length || data.wentWrong?.length || data.notes),
         has_rating: !!data.rating,

@@ -155,15 +155,14 @@ export default function Tournaments() {
         }
       }
 
-      if (data.travelExpense) {
+      try {
         const linkedId = updated?._id ? String(updated._id) : '';
-        if (!linkedId) {
-          console.error('[handleEdit] Missing updated._id — refusing to create unlinked travel expense', updated);
-        } else {
-          try {
-            const te = data.travelExpense;
+        const existingExpense = selectedTournament.travelExpense;
+        const te = data.travelExpense;
+        if (linkedId) {
+          if (te) {
             const firstDate = updated.categories[0]?.date || new Date().toISOString().slice(0, 10);
-            await api.createExpense({
+            const payload = {
               type: 'travel',
               title: `${updated.name} – Travel`,
               amount: te.total,
@@ -179,11 +178,18 @@ export default function Tournaments() {
               equipment: te.equipment,
               visaDocs: te.visaDocs,
               travelInsurance: te.travelInsurance,
-            });
-          } catch (err) {
-            console.error('[handleEdit] Failed to create linked travel expense', err);
+            };
+            if (existingExpense?._id) {
+              await api.updateExpense(existingExpense._id, payload);
+            } else {
+              await api.createExpense(payload);
+            }
+          } else if (existingExpense?._id) {
+            await api.deleteExpense(existingExpense._id);
           }
         }
+      } catch (err) {
+        console.error('[handleEdit] Failed to sync travel expense', err);
       }
 
       closeModal();
