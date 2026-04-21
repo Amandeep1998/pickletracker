@@ -39,6 +39,7 @@ const expenseSchema = new mongoose.Schema(
     accommodation:   { type: Number, default: 0 }, // hotel / hostel
     food:            { type: Number, default: 0 }, // all meals
     equipment:       { type: Number, default: 0 }, // baggage fees, gear transport
+    others:          { type: Number, default: 0 }, // miscellaneous
     visaDocs:        { type: Number, default: 0 }, // visa + passport (international)
     travelInsurance: { type: Number, default: 0 }, // sports coverage (international)
   },
