@@ -120,8 +120,25 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
       setForm(getEmptyForm());
     }
     setStep(1);
-    setTravelOpen(false);
-    setTravel({ ...EMPTY_TRAVEL });
+    const te = initial?.travelExpense;
+    if (te) {
+      setTravelOpen(true);
+      setTravel({
+        fromCity: te.fromCity || '',
+        toCity: te.toCity || '',
+        isInternational: te.isInternational || false,
+        transport: coerceToIntString(te.transport),
+        localCommute: coerceToIntString(te.localCommute),
+        accommodation: coerceToIntString(te.accommodation),
+        food: coerceToIntString(te.food),
+        equipment: coerceToIntString(te.equipment),
+        visaDocs: coerceToIntString(te.visaDocs),
+        travelInsurance: coerceToIntString(te.travelInsurance),
+      });
+    } else {
+      setTravelOpen(false);
+      setTravel({ ...EMPTY_TRAVEL });
+    }
   }, [initial]);
 
   const handleCategoryChange = (idx, field, value) => {
