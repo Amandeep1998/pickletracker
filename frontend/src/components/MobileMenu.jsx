@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import BrandLogo from './BrandLogo';
+import InstallAppButton from './InstallAppButton';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
@@ -133,6 +134,7 @@ export default function MobileMenu({ onOpenLocationModal }) {
               {user?.city ? 'Change' : 'Set'}
             </span>
           </button>
+          <InstallAppButton variant="menu" />
           <button
             onClick={handleLogoutClick}
             className="w-full hover:opacity-90 text-white font-bold py-2.5 rounded-lg text-sm transition-opacity tracking-wide"

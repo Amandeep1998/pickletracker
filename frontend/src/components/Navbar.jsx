@@ -5,6 +5,7 @@ import * as api from '../services/api';
 import MobileMenu from './MobileMenu';
 import BrandLogo from './BrandLogo';
 import LocationModal from './LocationModal';
+import InstallAppButton from './InstallAppButton';
 
 const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
 
@@ -86,6 +87,7 @@ export default function Navbar() {
             </svg>
           </button>
 
+          <InstallAppButton />
           <NavLink
             to="/profile"
             className={({ isActive }) =>
