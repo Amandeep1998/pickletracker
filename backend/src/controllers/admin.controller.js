@@ -508,7 +508,7 @@ const broadcastEmail = async (req, res, next) => {
     console.log(`[BroadcastEmail] template=${template} target=${target} candidates=${candidates.length}`);
 
     let sent = 0;
-    let failed = 0;
+    const failures = [];
     for (const u of candidates) {
       const firstName = u.name?.split(' ')[0] || 'Player';
       const result = await sendNotificationEmail({
@@ -516,12 +516,21 @@ const broadcastEmail = async (req, res, next) => {
         subject: subject(firstName),
         html: buildHtml(firstName),
       });
-      if (result?.ok) sent++;
-      else failed++;
+      if (result?.ok) {
+        sent++;
+      } else {
+        const reason = result?.error
+          ? (typeof result.error === 'object' ? JSON.stringify(result.error) : String(result.error))
+          : 'unknown';
+        failures.push({ name: u.name, email: u.email, reason });
+        console.warn(`[BroadcastEmail] Failed for ${u.email}: ${reason}`);
+      }
+      // Small delay to avoid hitting Resend rate limits
+      await new Promise((r) => setTimeout(r, 150));
     }
 
-    console.log(`[BroadcastEmail] Done — sent: ${sent}, failed: ${failed}`);
-    res.json({ success: true, sent, failed, total: candidates.length });
+    console.log(`[BroadcastEmail] Done — sent: ${sent}, failed: ${failures.length}`);
+    res.json({ success: true, sent, failed: failures.length, total: candidates.length, failures });
   } catch (err) {
     next(err);
   }
