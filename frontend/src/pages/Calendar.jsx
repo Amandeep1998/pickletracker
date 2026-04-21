@@ -1088,22 +1088,76 @@ export default function Calendar() {
               ))}
             </div>
 
-            <div className="bg-blue-50 rounded-xl p-3 mb-4 text-sm">
-              <div className="flex justify-between text-gray-600 mb-1">
-                <span>Total Earnings</span>
-                <span className="font-semibold text-gray-900">{formatCurrency(selectedTournament.totalEarnings || 0, currency)}</span>
-              </div>
-              <div className="flex justify-between text-gray-600 mb-1">
-                <span>Total Entry Fees</span>
-                <span className="font-semibold text-gray-900">{formatCurrency(selectedTournament.totalExpenses || 0, currency)}</span>
-              </div>
-              <div className="flex justify-between border-t border-blue-100 pt-2 mt-2">
-                <span className="font-semibold text-gray-900">Net Profit</span>
-                <span className={`text-base font-bold ${(selectedTournament.totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(selectedTournament.totalProfit || 0, currency)}
-                </span>
-              </div>
-            </div>
+            {/* Travel expense breakdown */}
+            {selectedTournament.travelExpense && (() => {
+              const te = selectedTournament.travelExpense;
+              const rows = [
+                { label: 'Transport', value: te.transport },
+                { label: 'Local Commute', value: te.localCommute },
+                { label: 'Accommodation', value: te.accommodation },
+                { label: 'Food', value: te.food },
+                { label: 'Equipment & Baggage', value: te.equipment },
+                { label: 'Visa & Docs', value: te.visaDocs },
+                { label: 'Travel Insurance', value: te.travelInsurance },
+              ].filter((r) => r.value > 0);
+              return (
+                <div className="bg-sky-50 border border-sky-100 rounded-xl p-3 mb-3 text-sm">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <svg className="w-3.5 h-3.5 text-sky-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                    <span className="text-xs font-semibold text-sky-700 uppercase tracking-wide">Travel Expenses</span>
+                    {(te.fromCity || te.toCity) && (
+                      <span className="text-xs text-sky-500 ml-auto">{[te.fromCity, te.toCity].filter(Boolean).join(' → ')}</span>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    {rows.map((r) => (
+                      <div key={r.label} className="flex justify-between text-xs text-sky-800">
+                        <span className="text-sky-600">{r.label}</span>
+                        <span className="font-medium">{formatCurrency(r.value, currency)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-between text-xs font-semibold text-sky-900 border-t border-sky-200 pt-1.5 mt-1.5">
+                    <span>Travel Total</span>
+                    <span>{formatCurrency(te.amount || te.total || 0, currency)}</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Financial summary */}
+            {(() => {
+              const earnings = selectedTournament.totalEarnings || 0;
+              const entryFees = selectedTournament.totalExpenses || 0;
+              const travelTotal = selectedTournament.travelExpense?.amount || 0;
+              const netProfit = earnings - entryFees - travelTotal;
+              return (
+                <div className="bg-blue-50 rounded-xl p-3 mb-4 text-sm">
+                  <div className="flex justify-between text-gray-600 mb-1">
+                    <span>Total Earnings</span>
+                    <span className="font-semibold text-gray-900">{formatCurrency(earnings, currency)}</span>
+                  </div>
+                  <div className="flex justify-between text-gray-600 mb-1">
+                    <span>Total Entry Fees</span>
+                    <span className="font-semibold text-gray-900">{formatCurrency(entryFees, currency)}</span>
+                  </div>
+                  {travelTotal > 0 && (
+                    <div className="flex justify-between text-gray-600 mb-1">
+                      <span>Travel Expenses</span>
+                      <span className="font-semibold text-gray-900">{formatCurrency(travelTotal, currency)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between border-t border-blue-100 pt-2 mt-2">
+                    <span className="font-semibold text-gray-900">Net Profit</span>
+                    <span className={`text-base font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {formatCurrency(netProfit, currency)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Performance Feedback */}
             {(selectedTournament.rating || selectedTournament.wentWell?.length > 0 || selectedTournament.wentWrong?.length > 0 || selectedTournament.notes) && (

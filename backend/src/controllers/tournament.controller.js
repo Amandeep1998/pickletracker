@@ -3,8 +3,23 @@ const Expense = require('../models/Expense');
 
 const getTournaments = async (req, res, next) => {
   try {
-    const tournaments = await Tournament.find({ userId: req.user.id }).sort({ createdAt: -1 });
-    res.status(200).json({ success: true, data: tournaments });
+    const [tournaments, travelExpenses] = await Promise.all([
+      Tournament.find({ userId: req.user.id }).sort({ createdAt: -1 }),
+      Expense.find({ userId: req.user.id, type: 'travel', tournamentId: { $ne: null } }),
+    ]);
+
+    const expenseByTournament = {};
+    for (const exp of travelExpenses) {
+      expenseByTournament[String(exp.tournamentId)] = exp;
+    }
+
+    const data = tournaments.map((t) => {
+      const obj = t.toJSON();
+      obj.travelExpense = expenseByTournament[String(t._id)] || null;
+      return obj;
+    });
+
+    res.status(200).json({ success: true, data });
   } catch (err) {
     next(err);
   }
