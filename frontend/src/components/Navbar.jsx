@@ -29,7 +29,7 @@ export default function Navbar() {
   };
 
   const linkClass = ({ isActive }) =>
-    `text-sm font-medium tracking-wide transition-colors whitespace-nowrap ${
+    `text-sm font-medium transition-colors whitespace-nowrap ${
       isActive ? 'text-[#91BE4D]' : 'text-[#272702]/60 hover:text-[#91BE4D]'
     }`;
 
@@ -44,11 +44,11 @@ export default function Navbar() {
         </NavLink>
 
         {/* Desktop Links */}
-        <div className="hidden md:flex items-center gap-5 ml-10">
+        <div className="hidden md:flex items-center gap-3 lg:gap-5 ml-6 lg:ml-10">
           <NavLink to="/dashboard"   className={linkClass}>Dashboard</NavLink>
           <NavLink to="/tournaments" className={linkClass}>Tournaments</NavLink>
           <NavLink to="/calendar"    className={linkClass}>Calendar</NavLink>
-          <NavLink to="/sessions"   className={linkClass}>Journal</NavLink>
+          <NavLink to="/sessions"   className={linkClass}>Performance Journal</NavLink>
           <NavLink to="/coach" className={({ isActive }) =>
             `text-sm font-medium tracking-wide transition-colors flex items-center gap-1 whitespace-nowrap ${
               isActive ? 'text-[#91BE4D]' : 'text-[#272702]/60 hover:text-[#91BE4D]'
@@ -58,7 +58,6 @@ export default function Navbar() {
               style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}>NEW</span>
           </NavLink>
           <NavLink to="/expenses"   className={linkClass}>Gear</NavLink>
-          <NavLink to="/travel"     className={linkClass}>Travel</NavLink>
           <NavLink to="/players"    className={linkClass}>Nearby Players</NavLink>
           {isAdmin && (
             <NavLink to="/admin" className={({ isActive }) =>
