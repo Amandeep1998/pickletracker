@@ -61,6 +61,37 @@ const AUTOMATION_ROWS = [
   },
 ];
 
+const PRODUCT_CONTEXT_ITEMS = [
+  {
+    key: 'technical',
+    title: 'Technical Context',
+    tag: 'Tech',
+    content:
+      'PickleTracker is a full-stack web app with a React + Vite frontend and a Node.js + Express + MongoDB backend. It supports JWT auth, PWA install mode, push notifications, email reminders, and admin analytics. Core entities include tournaments, sessions, expenses, player cards, friendships, and admin stories.',
+  },
+  {
+    key: 'purpose',
+    title: 'Purpose of the Application',
+    tag: 'Purpose',
+    content:
+      'The app helps pickleball players track performance and finances in one place: tournaments, sessions, medal history, travel/gear costs, and reminders. It removes scattered notes/spreadsheets and gives players a single source of truth for progress and spending.',
+  },
+  {
+    key: 'customer',
+    title: 'Ideal Customer Profile',
+    tag: 'ICP',
+    content:
+      'Primary users are active pickleball players (casual to competitive) who play multiple events/sessions per month and want better visibility on results and expenses. Secondary users include growth-focused players who want reminders, consistency, and accountability.',
+  },
+  {
+    key: 'outcome',
+    title: 'Core Outcomes We Optimize For',
+    tag: 'Outcome',
+    content:
+      '1) Make logging fast on mobile. 2) Keep reminders useful without spam. 3) Help users understand true P&L. 4) Improve retention through streak-like habit loops (calendar, nudges, summary views). 5) Reduce confusion with clear UI actions.',
+  },
+];
+
 function timeAgo(date) {
   const diff = Math.floor((Date.now() - new Date(date)) / 1000);
   if (diff < 60) return 'just now';
@@ -128,6 +159,7 @@ export default function Admin() {
   const [storyPriority, setStoryPriority] = useState('medium');
   const [storySaving, setStorySaving] = useState(false);
   const [storyDeletingId, setStoryDeletingId] = useState('');
+  const [contextOpenKey, setContextOpenKey] = useState('technical');
 
   // Guard: only admin can access
   useEffect(() => {
@@ -196,6 +228,7 @@ export default function Admin() {
   const openIdeasHub = async () => {
     setIdeasOpen(true);
     setIdeasTab('stories');
+    setContextOpenKey('technical');
     await loadStories();
   };
 
@@ -909,6 +942,14 @@ export default function Admin() {
                 >
                   Reminder & Notification Table
                 </button>
+                <button
+                  onClick={() => setIdeasTab('context')}
+                  className={`text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                    ideasTab === 'context' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Product Context
+                </button>
               </div>
             </div>
 
@@ -1049,6 +1090,48 @@ export default function Admin() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              )}
+
+              {ideasTab === 'context' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600">
+                    Expand any section below while creating stories to keep technical direction and business intent aligned.
+                  </p>
+                  <div className="space-y-2">
+                    {PRODUCT_CONTEXT_ITEMS.map((item) => {
+                      const isOpen = contextOpenKey === item.key;
+                      return (
+                        <div key={item.key} className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+                          <button
+                            onClick={() => setContextOpenKey(isOpen ? '' : item.key)}
+                            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-gray-900">{item.title}</span>
+                              <span className="text-[10px] font-semibold uppercase tracking-wide bg-gray-100 text-gray-600 border border-gray-200 rounded-full px-2 py-0.5">
+                                {item.tag}
+                              </span>
+                            </div>
+                            <svg
+                              className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={2}
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          {isOpen && (
+                            <div className="px-4 pb-4">
+                              <p className="text-sm text-gray-700 leading-relaxed">{item.content}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
