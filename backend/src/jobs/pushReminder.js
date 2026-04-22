@@ -1,9 +1,9 @@
 const cron = require('node-cron');
 const { runPushReminders } = require('../controllers/push.controller');
 
-// TEMP: 9:50 PM IST for testing (16:20 UTC) — change back to '30 2 * * *' (8:00 AM IST) after
+// Daily at 7:00 PM IST (13:30 UTC)
 const startPushReminderJob = () => {
-  cron.schedule('20 16 * * *', async () => {
+  cron.schedule('30 13 * * *', async () => {
     try {
       const sent = await runPushReminders();
       console.log(`[PushReminder] Sent ${sent} push notification(s)`);
