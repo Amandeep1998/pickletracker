@@ -7,12 +7,12 @@ import BrandLogo from './BrandLogo';
 import LocationModal from './LocationModal';
 import InstallAppButton from './InstallAppButton';
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAIL || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
 
 export default function Navbar() {
   const { user, handleLogout, refreshUser } = useAuth();
   const navigate = useNavigate();
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  const isAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase());
   const [locationOpen, setLocationOpen] = useState(false);
 
   const logout = () => {

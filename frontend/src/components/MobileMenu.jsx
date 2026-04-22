@@ -4,13 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import BrandLogo from './BrandLogo';
 import InstallAppButton from './InstallAppButton';
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAIL || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
 
 export default function MobileMenu({ onOpenLocationModal }) {
   const { user, handleLogout } = useAuth();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  const isAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase());
 
   const handleLogoutClick = () => {
     handleLogout();
