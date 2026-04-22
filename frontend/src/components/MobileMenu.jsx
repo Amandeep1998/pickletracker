@@ -48,7 +48,7 @@ export default function MobileMenu({ onOpenLocationModal }) {
 
       {/* Sidebar */}
       <div
-        className={`fixed left-0 top-16 h-[calc(100dvh-64px)] w-64 bg-white shadow-xl z-50 transform transition-transform duration-300 md:hidden flex flex-col border-r border-gray-100 ${
+        className={`fixed inset-y-0 left-0 h-dvh w-64 bg-white shadow-xl z-50 transform transition-transform duration-300 md:hidden flex flex-col border-r border-gray-100 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
