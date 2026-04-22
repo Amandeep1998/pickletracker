@@ -28,6 +28,15 @@ const STORY_STATUS_STYLES = {
   done: 'bg-emerald-50 text-emerald-700 border-emerald-200',
 };
 
+const STORY_TYPE_STYLES = {
+  development: 'bg-cyan-50 text-cyan-700 border-cyan-200',
+  marketing: 'bg-pink-50 text-pink-700 border-pink-200',
+  product: 'bg-violet-50 text-violet-700 border-violet-200',
+  design: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200',
+  operations: 'bg-teal-50 text-teal-700 border-teal-200',
+  other: 'bg-gray-100 text-gray-700 border-gray-300',
+};
+
 const AUTOMATION_ROWS = [
   {
     type: 'Email reminder',
@@ -67,7 +76,21 @@ const PRODUCT_CONTEXT_ITEMS = [
     title: 'Technical Context',
     tag: 'Tech',
     content:
-      'PickleTracker is a full-stack web app with a React + Vite frontend and a Node.js + Express + MongoDB backend. It supports JWT auth, PWA install mode, push notifications, email reminders, and admin analytics. Core entities include tournaments, sessions, expenses, player cards, friendships, and admin stories.',
+      'PickleTracker is a full-stack web app with a React + Vite frontend and a Node.js + Express + MongoDB backend. It supports JWT auth, PWA install mode, push notifications, email reminders, and admin analytics. Core domains include tournaments, sessions, expenses, player cards, friendships, notifications, and admin stories.',
+  },
+  {
+    key: 'libraries',
+    title: 'Core Libraries Used',
+    tag: 'Libraries',
+    content:
+      'Frontend libraries: React, React Router, Axios, Tailwind CSS, Recharts, React Calendar, @react-google-maps/api, PostHog, Firebase SDK, @sentry/react, socket.io-client, and vite-plugin-pwa. Backend libraries: Express, Mongoose, Joi, jsonwebtoken, bcrypt, node-cron, web-push, Resend, Twilio, OpenAI SDK, multer, pdf-parse, xlsx, firebase-admin, @sentry/node, and socket.io.',
+  },
+  {
+    key: 'devtooling',
+    title: 'Development Tooling & Quality',
+    tag: 'Dev',
+    content:
+      'Build and dev workflow uses Vite (frontend) and Nodemon (backend). Styling pipeline uses PostCSS + Autoprefixer + Tailwind. Testing uses Jest, Supertest, and mongodb-memory-server for isolated backend tests. Deployment targets Vercel (frontend) with API backend, and PWA/service worker generation is handled via vite-plugin-pwa.',
   },
   {
     key: 'purpose',
@@ -157,6 +180,8 @@ export default function Admin() {
   const [storyTitle, setStoryTitle] = useState('');
   const [storyDescription, setStoryDescription] = useState('');
   const [storyPriority, setStoryPriority] = useState('medium');
+  const [storyPriorityFilter, setStoryPriorityFilter] = useState('all');
+  const [storyTypeTab, setStoryTypeTab] = useState('development');
   const [storySaving, setStorySaving] = useState(false);
   const [storyDeletingId, setStoryDeletingId] = useState('');
   const [contextOpenKey, setContextOpenKey] = useState('technical');
@@ -229,6 +254,7 @@ export default function Admin() {
     setIdeasOpen(true);
     setIdeasTab('stories');
     setContextOpenKey('technical');
+    setStoryTypeTab('development');
     await loadStories();
   };
 
@@ -246,6 +272,7 @@ export default function Admin() {
         title: cleanTitle,
         description: storyDescription.trim(),
         priority: storyPriority,
+        storyType: storyTypeTab,
       });
       if (res?.data?.data) {
         setStories((prev) => [res.data.data, ...prev]);
@@ -286,6 +313,12 @@ export default function Admin() {
       setStoryDeletingId('');
     }
   };
+
+  const filteredStories = useMemo(() => {
+    const byType = stories.filter((s) => (s.storyType || 'development') === storyTypeTab);
+    if (storyPriorityFilter === 'all') return byType;
+    return byType.filter((s) => s.priority === storyPriorityFilter);
+  }, [stories, storyPriorityFilter, storyTypeTab]);
 
   const broadcastAudienceCount = useMemo(() => {
     if (!data?.users) return 0;
@@ -958,6 +991,26 @@ export default function Admin() {
                 <div className="space-y-4">
                   <form onSubmit={handleCreateStory} className="bg-gray-50 border border-gray-100 rounded-xl p-4">
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Create Story</p>
+                    <div className="mb-3 inline-flex bg-white border border-gray-200 p-1 rounded-xl gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setStoryTypeTab('development')}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                          storyTypeTab === 'development' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Development stories
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStoryTypeTab('marketing')}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                          storyTypeTab === 'marketing' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                      >
+                        Marketing stories
+                      </button>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <input
                         type="text"
@@ -977,6 +1030,9 @@ export default function Admin() {
                         <option value="high">High priority</option>
                       </select>
                     </div>
+                    <p className="mt-2 text-xs text-gray-500">
+                      New story will be added to <span className="font-semibold text-gray-700">{storyTypeTab === 'development' ? 'Development stories' : 'Marketing stories'}</span>.
+                    </p>
                     <textarea
                       value={storyDescription}
                       onChange={(e) => setStoryDescription(e.target.value)}
@@ -1002,20 +1058,32 @@ export default function Admin() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">All Stories</p>
-                      <button
-                        onClick={loadStories}
-                        className="text-xs text-green-700 hover:text-green-800 font-medium"
-                      >
-                        Refresh
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={storyPriorityFilter}
+                          onChange={(e) => setStoryPriorityFilter(e.target.value)}
+                          className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                        >
+                          <option value="all">All priorities</option>
+                          <option value="high">High</option>
+                          <option value="medium">Medium</option>
+                          <option value="low">Low</option>
+                        </select>
+                        <button
+                          onClick={loadStories}
+                          className="text-xs text-green-700 hover:text-green-800 font-medium"
+                        >
+                          Refresh
+                        </button>
+                      </div>
                     </div>
                     {storiesLoading ? (
                       <p className="text-sm text-gray-400 py-6 text-center">Loading stories...</p>
-                    ) : stories.length === 0 ? (
-                      <p className="text-sm text-gray-400 py-6 text-center border border-dashed border-gray-200 rounded-xl">No stories yet. Add your first idea above.</p>
+                    ) : filteredStories.length === 0 ? (
+                      <p className="text-sm text-gray-400 py-6 text-center border border-dashed border-gray-200 rounded-xl">No stories match this priority filter.</p>
                     ) : (
                       <div className="space-y-2">
-                        {stories.map((story) => (
+                        {filteredStories.map((story) => (
                           <div key={story._id} className="border border-gray-100 rounded-xl p-3 bg-white">
                             <div className="flex flex-wrap items-start justify-between gap-2">
                               <div className="min-w-0">
@@ -1025,6 +1093,9 @@ export default function Admin() {
                                 )}
                               </div>
                               <div className="flex items-center gap-1.5">
+                                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${STORY_TYPE_STYLES[story.storyType] || STORY_TYPE_STYLES.other}`}>
+                                  {story.storyType || 'other'}
+                                </span>
                                 <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${PRIORITY_STYLES[story.priority] || PRIORITY_STYLES.medium}`}>
                                   {story.priority}
                                 </span>

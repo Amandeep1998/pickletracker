@@ -566,7 +566,7 @@ const getAdminStories = async (req, res, next) => {
 
 const createAdminStory = async (req, res, next) => {
   try {
-    const { title, description = '', priority = 'medium' } = req.body || {};
+    const { title, description = '', priority = 'medium', storyType = 'development' } = req.body || {};
     const cleanTitle = (title || '').trim();
     if (!cleanTitle) {
       return res.status(400).json({ success: false, message: 'Story title is required' });
@@ -574,11 +574,15 @@ const createAdminStory = async (req, res, next) => {
     if (!['low', 'medium', 'high'].includes(priority)) {
       return res.status(400).json({ success: false, message: 'Invalid priority' });
     }
+    if (!['development', 'marketing', 'product', 'design', 'operations', 'other'].includes(storyType)) {
+      return res.status(400).json({ success: false, message: 'Invalid story type' });
+    }
 
     const created = await AdminStory.create({
       title: cleanTitle,
       description: String(description || '').trim(),
       priority,
+      storyType,
       createdBy: req.user.id,
     });
     const story = await AdminStory.findById(created._id).populate('createdBy', 'name email').lean();
@@ -595,6 +599,7 @@ const updateAdminStory = async (req, res, next) => {
     if (req.body.title !== undefined) patch.title = String(req.body.title || '').trim();
     if (req.body.description !== undefined) patch.description = String(req.body.description || '').trim();
     if (req.body.priority !== undefined) patch.priority = req.body.priority;
+    if (req.body.storyType !== undefined) patch.storyType = req.body.storyType;
     if (req.body.status !== undefined) patch.status = req.body.status;
 
     if (patch.title === '') {
@@ -602,6 +607,9 @@ const updateAdminStory = async (req, res, next) => {
     }
     if (patch.priority && !['low', 'medium', 'high'].includes(patch.priority)) {
       return res.status(400).json({ success: false, message: 'Invalid priority' });
+    }
+    if (patch.storyType && !['development', 'marketing', 'product', 'design', 'operations', 'other'].includes(patch.storyType)) {
+      return res.status(400).json({ success: false, message: 'Invalid story type' });
     }
     if (patch.status && !['open', 'in-progress', 'done'].includes(patch.status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });

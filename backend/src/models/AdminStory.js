@@ -20,6 +20,12 @@ const adminStorySchema = new mongoose.Schema(
       default: 'medium',
       required: true,
     },
+    storyType: {
+      type: String,
+      enum: ['development', 'marketing', 'product', 'design', 'operations', 'other'],
+      default: 'development',
+      required: true,
+    },
     status: {
       type: String,
       enum: ['open', 'in-progress', 'done'],
