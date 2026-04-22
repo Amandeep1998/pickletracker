@@ -260,26 +260,51 @@ const BROADCAST_TEMPLATES = {
 
 const getUsers = async (req, res, next) => {
   try {
-  const users = await User.find({}).lean().sort({ createdAt: -1 });
+    const users = await User.find({}).lean().sort({ createdAt: -1 });
+    const userIds = users.map((u) => u._id);
 
-  const now = new Date();
-  const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
-  const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
-  const todayStr = now.toISOString().split('T')[0];
+    const now = new Date();
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+    const todayStr = now.toISOString().split('T')[0];
 
-  // Build a Set of userIds who have at least one push subscription
-  const pushSubs = await PushSubscription.find({}, 'userId').lean();
-  const pushSubscriberIds = new Set(pushSubs.map((s) => String(s.userId)));
+    // Fetch all related docs once (instead of per-user DB round trips)
+    const [allTournaments, allExpenses, allSessions, pushSubs] = await Promise.all([
+      Tournament.find({ userId: { $in: userIds } }).lean(),
+      Expense.find({ userId: { $in: userIds } }).lean(),
+      Session.find({ userId: { $in: userIds } }).lean(),
+      PushSubscription.find({}, 'userId').lean(),
+    ]);
 
-  const enriched = await Promise.all(
-    users.map(async (user) => {
-      const [tournaments, expenses, sessions] = await Promise.all([
-        Tournament.find({ userId: user._id }).lean(),
-        Expense.find({ userId: user._id }).lean(),
-        Session.find({ userId: user._id }).lean(),
-      ]);
+    const pushSubscriberIds = new Set(pushSubs.map((s) => String(s.userId)));
 
-      const allCats = tournaments.flatMap((t) => t.categories);
+    const tournamentsByUser = new Map();
+    const expensesByUser = new Map();
+    const sessionsByUser = new Map();
+
+    for (const t of allTournaments) {
+      const uid = String(t.userId);
+      if (!tournamentsByUser.has(uid)) tournamentsByUser.set(uid, []);
+      tournamentsByUser.get(uid).push(t);
+    }
+    for (const e of allExpenses) {
+      const uid = String(e.userId);
+      if (!expensesByUser.has(uid)) expensesByUser.set(uid, []);
+      expensesByUser.get(uid).push(e);
+    }
+    for (const s of allSessions) {
+      const uid = String(s.userId);
+      if (!sessionsByUser.has(uid)) sessionsByUser.set(uid, []);
+      sessionsByUser.get(uid).push(s);
+    }
+
+    const enriched = users.map((user) => {
+      const uid = String(user._id);
+      const tournaments = tournamentsByUser.get(uid) || [];
+      const expenses = expensesByUser.get(uid) || [];
+      const sessions = sessionsByUser.get(uid) || [];
+
+      const allCats = tournaments.flatMap((t) => t.categories || []);
 
       // Last active = most recent tournament, expense, or session update
       const activityDates = [
@@ -295,8 +320,8 @@ const getUsers = async (req, res, next) => {
       else if (lastActive >= thirtyDaysAgo) activityStatus = 'recent';
 
       // Financials
-      const totalEarnings = allCats.reduce((s, c) => s + (c.prizeAmount || 0), 0);
-      const totalExpenses = allCats.reduce((s, c) => s + (c.entryFee || 0), 0);
+      const totalEarnings = allCats.reduce((sum, c) => sum + (c.prizeAmount || 0), 0);
+      const totalExpenses = allCats.reduce((sum, c) => sum + (c.entryFee || 0), 0);
 
       // Medals
       const medals = {
@@ -308,14 +333,14 @@ const getUsers = async (req, res, next) => {
       // Most played category
       const catCounts = {};
       for (const cat of allCats) {
+        if (!cat?.categoryName) continue;
         catCounts[cat.categoryName] = (catCounts[cat.categoryName] || 0) + 1;
       }
-      const topCategory =
-        Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+      const topCategory = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
 
       // Upcoming tournaments count
       const upcomingCount = tournaments.filter((t) =>
-        t.categories.some((c) => c.date >= todayStr)
+        (t.categories || []).some((c) => c?.date >= todayStr)
       ).length;
 
       // Recent tournaments (last 3 by created date)
@@ -324,9 +349,9 @@ const getUsers = async (req, res, next) => {
         .slice(0, 3)
         .map((t) => ({
           name: t.name,
-          categoryCount: t.categories.length,
+          categoryCount: (t.categories || []).length,
           createdAt: t.createdAt,
-          profit: t.categories.reduce((s, c) => s + (c.prizeAmount - c.entryFee), 0),
+          profit: (t.categories || []).reduce((sum, c) => sum + ((c.prizeAmount || 0) - (c.entryFee || 0)), 0),
         }));
 
       // Monthly activity (tournaments created per month, last 6 months)
@@ -334,9 +359,10 @@ const getUsers = async (req, res, next) => {
         const d = new Date(now);
         d.setMonth(d.getMonth() - (5 - i));
         const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        const count = tournaments.filter((t) =>
-          t.createdAt.toISOString().startsWith(ym)
-        ).length;
+        const count = tournaments.filter((t) => {
+          const createdAt = new Date(t.createdAt);
+          return createdAt.toISOString().startsWith(ym);
+        }).length;
         return {
           month: d.toLocaleString('en-IN', { month: 'short', year: '2-digit' }),
           count,
@@ -350,9 +376,9 @@ const getUsers = async (req, res, next) => {
         casual: sessions.filter((s) => s.type === 'casual').length,
         practice: sessions.filter((s) => s.type === 'practice').length,
       };
-      const totalCourtFees = sessions.reduce((s, sess) => s + (sess.courtFee || 0), 0);
+      const totalCourtFees = sessions.reduce((sum, sess) => sum + (sess.courtFee || 0), 0);
       const avgSessionRating = sessionCount > 0
-        ? Math.round((sessions.reduce((s, sess) => s + (sess.rating || 0), 0) / sessionCount) * 10) / 10
+        ? Math.round((sessions.reduce((sum, sess) => sum + (sess.rating || 0), 0) / sessionCount) * 10) / 10
         : null;
       const skillCounts = {};
       for (const sess of sessions) {
@@ -369,9 +395,9 @@ const getUsers = async (req, res, next) => {
       const gearExpenses = expenses.filter((e) => e.type === 'gear');
       const travelExpenses = expenses.filter((e) => e.type === 'travel');
       const gearExpenseCount = gearExpenses.length;
-      const totalGearSpend = gearExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+      const totalGearSpend = gearExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
       const travelExpenseCount = travelExpenses.length;
-      const totalTravelSpend = travelExpenses.reduce((s, e) => s + (e.amount || 0), 0);
+      const totalTravelSpend = travelExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
       const internationalTripCount = travelExpenses.filter((e) => e.isInternational).length;
 
       return {
@@ -406,30 +432,29 @@ const getUsers = async (req, res, next) => {
         internationalTripCount,
         lastSeenPlatform: user.lastSeenPlatform || null,
         platformsUsed: user.platformsUsed || [],
-        hasPushSubscription: pushSubscriberIds.has(String(user._id)),
+        hasPushSubscription: pushSubscriberIds.has(uid),
       };
-    })
-  );
+    });
 
-  const pushSubscriberCount = pushSubscriberIds.size;
+    const pushSubscriberCount = pushSubscriberIds.size;
 
-  const stats = {
-    totalUsers: users.length,
-    activeThisWeek: enriched.filter((u) => u.activityStatus === 'active').length,
-    activeThisMonth: enriched.filter(
-      (u) => u.activityStatus === 'active' || u.activityStatus === 'recent'
-    ).length,
-    totalTournaments: enriched.reduce((s, u) => s + u.tournamentCount, 0),
-    totalRevenueTracked: enriched.reduce((s, u) => s + u.totalEarnings, 0),
-    googleUsers: users.filter((u) => u.isGoogleUser).length,
-    totalSessions: enriched.reduce((s, u) => s + u.sessionCount, 0),
-    totalGearSpend: enriched.reduce((s, u) => s + u.totalGearSpend, 0),
-    totalTravelSpend: enriched.reduce((s, u) => s + u.totalTravelSpend, 0),
-    pwaUsers: enriched.filter((u) => u.platformsUsed.includes('pwa')).length,
-    mobileWebUsers: enriched.filter((u) => u.platformsUsed.includes('mobile-web')).length,
-    desktopUsers: enriched.filter((u) => u.platformsUsed.includes('desktop-web')).length,
-    pushSubscribers: pushSubscriberCount,
-  };
+    const stats = {
+      totalUsers: users.length,
+      activeThisWeek: enriched.filter((u) => u.activityStatus === 'active').length,
+      activeThisMonth: enriched.filter(
+        (u) => u.activityStatus === 'active' || u.activityStatus === 'recent'
+      ).length,
+      totalTournaments: enriched.reduce((sum, u) => sum + u.tournamentCount, 0),
+      totalRevenueTracked: enriched.reduce((sum, u) => sum + u.totalEarnings, 0),
+      googleUsers: users.filter((u) => u.isGoogleUser).length,
+      totalSessions: enriched.reduce((sum, u) => sum + u.sessionCount, 0),
+      totalGearSpend: enriched.reduce((sum, u) => sum + u.totalGearSpend, 0),
+      totalTravelSpend: enriched.reduce((sum, u) => sum + u.totalTravelSpend, 0),
+      pwaUsers: enriched.filter((u) => u.platformsUsed.includes('pwa')).length,
+      mobileWebUsers: enriched.filter((u) => u.platformsUsed.includes('mobile-web')).length,
+      desktopUsers: enriched.filter((u) => u.platformsUsed.includes('desktop-web')).length,
+      pushSubscribers: pushSubscriberCount,
+    };
 
     res.json({ success: true, data: { users: enriched, stats } });
   } catch (err) {
