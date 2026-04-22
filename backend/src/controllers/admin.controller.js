@@ -4,6 +4,7 @@ const Expense = require('../models/Expense');
 const WhatsAppSession = require('../models/WhatsAppSession');
 const Session = require('../models/Session');
 const Friendship = require('../models/Friendship');
+const PushSubscription = require('../models/PushSubscription');
 const { sendNotificationEmail } = require('../services/email.service');
 
 const APP_URL = process.env.APP_PUBLIC_URL || 'https://pickletracker.in';
@@ -404,6 +405,8 @@ const getUsers = async (req, res, next) => {
     })
   );
 
+  const pushSubscriberCount = await PushSubscription.distinct('userId').then((ids) => ids.length);
+
   const stats = {
     totalUsers: users.length,
     activeThisWeek: enriched.filter((u) => u.activityStatus === 'active').length,
@@ -419,6 +422,7 @@ const getUsers = async (req, res, next) => {
     pwaUsers: enriched.filter((u) => u.platformsUsed.includes('pwa')).length,
     mobileWebUsers: enriched.filter((u) => u.platformsUsed.includes('mobile-web')).length,
     desktopUsers: enriched.filter((u) => u.platformsUsed.includes('desktop-web')).length,
+    pushSubscribers: pushSubscriberCount,
   };
 
     res.json({ success: true, data: { users: enriched, stats } });

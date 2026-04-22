@@ -72,5 +72,20 @@ export function usePushNotifications() {
     }
   };
 
-  return { permission, subscribed, isSupported, requestAndSubscribe, silentSubscribe };
+  const unsubscribe = async () => {
+    if (!isSupported) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await api.unsubscribePush(sub.endpoint);
+        await sub.unsubscribe();
+      }
+      setSubscribed(false);
+    } catch (err) {
+      console.error('[Push] Unsubscribe error:', err);
+    }
+  };
+
+  return { permission, subscribed, isSupported, requestAndSubscribe, silentSubscribe, unsubscribe };
 }

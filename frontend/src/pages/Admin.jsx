@@ -186,10 +186,11 @@ export default function Admin() {
       </div>
 
       {/* Platform breakdown */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
         <StatCard label="PWA / App" value={stats.pwaUsers ?? 0} color="text-green-600" sub="installed" />
         <StatCard label="Mobile Web" value={stats.mobileWebUsers ?? 0} color="text-sky-600" sub="browser" />
         <StatCard label="Desktop" value={stats.desktopUsers ?? 0} color="text-indigo-600" sub="web" />
+        <StatCard label="Push Notifs" value={stats.pushSubscribers ?? 0} color="text-amber-600" sub="subscribed" />
       </div>
 
       {/* Broadcast Email Panel */}

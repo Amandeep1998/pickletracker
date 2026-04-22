@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import CITIES_BY_STATE from '../data/indianCities';
 import { CURRENCIES } from '../utils/format';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 const ALL_CITIES = [...new Set(Object.values(CITIES_BY_STATE).flat())].sort();
 
@@ -30,6 +31,9 @@ const resizeImage = (file) =>
 export default function Profile() {
   const { user, refreshUser } = useAuth();
   const fileInputRef = useRef(null);
+  const { permission, subscribed, isSupported, requestAndSubscribe, unsubscribe } = usePushNotifications();
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushMsg, setPushMsg] = useState('');
 
   // Profile fields
   const [name, setName] = useState(user?.name || '');
@@ -447,6 +451,88 @@ export default function Profile() {
               </div>
             )}
           </div>
+
+          {/* Notifications Card */}
+          {isSupported && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5 mt-5">
+              <div className="flex items-start gap-3 mb-3">
+                <span className="text-2xl">🔔</span>
+                <div>
+                  <p className="text-sm font-bold text-gray-900">Push notifications</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Get a reminder the day before your tournaments — right on your device, no email needed.
+                  </p>
+                </div>
+              </div>
+
+              {permission === 'denied' ? (
+                <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                  <p className="text-xs font-semibold text-red-600 mb-0.5">Notifications blocked</p>
+                  <p className="text-xs text-red-400 leading-relaxed">
+                    You've blocked notifications for this site. To enable them, go to your browser settings → Site permissions → Notifications and allow PickleTracker.
+                  </p>
+                </div>
+              ) : subscribed ? (
+                <>
+                  <div className="bg-[#f4f8e8] border border-[#91BE4D]/30 rounded-xl px-4 py-3 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-[#4a6e10] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <p className="text-xs font-semibold text-[#4a6e10]">Notifications are enabled on this device</p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setPushLoading(true);
+                      setPushMsg('');
+                      await unsubscribe();
+                      setPushMsg('Notifications turned off.');
+                      setPushLoading(false);
+                    }}
+                    disabled={pushLoading}
+                    className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                  >
+                    {pushLoading ? 'Turning off…' : 'Turn off notifications'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-3">
+                    <p className="text-xs text-amber-700 leading-relaxed">
+                      Allow notifications and PickleTracker will remind you the day before every tournament you save.
+                    </p>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      setPushLoading(true);
+                      setPushMsg('');
+                      const ok = await requestAndSubscribe();
+                      setPushMsg(ok ? 'Notifications enabled!' : permission === 'denied' ? 'Blocked in browser settings.' : 'Could not enable — please try again.');
+                      setPushLoading(false);
+                    }}
+                    disabled={pushLoading}
+                    className="w-full flex items-center justify-center gap-2 disabled:opacity-60 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-sm tracking-wide transition-opacity"
+                    style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
+                  >
+                    {pushLoading ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                        </svg>
+                        Enabling…
+                      </>
+                    ) : (
+                      'Allow notifications'
+                    )}
+                  </button>
+                </>
+              )}
+
+              {pushMsg && (
+                <p className="text-xs text-center text-gray-500 mt-2">{pushMsg}</p>
+              )}
+            </div>
+          )}
 
           {/* Export Card */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5 mt-5">
