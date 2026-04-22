@@ -131,102 +131,132 @@ export default function Calendar() {
 
   const fetchData = async () => {
     try {
-      const [tRes, sRes] = await Promise.all([api.getTournaments(), api.getSessions()]);
-      setTournaments(tRes.data.data);
-      setSessions(sRes.data.data);
+      setError('');
+      // Render the calendar as soon as tournaments arrive; sessions can hydrate right after.
+      const tournamentsPromise = api.getTournaments();
+      const sessionsPromise = api.getSessions();
+
+      const tRes = await tournamentsPromise;
+      setTournaments(tRes.data.data || []);
+      setLoading(false);
+
+      try {
+        const sRes = await sessionsPromise;
+        setSessions(sRes.data.data || []);
+      } catch {
+        setSessions([]);
+      }
     } catch {
       setError('Failed to load calendar data');
-    } finally {
       setLoading(false);
     }
   };
 
-  // { 'YYYY-MM-DD': [{ tournament, category }, ...] }
-  const eventsByDate = useMemo(() => {
-    const map = {};
+  const calendarDerived = useMemo(() => {
+    const eventsByDate = {};
+    const sessionsByDate = {};
+    const groupedTournamentsByDate = {};
+    const monthSessionStats = {};
+    const monthTournamentSets = {};
+
+    const insertByDateLimit = (list, item, limit) => {
+      let idx = list.findIndex((x) => x.date > item.date);
+      if (idx === -1) idx = list.length;
+      list.splice(idx, 0, item);
+      if (list.length > limit) list.length = limit;
+    };
+
+    const upcomingEvents = [];
+    const upcomingTournaments = [];
+
+    sessions.forEach((s) => {
+      if (!s?.date) return;
+      if (!sessionsByDate[s.date]) sessionsByDate[s.date] = [];
+      sessionsByDate[s.date].push(s);
+
+      const monthKey = s.date.slice(0, 7);
+      if (!monthSessionStats[monthKey]) monthSessionStats[monthKey] = { sessions: 0, courtFees: 0 };
+      monthSessionStats[monthKey].sessions += 1;
+      monthSessionStats[monthKey].courtFees += (s.courtFee || 0);
+
+      if (s.date >= todayStr) {
+        insertByDateLimit(upcomingEvents, { kind: 'session', date: s.date, data: s }, 5);
+      }
+    });
+
     tournaments.forEach((t) => {
-      t.categories.forEach((cat) => {
-        const d = cat.date ? cat.date.split('T')[0] : null;
+      const seenEventDatesForTournament = new Set();
+      let earliestDate = null;
+      const upcomingCats = [];
+
+      (t.categories || []).forEach((cat) => {
+        const d = cat?.date ? cat.date.split('T')[0] : null;
         if (!d) return;
-        if (!map[d]) map[d] = [];
-        // Deduplicate by tournament id so multi-category tournaments appear once per day cell
-        if (!map[d].find((ev) => String(ev.tournament._id) === String(t._id))) {
-          map[d].push({ tournament: t, category: cat });
+
+        if (!eventsByDate[d]) eventsByDate[d] = [];
+        const eventKey = `${d}|${String(t._id)}`;
+        if (!seenEventDatesForTournament.has(eventKey)) {
+          seenEventDatesForTournament.add(eventKey);
+          eventsByDate[d].push({ tournament: t, category: cat });
+        }
+
+        if (!groupedTournamentsByDate[d]) groupedTournamentsByDate[d] = {};
+        if (!groupedTournamentsByDate[d][t._id]) {
+          groupedTournamentsByDate[d][t._id] = { tournament: t, categories: [] };
+        }
+        groupedTournamentsByDate[d][t._id].categories.push(cat);
+
+        const monthKey = d.slice(0, 7);
+        if (!monthTournamentSets[monthKey]) monthTournamentSets[monthKey] = new Set();
+        monthTournamentSets[monthKey].add(String(t._id));
+
+        if (d >= todayStr) {
+          upcomingCats.push({ ...cat, date: d });
+          if (!earliestDate || d < earliestDate) earliestDate = d;
+          insertByDateLimit(upcomingEvents, { kind: 'tournament', date: d, data: { tournament: t, category: cat } }, 5);
         }
       });
-    });
-    return map;
-  }, [tournaments]);
 
-  // { 'YYYY-MM-DD': [session, ...] }
-  const sessionsByDate = useMemo(() => {
-    const map = {};
-    sessions.forEach((s) => {
-      if (!s.date) return;
-      if (!map[s.date]) map[s.date] = [];
-      map[s.date].push(s);
+      if (upcomingCats.length) {
+        insertByDateLimit(upcomingTournaments, { tournament: t, categories: upcomingCats, earliestDate }, 6);
+      }
     });
-    return map;
-  }, [sessions]);
 
-  // Popup tournaments grouped
-  const popupByTournament = useMemo(() => {
-    if (!dayPopup.date) return [];
-    const events = eventsByDate[dayPopup.date] || [];
-    const grouped = {};
-    events.forEach(({ tournament, category }) => {
-      if (!grouped[tournament._id]) grouped[tournament._id] = { tournament, categories: [] };
-      grouped[tournament._id].categories.push(category);
+    const popupByDate = {};
+    Object.keys(groupedTournamentsByDate).forEach((dateStr) => {
+      popupByDate[dateStr] = Object.values(groupedTournamentsByDate[dateStr]);
     });
-    return Object.values(grouped);
-  }, [dayPopup.date, eventsByDate]);
+
+    return {
+      eventsByDate,
+      sessionsByDate,
+      popupByDate,
+      monthSessionStats,
+      monthTournamentSets,
+      upcomingTournaments,
+      upcomingEvents,
+    };
+  }, [sessions, tournaments, todayStr]);
+
+  const { eventsByDate, sessionsByDate, popupByDate, monthSessionStats, monthTournamentSets, upcomingTournaments, upcomingEvents } = calendarDerived;
+
+  const popupByTournament = useMemo(
+    () => (dayPopup.date ? (popupByDate[dayPopup.date] || []) : []),
+    [dayPopup.date, popupByDate]
+  );
 
   // Month summary stats for the viewed month
   const monthStats = useMemo(() => {
     const monthStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
-    const monthSessions = sessions.filter((s) => s.date?.startsWith(monthStr));
-    const monthTournaments = tournaments.filter((t) =>
-      t.categories.some((cat) => cat.date?.startsWith(monthStr))
-    );
-    const courtFees = monthSessions.reduce((s, x) => s + (x.courtFee || 0), 0);
+    const sessionStats = monthSessionStats[monthStr] || { sessions: 0, courtFees: 0 };
+    const tournamentsInMonth = monthTournamentSets[monthStr]?.size || 0;
 
     return {
-      sessions: monthSessions.length,
-      tournaments: monthTournaments.length,
-      courtFees,
+      sessions: sessionStats.sessions,
+      tournaments: tournamentsInMonth,
+      courtFees: sessionStats.courtFees,
     };
-  }, [sessions, tournaments, viewYear, viewMonth]);
-
-  // Upcoming tournaments grouped by tournament (not flattened per category)
-  const upcomingTournaments = useMemo(() => {
-    const map = {};
-    tournaments.forEach((t) => {
-      const upcomingCats = (t.categories || [])
-        .map((cat) => ({ ...cat, date: cat.date ? cat.date.split('T')[0] : null }))
-        .filter((cat) => cat.date && cat.date >= todayStr);
-      if (!upcomingCats.length) return;
-      const earliestDate = upcomingCats.map((c) => c.date).sort()[0];
-      map[t._id] = { tournament: t, categories: upcomingCats, earliestDate };
-    });
-    return Object.values(map)
-      .sort((a, b) => (a.earliestDate < b.earliestDate ? -1 : 1))
-      .slice(0, 6);
-  }, [tournaments, todayStr]);
-
-  // Upcoming events — next 5 sessions + tournament dates from today
-  const upcomingEvents = useMemo(() => {
-    const events = [];
-    sessions
-      .filter((s) => s.date >= todayStr)
-      .forEach((s) => events.push({ kind: 'session', date: s.date, data: s }));
-    tournaments.forEach((t) => {
-      t.categories.forEach((cat) => {
-        const d = cat.date ? cat.date.split('T')[0] : null;
-        if (d && d >= todayStr) events.push({ kind: 'tournament', date: d, data: { tournament: t, category: cat } });
-      });
-    });
-    return events.sort((a, b) => (a.date < b.date ? -1 : 1)).slice(0, 5);
-  }, [sessions, tournaments, todayStr]);
+  }, [monthSessionStats, monthTournamentSets, viewYear, viewMonth]);
 
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
 
