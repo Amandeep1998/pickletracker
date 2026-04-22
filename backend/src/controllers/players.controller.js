@@ -76,15 +76,7 @@ exports.getPlayers = async (req, res, next) => {
           silverMedals: { $sum: { $cond: [{ $eq: ['$categories.medal', 'Silver'] }, 1, 0] } },
           bronzeMedals: { $sum: { $cond: [{ $eq: ['$categories.medal', 'Bronze'] }, 1, 0] } },
           categories: { $push: '$categories.categoryName' },
-          recentTournaments: {
-            $push: {
-              name: '$name',
-              medal: '$categories.medal',
-              category: '$categories.categoryName',
-              date: '$categories.date',
-              createdAt: '$createdAt',
-            },
-          },
+          lastActiveDate: { $max: '$categories.date' },
         },
       },
       {
@@ -95,7 +87,7 @@ exports.getPlayers = async (req, res, next) => {
           bronzeMedals: 1,
           totalMedals: { $add: ['$goldMedals', '$silverMedals', '$bronzeMedals'] },
           categories: 1,
-          recentTournaments: 1,
+          lastActiveDate: 1,
         },
       },
     ]);
@@ -111,50 +103,15 @@ exports.getPlayers = async (req, res, next) => {
         .slice(0, 3)
         .map(([name, count]) => ({ name, count }));
 
-      // Recent medal-winning tournaments (last 3)
-      const withMedal = (s.recentTournaments || [])
-        .filter((t) => t.medal && t.medal !== 'None')
-        .sort((a, b) => (b.date || '') > (a.date || '') ? 1 : -1)
-        .slice(0, 3);
-
-      // Last active date
-      const allDates = (s.recentTournaments || []).map((t) => t.date).filter(Boolean).sort().reverse();
-
       statsMap[String(s._id)] = {
         totalTournaments: s.totalTournaments,
         medals: { Gold: s.goldMedals, Silver: s.silverMedals, Bronze: s.bronzeMedals },
         totalMedals: s.totalMedals,
         topCategories,
-        recentMedalTournaments: withMedal,
-        lastActiveDate: allDates[0] || null,
+        recentMedalTournaments: [],
+        lastActiveDate: s.lastActiveDate || null,
       };
     }
-
-    const achievementsByUser = await Tournament.aggregate([
-      { $match: { userId: { $in: userIds } } },
-      { $unwind: '$categories' },
-      {
-        $project: {
-          userId: 1,
-          tournamentName: '$name',
-          categoryName: '$categories.categoryName',
-          medal: '$categories.medal',
-          date: '$categories.date',
-        },
-      },
-    ]);
-    const autoAchievementsMap = {};
-    achievementsByUser.forEach((a) => {
-      const key = String(a.userId);
-      if (!autoAchievementsMap[key]) autoAchievementsMap[key] = [];
-      autoAchievementsMap[key].push({
-        tournamentName: a.tournamentName,
-        categoryName: a.categoryName,
-        medal: a.medal,
-        date: a.date || null,
-        source: 'tournament',
-      });
-    });
 
     // ── Step 5: Merge and shape response ───────────────────────────────────────
     const players = users.map((u) => {
@@ -188,16 +145,13 @@ exports.getPlayers = async (req, res, next) => {
         playingSince: u.playingSince || null,
         memberSince: u.createdAt,
         manualAchievements: manual,
-        achievements: [
-          ...(autoAchievementsMap[String(u._id)] || []),
-          ...manual.map((a) => ({
-            tournamentName: a.tournamentName,
-            categoryName: a.categoryName,
-            medal: a.medal,
-            date: a.date || null,
-            source: 'manual',
-          })),
-        ],
+        achievements: manual.map((a) => ({
+          tournamentName: a.tournamentName,
+          categoryName: a.categoryName,
+          medal: a.medal,
+          date: a.date || null,
+          source: 'manual',
+        })),
         ...stats,
         medals,
         totalMedals,

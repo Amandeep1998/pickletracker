@@ -31,9 +31,13 @@ const YEARS = Array.from({ length: 5 }, (_, i) => currentYear - i);
 // Helper: earliest category date for sorting/filtering
 const getTournamentDate = (tournament) => {
   if (!tournament?.categories || tournament.categories.length === 0) return null;
-  const dates = tournament.categories.map((cat) => cat.date).filter(Boolean);
-  if (dates.length === 0) return null;
-  return dates.sort()[0];
+  let earliest = null;
+  for (const cat of tournament.categories) {
+    if (!cat?.date) continue;
+    const dateStr = cat.date.split('T')[0];
+    if (!earliest || dateStr < earliest) earliest = dateStr;
+  }
+  return earliest;
 };
 
 export default function Dashboard() {
@@ -68,24 +72,57 @@ export default function Dashboard() {
   }, [nudgeKey]);
 
   useEffect(() => {
+    let cancelled = false;
+
     // After 4 s still loading → server is cold-starting; show a friendlier message
     const slowTimer = setTimeout(() => setSlowLoad(true), 4000);
 
-    Promise.all([api.getTournaments(), api.getExpenses(), api.getSessions()])
-      .then(([tRes, eRes, sRes]) => {
-        setTournaments(tRes.data.data);
-        setExpenses(eRes.data.data);
-        setAllSessions(sRes.data.data);
-      })
-      .catch(() => setError('Failed to load data'))
-      .finally(() => {
-        clearTimeout(slowTimer);
-        setLoading(false);
-        setSlowLoad(false);
-      });
+    const load = async () => {
+      try {
+        setError('');
+        // Fast first paint: unblock Dashboard as soon as tournaments arrive.
+        const tournamentsPromise = api.getTournaments();
+        const expensesPromise = api.getExpenses();
+        const sessionsPromise = api.getSessions();
 
-    return () => clearTimeout(slowTimer);
+        const tRes = await tournamentsPromise;
+        if (!cancelled) {
+          setTournaments(tRes.data.data || []);
+          clearTimeout(slowTimer);
+          setLoading(false);
+          setSlowLoad(false);
+        }
+
+        const [eRes, sRes] = await Promise.allSettled([expensesPromise, sessionsPromise]);
+        if (cancelled) return;
+
+        if (eRes.status === 'fulfilled') setExpenses(eRes.value.data.data || []);
+        if (sRes.status === 'fulfilled') setAllSessions(sRes.value.data.data || []);
+      } catch {
+        if (!cancelled) {
+          clearTimeout(slowTimer);
+          setLoading(false);
+          setSlowLoad(false);
+          setError('Failed to load data');
+        }
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(slowTimer);
+    };
   }, []);
+
+  const tournamentDateMap = useMemo(() => {
+    const map = {};
+    tournaments.forEach((t) => {
+      map[t._id] = getTournamentDate(t);
+    });
+    return map;
+  }, [tournaments]);
 
   const medalTally = useMemo(
     () => computeMedalTally(tournaments, user?.manualAchievements),
@@ -122,14 +159,14 @@ export default function Dashboard() {
   // Tournaments in the selected year+month window
   const filteredTournaments = useMemo(() => {
     return tournaments.filter((t) => {
-      const dateStr = getTournamentDate(t);
+      const dateStr = tournamentDateMap[t._id];
       if (!dateStr) return false;
       const [year, month] = dateStr.split('-');
       if (filterYear && year !== filterYear) return false;
       if (filterMonth !== '' && String(Number(month) - 1) !== filterMonth) return false;
       return true;
     });
-  }, [tournaments, filterYear, filterMonth]);
+  }, [tournaments, tournamentDateMap, filterYear, filterMonth]);
 
   // All expenses in the selected year+month window
   const filteredExpenses = useMemo(() => {
@@ -186,7 +223,7 @@ export default function Dashboard() {
   // Monthly chart data for the selected year
   const chartData = useMemo(() => {
     const yearTournaments = tournaments.filter((t) =>
-      getTournamentDate(t)?.startsWith(filterYear)
+      tournamentDateMap[t._id]?.startsWith(filterYear)
     );
     const yearExpenses = expenses.filter((e) => e.date?.startsWith(filterYear));
     const yearSessions = allSessions.filter((s) => s.date?.startsWith(filterYear));
@@ -195,7 +232,7 @@ export default function Dashboard() {
       const monthStr = String(idx + 1).padStart(2, '0');
 
       const monthTournaments = yearTournaments.filter((t) => {
-        const date = getTournamentDate(t);
+        const date = tournamentDateMap[t._id];
         return date && date.split('-')[1] === monthStr;
       });
       const monthExpenses = yearExpenses.filter((e) => e.date.split('-')[1] === monthStr);
@@ -225,7 +262,7 @@ export default function Dashboard() {
         Profit: +(earnings - totalExp).toFixed(2),
       };
     });
-  }, [tournaments, expenses, allSessions, filterYear, includeTournaments, includeCourtFees, includeGear, includeTravel]);
+  }, [tournaments, expenses, allSessions, tournamentDateMap, filterYear, includeTournaments, includeCourtFees, includeGear, includeTravel]);
 
   // Per-category profit breakdown — uses filteredTournaments so year/month filter applies
   const categoryBreakdown = useMemo(() => {
