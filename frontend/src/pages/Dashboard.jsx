@@ -414,31 +414,41 @@ export default function Dashboard() {
 
       {/* Time filters */}
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
-        <select
-          value={filterYear}
-          onChange={(e) => setFilterYear(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-        >
-          {YEARS.map((y) => (
-            <option key={y} value={y}>{y}</option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            value={filterYear}
+            onChange={(e) => setFilterYear(e.target.value)}
+            className="appearance-none w-full sm:w-36 rounded-xl border border-[#91BE4D]/35 bg-[#f4f8e8] px-3 py-2.5 pr-9 text-xs sm:text-sm font-semibold text-[#1c350a] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
+          >
+            {YEARS.map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+          <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#4a6e10]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
 
-        <select
-          value={filterMonth}
-          onChange={(e) => setFilterMonth(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-        >
-          <option value="">All months</option>
-          {MONTHS.map((m, i) => (
-            <option key={m} value={i}>{m}</option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            value={filterMonth}
+            onChange={(e) => setFilterMonth(e.target.value)}
+            className="appearance-none w-full sm:w-40 rounded-xl border border-[#ec9937]/35 bg-[#fff8ef] px-3 py-2.5 pr-9 text-xs sm:text-sm font-semibold text-[#7a4808] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#ec9937] focus:border-[#ec9937]"
+          >
+            <option value="">All months</option>
+            {MONTHS.map((m, i) => (
+              <option key={m} value={i}>{m}</option>
+            ))}
+          </select>
+          <svg className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a86010]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
 
         {filterMonth !== '' && (
           <button
             onClick={() => setFilterMonth('')}
-            className="text-sm text-gray-400 hover:text-gray-600 underline"
+            className="text-xs sm:text-sm font-semibold text-[#4a6e10] hover:text-[#2d7005] underline underline-offset-2 self-start sm:self-center"
           >
             Clear month
           </button>
