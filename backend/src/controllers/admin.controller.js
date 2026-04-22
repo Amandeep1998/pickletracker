@@ -5,6 +5,7 @@ const WhatsAppSession = require('../models/WhatsAppSession');
 const Session = require('../models/Session');
 const Friendship = require('../models/Friendship');
 const PushSubscription = require('../models/PushSubscription');
+const AdminStory = require('../models/AdminStory');
 const { sendNotificationEmail } = require('../services/email.service');
 
 const APP_URL = process.env.APP_PUBLIC_URL || 'https://pickletracker.in';
@@ -551,4 +552,81 @@ const broadcastEmail = async (req, res, next) => {
   }
 };
 
-module.exports = { getUsers, getUserTournaments, toggleWhatsAppAccess, deleteUser, broadcastEmail };
+const getAdminStories = async (req, res, next) => {
+  try {
+    const stories = await AdminStory.find({})
+      .populate('createdBy', 'name email')
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({ success: true, data: stories });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const createAdminStory = async (req, res, next) => {
+  try {
+    const { title, description = '', priority = 'medium' } = req.body || {};
+    const cleanTitle = (title || '').trim();
+    if (!cleanTitle) {
+      return res.status(400).json({ success: false, message: 'Story title is required' });
+    }
+    if (!['low', 'medium', 'high'].includes(priority)) {
+      return res.status(400).json({ success: false, message: 'Invalid priority' });
+    }
+
+    const created = await AdminStory.create({
+      title: cleanTitle,
+      description: String(description || '').trim(),
+      priority,
+      createdBy: req.user._id,
+    });
+    const story = await AdminStory.findById(created._id).populate('createdBy', 'name email').lean();
+    res.status(201).json({ success: true, data: story });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const updateAdminStory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const patch = {};
+    if (req.body.title !== undefined) patch.title = String(req.body.title || '').trim();
+    if (req.body.description !== undefined) patch.description = String(req.body.description || '').trim();
+    if (req.body.priority !== undefined) patch.priority = req.body.priority;
+    if (req.body.status !== undefined) patch.status = req.body.status;
+
+    if (patch.title === '') {
+      return res.status(400).json({ success: false, message: 'Story title is required' });
+    }
+    if (patch.priority && !['low', 'medium', 'high'].includes(patch.priority)) {
+      return res.status(400).json({ success: false, message: 'Invalid priority' });
+    }
+    if (patch.status && !['open', 'in-progress', 'done'].includes(patch.status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    const updated = await AdminStory.findByIdAndUpdate(
+      id,
+      patch,
+      { new: true, runValidators: true }
+    ).populate('createdBy', 'name email').lean();
+
+    if (!updated) return res.status(404).json({ success: false, message: 'Story not found' });
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = {
+  getUsers,
+  getUserTournaments,
+  toggleWhatsAppAccess,
+  deleteUser,
+  broadcastEmail,
+  getAdminStories,
+  createAdminStory,
+  updateAdminStory,
+};

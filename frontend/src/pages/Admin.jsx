@@ -16,6 +16,51 @@ const STATUS_STYLES = {
   inactive: { dot: 'bg-gray-300',   badge: 'bg-gray-100 text-gray-500',    label: 'Inactive' },
 };
 
+const PRIORITY_STYLES = {
+  high: 'bg-red-50 text-red-700 border-red-200',
+  medium: 'bg-amber-50 text-amber-700 border-amber-200',
+  low: 'bg-blue-50 text-blue-700 border-blue-200',
+};
+
+const STORY_STATUS_STYLES = {
+  open: 'bg-slate-100 text-slate-700 border-slate-200',
+  'in-progress': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  done: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+};
+
+const AUTOMATION_ROWS = [
+  {
+    type: 'Email reminder',
+    trigger: 'Daily at 08:00 IST',
+    purpose: 'Tournament reminder for upcoming events',
+    source: 'node-cron',
+  },
+  {
+    type: 'Email reminder',
+    trigger: 'Daily at 08:00 IST',
+    purpose: 'Result nudge to fill medals/results for played events',
+    source: 'node-cron',
+  },
+  {
+    type: 'Email digest',
+    trigger: 'Weekly at 08:00 IST (Monday)',
+    purpose: 'Weekly summary of activity and finances',
+    source: 'node-cron',
+  },
+  {
+    type: 'Email digest',
+    trigger: 'Monthly at 08:00 IST (1st day)',
+    purpose: 'Monthly P&L report and tracking summary',
+    source: 'node-cron',
+  },
+  {
+    type: 'Push notification',
+    trigger: 'Daily around 19:00 IST',
+    purpose: 'Evening engagement reminder for subscribed devices',
+    source: 'push scheduler',
+  },
+];
+
 function timeAgo(date) {
   const diff = Math.floor((Date.now() - new Date(date)) / 1000);
   if (diff < 60) return 'just now';
@@ -73,6 +118,15 @@ export default function Admin() {
   const [broadcastLoading, setBroadcastLoading] = useState(false);
   const [broadcastResult, setBroadcastResult] = useState(null); // { sent, failed, total, failures }
   const [showFailures, setShowFailures] = useState(false);
+  const [ideasOpen, setIdeasOpen] = useState(false);
+  const [ideasTab, setIdeasTab] = useState('stories');
+  const [stories, setStories] = useState([]);
+  const [storiesLoading, setStoriesLoading] = useState(false);
+  const [storyError, setStoryError] = useState('');
+  const [storyTitle, setStoryTitle] = useState('');
+  const [storyDescription, setStoryDescription] = useState('');
+  const [storyPriority, setStoryPriority] = useState('medium');
+  const [storySaving, setStorySaving] = useState(false);
 
   // Guard: only admin can access
   useEffect(() => {
@@ -125,6 +179,64 @@ export default function Admin() {
     }
   };
 
+  const loadStories = async () => {
+    setStoriesLoading(true);
+    setStoryError('');
+    try {
+      const res = await api.getAdminStories();
+      setStories(res?.data?.data || []);
+    } catch {
+      setStoryError('Could not load admin stories right now.');
+    } finally {
+      setStoriesLoading(false);
+    }
+  };
+
+  const openIdeasHub = async () => {
+    setIdeasOpen(true);
+    setIdeasTab('stories');
+    await loadStories();
+  };
+
+  const handleCreateStory = async (e) => {
+    e.preventDefault();
+    const cleanTitle = storyTitle.trim();
+    if (!cleanTitle) {
+      setStoryError('Story title is required.');
+      return;
+    }
+    setStorySaving(true);
+    setStoryError('');
+    try {
+      const res = await api.createAdminStory({
+        title: cleanTitle,
+        description: storyDescription.trim(),
+        priority: storyPriority,
+      });
+      if (res?.data?.data) {
+        setStories((prev) => [res.data.data, ...prev]);
+      }
+      setStoryTitle('');
+      setStoryDescription('');
+      setStoryPriority('medium');
+    } catch {
+      setStoryError('Could not create story. Please try again.');
+    } finally {
+      setStorySaving(false);
+    }
+  };
+
+  const handleUpdateStoryStatus = async (storyId, status) => {
+    try {
+      const res = await api.updateAdminStory(storyId, { status });
+      const updated = res?.data?.data;
+      if (!updated) return;
+      setStories((prev) => prev.map((s) => (s._id === storyId ? updated : s)));
+    } catch {
+      setStoryError('Could not update story status.');
+    }
+  };
+
   const broadcastAudienceCount = useMemo(() => {
     if (!data?.users) return 0;
     if (broadcastTarget === 'all') return data.users.length;
@@ -161,9 +273,20 @@ export default function Admin() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Admin Panel</h1>
-        <p className="text-sm text-gray-400 mt-1">User analytics and activity overview</p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Admin Panel</h1>
+          <p className="text-sm text-gray-400 mt-1">User analytics and activity overview</p>
+        </div>
+        <button
+          onClick={openIdeasHub}
+          className="inline-flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors w-full sm:w-auto"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          Ideas Hub
+        </button>
       </div>
 
       {/* Stats */}
@@ -733,6 +856,180 @@ export default function Admin() {
           <div className="text-center py-12 text-gray-400 text-sm">No users match your search.</div>
         )}
       </div>
+
+      {/* Ideas hub modal */}
+      {ideasOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}>
+          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-gray-200 max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">Admin Ideas Hub</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Capture stories and keep reminder timings handy in one place.</p>
+              </div>
+              <button
+                onClick={() => setIdeasOpen(false)}
+                className="text-sm text-gray-500 hover:text-gray-700 px-2 py-1 rounded-md hover:bg-gray-100"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="px-5 pt-4">
+              <div className="inline-flex bg-gray-100 p-1 rounded-xl gap-1">
+                <button
+                  onClick={() => setIdeasTab('stories')}
+                  className={`text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                    ideasTab === 'stories' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Stories
+                </button>
+                <button
+                  onClick={() => setIdeasTab('automations')}
+                  className={`text-xs sm:text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                    ideasTab === 'automations' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  Reminder & Notification Table
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 overflow-y-auto">
+              {ideasTab === 'stories' && (
+                <div className="space-y-4">
+                  <form onSubmit={handleCreateStory} className="bg-gray-50 border border-gray-100 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Create Story</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <input
+                        type="text"
+                        placeholder="Story title (required)"
+                        value={storyTitle}
+                        onChange={(e) => setStoryTitle(e.target.value)}
+                        className="sm:col-span-2 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                        maxLength={160}
+                      />
+                      <select
+                        value={storyPriority}
+                        onChange={(e) => setStoryPriority(e.target.value)}
+                        className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      >
+                        <option value="low">Low priority</option>
+                        <option value="medium">Medium priority</option>
+                        <option value="high">High priority</option>
+                      </select>
+                    </div>
+                    <textarea
+                      value={storyDescription}
+                      onChange={(e) => setStoryDescription(e.target.value)}
+                      rows={3}
+                      maxLength={1500}
+                      placeholder="Optional context from WhatsApp discussion..."
+                      className="mt-3 w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                    {storyError && (
+                      <p className="mt-2 text-xs text-red-600">{storyError}</p>
+                    )}
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={storySaving}
+                        className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60 transition-colors"
+                      >
+                        {storySaving ? 'Saving...' : 'Add Story'}
+                      </button>
+                    </div>
+                  </form>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">All Stories</p>
+                      <button
+                        onClick={loadStories}
+                        className="text-xs text-green-700 hover:text-green-800 font-medium"
+                      >
+                        Refresh
+                      </button>
+                    </div>
+                    {storiesLoading ? (
+                      <p className="text-sm text-gray-400 py-6 text-center">Loading stories...</p>
+                    ) : stories.length === 0 ? (
+                      <p className="text-sm text-gray-400 py-6 text-center border border-dashed border-gray-200 rounded-xl">No stories yet. Add your first idea above.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {stories.map((story) => (
+                          <div key={story._id} className="border border-gray-100 rounded-xl p-3 bg-white">
+                            <div className="flex flex-wrap items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 break-words">{story.title}</p>
+                                {story.description && (
+                                  <p className="text-xs text-gray-600 mt-1 break-words">{story.description}</p>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${PRIORITY_STYLES[story.priority] || PRIORITY_STYLES.medium}`}>
+                                  {story.priority}
+                                </span>
+                                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${STORY_STATUS_STYLES[story.status] || STORY_STATUS_STYLES.open}`}>
+                                  {story.status}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                              <p className="text-[11px] text-gray-400">
+                                By {story.createdBy?.name || story.createdBy?.email || 'Admin'} · {timeAgo(story.createdAt)}
+                              </p>
+                              <select
+                                value={story.status}
+                                onChange={(e) => handleUpdateStoryStatus(story._id, e.target.value)}
+                                className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                              >
+                                <option value="open">Open</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="done">Done</option>
+                              </select>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {ideasTab === 'automations' && (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600">
+                    Quick reference of currently configured reminders/notifications so planning stays aligned.
+                  </p>
+                  <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
+                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Trigger Time</th>
+                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Purpose</th>
+                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Source</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 bg-white">
+                        {AUTOMATION_ROWS.map((row) => (
+                          <tr key={`${row.type}-${row.trigger}-${row.purpose}`}>
+                            <td className="px-3 py-2 text-gray-900">{row.type}</td>
+                            <td className="px-3 py-2 text-gray-700">{row.trigger}</td>
+                            <td className="px-3 py-2 text-gray-700">{row.purpose}</td>
+                            <td className="px-3 py-2 text-gray-500">{row.source}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Broadcast confirm modal */}
       {broadcastConfirm && (
