@@ -308,7 +308,7 @@ export function InstallAppCard() {
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-bold leading-tight">Get the PickleTracker app</p>
             <p className="text-[#91BE4D] text-xs mt-0.5 leading-snug">
-              {isIOS ? 'Add to Home Screen for a full-screen experience' : 'Install for faster load times and offline access'}
+              {isIOS ? 'Add to Home Screen for a full-screen experience' : 'Install for faster load times and a native app feel'}
             </p>
           </div>
 
