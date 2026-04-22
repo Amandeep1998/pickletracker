@@ -21,13 +21,15 @@ export function usePushNotifications() {
     isSupported ? Notification.permission : 'denied'
   );
   const [subscribed, setSubscribed] = useState(false);
+  const [checking, setChecking] = useState(isSupported);
 
   useEffect(() => {
     if (!isSupported) return;
     navigator.serviceWorker.ready
       .then((reg) => reg.pushManager.getSubscription())
       .then((sub) => setSubscribed(!!sub))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setChecking(false));
   }, []);
 
   // Request browser permission then subscribe with VAPID key
@@ -87,5 +89,5 @@ export function usePushNotifications() {
     }
   };
 
-  return { permission, subscribed, isSupported, requestAndSubscribe, silentSubscribe, unsubscribe };
+  return { permission, subscribed, checking, isSupported, requestAndSubscribe, silentSubscribe, unsubscribe };
 }
