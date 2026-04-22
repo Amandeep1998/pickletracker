@@ -353,4 +353,21 @@ const updateProfile = async (req, res, next) => {
   }
 };
 
-module.exports = { signup, login, googleAuth, forgotPassword, resetPassword, getProfile, updateProfile };
+const pingPlatform = async (req, res, next) => {
+  try {
+    const { platform } = req.body;
+    const valid = ['pwa', 'mobile-web', 'desktop-web'];
+    if (!valid.includes(platform)) {
+      return res.status(400).json({ success: false, message: 'Invalid platform' });
+    }
+    await User.findByIdAndUpdate(req.user.id, {
+      lastSeenPlatform: platform,
+      $addToSet: { platformsUsed: platform },
+    });
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
+module.exports = { signup, login, googleAuth, forgotPassword, resetPassword, getProfile, updateProfile, pingPlatform };

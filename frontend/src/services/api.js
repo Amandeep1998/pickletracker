@@ -38,6 +38,7 @@ export const forgotPassword = (email) => api.post('/auth/forgot-password', { ema
 export const resetPassword = (token, password) => api.post('/auth/reset-password', { token, password });
 export const getProfile = () => api.get('/auth/profile');
 export const updateProfile = (data) => api.put('/auth/profile', data);
+export const pingPlatform = (platform) => api.post('/auth/ping-platform', { platform });
 
 // Tournaments
 export const getTournaments = () => api.get('/tournaments');

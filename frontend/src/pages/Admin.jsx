@@ -179,10 +179,17 @@ export default function Admin() {
           color="text-green-700"
         />
       </div>
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3">
         <StatCard label="Sessions" value={stats.totalSessions} color="text-blue-600" sub="all users" />
         <StatCard label="Gear Spend" value={formatCurrency(stats.totalGearSpend, currency)} color="text-purple-600" sub="all gear" />
         <StatCard label="Travel" value={formatCurrency(stats.totalTravelSpend, currency)} color="text-orange-600" sub="all travel" />
+      </div>
+
+      {/* Platform breakdown */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
+        <StatCard label="PWA / App" value={stats.pwaUsers ?? 0} color="text-green-600" sub="installed" />
+        <StatCard label="Mobile Web" value={stats.mobileWebUsers ?? 0} color="text-sky-600" sub="browser" />
+        <StatCard label="Desktop" value={stats.desktopUsers ?? 0} color="text-indigo-600" sub="web" />
       </div>
 
       {/* Broadcast Email Panel */}
@@ -398,6 +405,15 @@ export default function Admin() {
                     ) : (
                       <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200 flex-shrink-0">E</span>
                     )}
+                    {u.lastSeenPlatform === 'pwa' && (
+                      <span className="text-[10px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full border border-green-200 flex-shrink-0">App</span>
+                    )}
+                    {u.lastSeenPlatform === 'mobile-web' && (
+                      <span className="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded-full border border-sky-200 flex-shrink-0">Mobile</span>
+                    )}
+                    {u.lastSeenPlatform === 'desktop-web' && (
+                      <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded-full border border-indigo-200 flex-shrink-0">Desktop</span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-400 truncate">{u.email}</p>
                   {/* Mobile-only sub-row */}
@@ -504,6 +520,20 @@ export default function Admin() {
                           <span className={`font-medium ${u.upcomingCount > 0 ? 'text-green-600' : 'text-gray-400'}`}>
                             {u.upcomingCount || '—'}
                           </span>
+                        </div>
+                        <div className="flex justify-between items-start">
+                          <span>Platform</span>
+                          <div className="flex flex-wrap gap-1 justify-end">
+                            {u.platformsUsed?.length > 0 ? u.platformsUsed.map((p) => (
+                              <span key={p} className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
+                                p === 'pwa' ? 'bg-green-50 text-green-700 border-green-200' :
+                                p === 'mobile-web' ? 'bg-sky-50 text-sky-700 border-sky-200' :
+                                'bg-indigo-50 text-indigo-700 border-indigo-200'
+                              }`}>
+                                {p === 'pwa' ? 'App' : p === 'mobile-web' ? 'Mobile' : 'Desktop'}
+                              </span>
+                            )) : <span className="text-gray-400">—</span>}
+                          </div>
                         </div>
                       </div>
 

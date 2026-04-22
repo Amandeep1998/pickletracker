@@ -119,6 +119,16 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    lastSeenPlatform: {
+      type: String,
+      enum: ['pwa', 'mobile-web', 'desktop-web'],
+      default: null,
+    },
+    platformsUsed: {
+      type: [String],
+      enum: ['pwa', 'mobile-web', 'desktop-web'],
+      default: [],
+    },
     resetPasswordToken: {
       type: String,
       default: null,

@@ -20,6 +20,15 @@ function identifyUser(userData) {
   });
 }
 
+function detectPlatform() {
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    navigator.standalone === true;
+  if (isStandalone) return 'pwa';
+  if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) return 'mobile-web';
+  return 'desktop-web';
+}
+
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -80,6 +89,7 @@ export const AuthProvider = ({ children }) => {
         if (userData && active) {
           localStorage.setItem('user', JSON.stringify(userData));
           setUser(userData);
+          api.pingPlatform(detectPlatform()).catch(() => {});
         }
       } catch {
         await clearStoredSession();

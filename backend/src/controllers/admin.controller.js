@@ -398,6 +398,8 @@ const getUsers = async (req, res, next) => {
         travelExpenseCount,
         totalTravelSpend,
         internationalTripCount,
+        lastSeenPlatform: user.lastSeenPlatform || null,
+        platformsUsed: user.platformsUsed || [],
       };
     })
   );
@@ -414,6 +416,9 @@ const getUsers = async (req, res, next) => {
     totalSessions: enriched.reduce((s, u) => s + u.sessionCount, 0),
     totalGearSpend: enriched.reduce((s, u) => s + u.totalGearSpend, 0),
     totalTravelSpend: enriched.reduce((s, u) => s + u.totalTravelSpend, 0),
+    pwaUsers: enriched.filter((u) => u.platformsUsed.includes('pwa')).length,
+    mobileWebUsers: enriched.filter((u) => u.platformsUsed.includes('mobile-web')).length,
+    desktopUsers: enriched.filter((u) => u.platformsUsed.includes('desktop-web')).length,
   };
 
     res.json({ success: true, data: { users: enriched, stats } });
