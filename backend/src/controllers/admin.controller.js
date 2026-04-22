@@ -266,6 +266,10 @@ const getUsers = async (req, res, next) => {
   const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
   const todayStr = now.toISOString().split('T')[0];
 
+  // Build a Set of userIds who have at least one push subscription
+  const pushSubs = await PushSubscription.find({}, 'userId').lean();
+  const pushSubscriberIds = new Set(pushSubs.map((s) => String(s.userId)));
+
   const enriched = await Promise.all(
     users.map(async (user) => {
       const [tournaments, expenses, sessions] = await Promise.all([
@@ -401,11 +405,12 @@ const getUsers = async (req, res, next) => {
         internationalTripCount,
         lastSeenPlatform: user.lastSeenPlatform || null,
         platformsUsed: user.platformsUsed || [],
+        hasPushSubscription: pushSubscriberIds.has(String(user._id)),
       };
     })
   );
 
-  const pushSubscriberCount = await PushSubscription.distinct('userId').then((ids) => ids.length);
+  const pushSubscriberCount = pushSubscriberIds.size;
 
   const stats = {
     totalUsers: users.length,

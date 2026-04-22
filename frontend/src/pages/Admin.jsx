@@ -415,6 +415,9 @@ export default function Admin() {
                     {u.lastSeenPlatform === 'desktop-web' && (
                       <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded-full border border-indigo-200 flex-shrink-0">Desktop</span>
                     )}
+                    {u.hasPushSubscription && (
+                      <span className="text-[10px] bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-full border border-amber-200 flex-shrink-0">🔔 Push</span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-400 truncate">{u.email}</p>
                   {/* Mobile-only sub-row */}
@@ -535,6 +538,13 @@ export default function Admin() {
                               </span>
                             )) : <span className="text-gray-400">—</span>}
                           </div>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span>Push notifications</span>
+                          {u.hasPushSubscription
+                            ? <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">🔔 Subscribed</span>
+                            : <span className="text-gray-400">—</span>
+                          }
                         </div>
                       </div>
 
