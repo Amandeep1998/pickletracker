@@ -18,6 +18,7 @@ import TournamentShareModal from '../components/TournamentShareModal';
 import BannerMedalStrip from '../components/BannerMedalStrip';
 import { computeMedalTally } from '../utils/medals';
 import { InstallAppCard } from '../components/InstallAppButton';
+import PaddleLoader from '../components/PaddleLoader';
 
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -360,16 +361,14 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="text-center py-24 px-4">
-        <div className="inline-flex flex-col items-center gap-3">
-          <svg className="animate-spin w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-          </svg>
+        <div className="inline-flex flex-col items-center gap-2">
           {!slowLoad ? (
-            <p className="text-gray-400 text-sm">Loading dashboard...</p>
+            <PaddleLoader label="Loading dashboard..." />
           ) : (
             <div className="text-center">
-              <p className="text-gray-600 text-sm font-medium">Server is waking up...</p>
+              <div className="mb-2">
+                <PaddleLoader label="Server is waking up..." />
+              </div>
               <p className="text-gray-400 text-xs mt-1">
                 This takes up to 30 seconds on first load. Hang tight!
               </p>

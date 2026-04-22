@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { getAdminUserTournaments } from '../services/api';
 import { formatCurrency } from '../utils/format';
 import { getMapUrl } from '../utils/mapUrl';
+import PaddleLoader from './PaddleLoader';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -162,7 +163,7 @@ export default function AdminUserCalendar({ user, onClose }) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto">
           {loading && (
-            <div className="flex items-center justify-center py-20 text-gray-400 text-sm">Loading calendar…</div>
+            <div className="py-20"><PaddleLoader label="Loading calendar..." /></div>
           )}
           {error && (
             <div className="flex items-center justify-center py-20 text-red-400 text-sm">{error}</div>

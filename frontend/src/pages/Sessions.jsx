@@ -7,6 +7,7 @@ import SessionForm from '../components/SessionForm';
 import Modal from '../components/Modal';
 import BannerMedalStrip from '../components/BannerMedalStrip';
 import { computeMedalTally } from '../utils/medals';
+import PaddleLoader from '../components/PaddleLoader';
 
 const TYPE_LABELS = { tournament: 'Tournament', casual: 'Casual Play', practice: 'Drill' };
 const TYPE_COLORS = {
@@ -148,15 +149,7 @@ export default function Sessions() {
 
   if (loading) {
     return (
-      <div className="text-center py-24 px-4">
-        <div className="inline-flex flex-col items-center gap-3">
-          <svg className="animate-spin w-8 h-8 text-[#91BE4D]" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-          </svg>
-          <p className="text-gray-400 text-sm">Loading journal…</p>
-        </div>
-      </div>
+      <div className="py-24 px-4"><PaddleLoader label="Loading journal..." /></div>
     );
   }
 

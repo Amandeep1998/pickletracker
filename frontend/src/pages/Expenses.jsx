@@ -4,6 +4,7 @@ import Modal from '../components/Modal';
 import ExpenseForm from '../components/ExpenseForm';
 import { formatCurrency } from '../utils/format';
 import useCurrency from '../hooks/useCurrency';
+import PaddleLoader from '../components/PaddleLoader';
 
 export default function Expenses() {
   const currency = useCurrency();
@@ -122,7 +123,7 @@ export default function Expenses() {
 
       {/* Gear list */}
       {loadingList ? (
-        <div className="text-center py-12 text-gray-400 text-sm">Loading…</div>
+        <div className="py-12"><PaddleLoader label="Loading gear expenses..." /></div>
       ) : expenses.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="text-5xl mb-4">🎒</div>

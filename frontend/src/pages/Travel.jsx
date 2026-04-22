@@ -4,6 +4,7 @@ import Modal from '../components/Modal';
 import TravelExpenseForm from '../components/TravelExpenseForm';
 import { formatCurrency } from '../utils/format';
 import useCurrency from '../hooks/useCurrency';
+import PaddleLoader from '../components/PaddleLoader';
 
 const TRAVEL_BUCKETS = [
   { key: 'transport',       label: 'Transport' },
@@ -178,7 +179,7 @@ export default function Travel() {
 
       {/* Trips list */}
       {loadingList ? (
-        <div className="text-center py-12 text-gray-400 text-sm">Loading…</div>
+        <div className="py-12"><PaddleLoader label="Loading travel expenses..." /></div>
       ) : trips.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="text-5xl mb-4">✈️</div>

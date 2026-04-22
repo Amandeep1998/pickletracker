@@ -7,6 +7,7 @@ import LocationModal from '../components/LocationModal';
 import SearchableSelect from '../components/SearchableSelect';
 import BannerMedalStrip from '../components/BannerMedalStrip';
 import { CATEGORIES } from '../utils/format';
+import PaddleLoader from '../components/PaddleLoader';
 
 // ── Coordinates for major Indian cities (for distance sorting) ───────────────
 const CITY_COORDS = {
@@ -231,7 +232,7 @@ function FriendCalendarModal({ friend, onClose }) {
           </div>
         </div>
         <div className="p-4">
-          {loading ? <div className="py-16 text-center text-gray-400 text-sm">Loading schedule…</div>
+          {loading ? <div className="py-16"><PaddleLoader label="Loading schedule..." /></div>
           : error ? <div className="py-10 text-center text-red-500 text-sm">{error}</div>
           : (<>
             <div className="flex items-center justify-between mb-3">
@@ -423,7 +424,7 @@ function PlayerModal({ playerId, onClose, friendState, currentUserId, onSendFrie
       <div className="relative bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[90dvh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="sm:hidden flex justify-center pt-3 pb-1"><div className="w-10 h-1 bg-gray-200 rounded-full" /></div>
 
-        {loading ? <div className="py-16 text-center text-gray-400 text-sm">Loading…</div>
+        {loading ? <div className="py-16"><PaddleLoader label="Loading player..." /></div>
         : error ? <div className="py-16 text-center text-red-500 text-sm">{error}</div>
         : player ? (
           <>
@@ -593,7 +594,7 @@ function EditMyCommunityProfileModal({ onClose, onSaved }) {
           <h2 className="text-lg font-bold text-gray-900">Update your player card</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700">✕</button>
         </div>
-        {loading ? <div className="p-6 text-sm text-gray-400">Loading…</div> : (
+        {loading ? <div className="p-6"><PaddleLoader label="Loading profile..." className="min-h-[100px]" /></div> : (
           <div className="p-5 space-y-4">
             <div className="grid sm:grid-cols-2 gap-3">
               <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">DUPR Singles</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D]" value={form.duprSingles} onChange={(e) => setForm((f) => ({ ...f, duprSingles: e.target.value }))} /></div>
@@ -1202,7 +1203,7 @@ export default function Players() {
 
       {/* City-grouped player grid */}
       {loading && players.length === 0 ? (
-        <div className="text-center py-20 text-gray-400 text-sm">Loading players…</div>
+        <div className="py-20"><PaddleLoader label="Loading players..." /></div>
       ) : error ? (
         <div className="text-center py-20">
           <p className="text-red-500 text-sm mb-3">{error}</p>

@@ -9,6 +9,7 @@ import { syncTournamentToCalendar, deleteTournamentFromCalendar, isCalendarConne
 import { NavLink } from 'react-router-dom';
 import PushPermissionPrompt from '../components/PushPermissionPrompt';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import PaddleLoader from '../components/PaddleLoader';
 
 export default function Tournaments() {
   const currency = useCurrency();
@@ -359,7 +360,7 @@ export default function Tournaments() {
 
       {/* Tournament list */}
       {loadingList ? (
-        <div className="text-center py-12 sm:py-16 text-gray-400 text-sm sm:text-base">Loading...</div>
+        <div className="py-12 sm:py-16"><PaddleLoader label="Loading tournaments..." /></div>
       ) : tournaments.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-14 sm:py-20 px-4">
           {/* Pickleball icon */}

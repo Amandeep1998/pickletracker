@@ -5,6 +5,7 @@ import * as api from '../services/api';
 import CITIES_BY_STATE from '../data/indianCities';
 import { CURRENCIES } from '../utils/format';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import PaddleLoader from '../components/PaddleLoader';
 
 const ALL_CITIES = [...new Set(Object.values(CITIES_BY_STATE).flat())].sort();
 
@@ -291,7 +292,7 @@ export default function Profile() {
       </div>
 
       {loading ? (
-        <div className="text-center py-10 text-gray-400 text-sm">Loading…</div>
+        <div className="py-10"><PaddleLoader label="Loading profile..." /></div>
       ) : (
         <>
           {/* Name form */}

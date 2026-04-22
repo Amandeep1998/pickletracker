@@ -6,6 +6,7 @@ import { formatCurrency } from '../utils/format';
 import useCurrency from '../hooks/useCurrency';
 import { deleteAdminUser, broadcastEmail as apiBroadcastEmail } from '../services/api';
 import AdminUserCalendar from '../components/AdminUserCalendar';
+import PaddleLoader from '../components/PaddleLoader';
 
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAIL || '')
   .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
@@ -343,7 +344,7 @@ export default function Admin() {
 
   if (loading) {
     return (
-      <div className="text-center py-24 text-gray-400 text-sm">Loading admin panel...</div>
+      <div className="py-24"><PaddleLoader label="Loading admin panel..." /></div>
     );
   }
 

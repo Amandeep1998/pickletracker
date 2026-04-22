@@ -12,6 +12,7 @@ import { formatCurrency, getCurrencySymbol } from '../utils/format';
 import useCurrency from '../hooks/useCurrency';
 import { getMapUrl } from '../utils/mapUrl';
 import { computeMedalTally } from '../utils/medals';
+import PaddleLoader from '../components/PaddleLoader';
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -482,7 +483,7 @@ export default function Calendar() {
   const openDayPopup = (dateStr) => setDayPopup({ open: true, date: dateStr });
   const closeDayPopup = () => setDayPopup({ open: false, date: null });
 
-  if (loading) return <div className="text-center py-24 text-gray-400">Loading calendar...</div>;
+  if (loading) return <div className="py-24"><PaddleLoader label="Loading calendar..." /></div>;
   if (error) return <div className="text-center py-24 text-red-500">{error}</div>;
 
   const monthName = new Date(viewYear, viewMonth).toLocaleString(undefined, { month: 'long', year: 'numeric' });

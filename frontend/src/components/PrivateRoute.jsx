@@ -3,14 +3,15 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Navbar from './Navbar';
 import Footer from './Footer';
+import PaddleLoader from './PaddleLoader';
 
 export default function PrivateRoute() {
   const { user, authInitializing } = useAuth();
 
   if (authInitializing) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm text-gray-500">
-        Validating session...
+      <div className="min-h-screen flex items-center justify-center">
+        <PaddleLoader label="Validating session..." />
       </div>
     );
   }

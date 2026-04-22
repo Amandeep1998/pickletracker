@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import PlayerCard from '../components/PlayerCard';
+import PaddleLoader from '../components/PaddleLoader';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: CURRENT_YEAR - 2018 }, (_, i) => CURRENT_YEAR - i);
@@ -144,7 +145,7 @@ export default function PlayerCardPage() {
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
+        <div className="py-16"><PaddleLoader label="Loading player card..." /></div>
       ) : (
         /* Desktop: side by side. Mobile: form first, card below */
         <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[340px_1fr] lg:gap-10 lg:items-start">
