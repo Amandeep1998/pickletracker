@@ -7,7 +7,8 @@ import useCurrency from '../hooks/useCurrency';
 import { deleteAdminUser, broadcastEmail as apiBroadcastEmail } from '../services/api';
 import AdminUserCalendar from '../components/AdminUserCalendar';
 
-const ADMIN_EMAIL = import.meta.env.VITE_ADMIN_EMAIL;
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAIL || '')
+  .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
 
 const STATUS_STYLES = {
   active:   { dot: 'bg-green-500',  badge: 'bg-green-50 text-green-700',  label: 'Active' },
@@ -26,10 +27,10 @@ function timeAgo(date) {
 
 function StatCard({ label, value, sub, color = 'text-gray-900' }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
-      <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-1">{label}</p>
-      <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-3 sm:px-5 sm:py-4">
+      <p className="text-[10px] sm:text-xs text-gray-400 font-medium uppercase tracking-wide mb-1 leading-tight">{label}</p>
+      <p className={`text-lg sm:text-2xl font-bold truncate ${color}`}>{value}</p>
+      {sub && <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 truncate">{sub}</p>}
     </div>
   );
 }
@@ -75,7 +76,7 @@ export default function Admin() {
 
   // Guard: only admin can access
   useEffect(() => {
-    if (user && user.email !== ADMIN_EMAIL) {
+    if (user && !ADMIN_EMAILS.includes(user.email?.toLowerCase())) {
       navigate('/dashboard', { replace: true });
     }
   }, [user, navigate]);
@@ -166,22 +167,22 @@ export default function Admin() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 mb-3">
+      <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3 mb-3">
         <StatCard label="Total Users" value={stats.totalUsers} />
-        <StatCard label="Active This Week" value={stats.activeThisWeek} color="text-green-600" />
-        <StatCard label="Active This Month" value={stats.activeThisMonth} color="text-yellow-600" />
+        <StatCard label="Active Week" value={stats.activeThisWeek} color="text-green-600" />
+        <StatCard label="Active Month" value={stats.activeThisMonth} color="text-yellow-600" />
         <StatCard label="Tournaments" value={stats.totalTournaments} />
-        <StatCard label="Google Sign-In" value={stats.googleUsers} sub={`${stats.totalUsers - stats.googleUsers} email`} />
+        <StatCard label="Google" value={stats.googleUsers} sub={`${stats.totalUsers - stats.googleUsers} email`} />
         <StatCard
-          label="Revenue Tracked"
+          label="Revenue"
           value={formatCurrency(stats.totalRevenueTracked, currency)}
           color="text-green-700"
         />
       </div>
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-8">
-        <StatCard label="Sessions Logged" value={stats.totalSessions} color="text-blue-600" sub="across all users" />
-        <StatCard label="Gear Spend" value={formatCurrency(stats.totalGearSpend, currency)} color="text-purple-600" sub="all gear expenses" />
-        <StatCard label="Travel Spend" value={formatCurrency(stats.totalTravelSpend, currency)} color="text-orange-600" sub="all travel expenses" />
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
+        <StatCard label="Sessions" value={stats.totalSessions} color="text-blue-600" sub="all users" />
+        <StatCard label="Gear Spend" value={formatCurrency(stats.totalGearSpend, currency)} color="text-purple-600" sub="all gear" />
+        <StatCard label="Travel" value={formatCurrency(stats.totalTravelSpend, currency)} color="text-orange-600" sub="all travel" />
       </div>
 
       {/* Broadcast Email Panel */}
@@ -380,31 +381,34 @@ export default function Admin() {
             >
               {/* Row — click to expand */}
               <div
-                className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
                 onClick={() => setExpandedId(isExpanded ? null : u._id)}
               >
                 {/* Avatar */}
-                <div className="w-9 h-9 rounded-full bg-green-100 text-green-700 font-bold text-sm flex items-center justify-center flex-shrink-0 uppercase">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-100 text-green-700 font-bold text-sm flex items-center justify-center flex-shrink-0 uppercase">
                   {u.name.charAt(0)}
                 </div>
 
                 {/* Name + email + mobile meta */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="text-sm font-semibold text-gray-900 truncate">{u.name}</p>
-                    {/* Auth badge — visible on all sizes */}
                     {u.isGoogleUser ? (
-                      <span className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full border border-blue-100 flex-shrink-0">Google</span>
+                      <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded-full border border-blue-100 flex-shrink-0">G</span>
                     ) : (
-                      <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200 flex-shrink-0">Email</span>
+                      <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full border border-gray-200 flex-shrink-0">E</span>
                     )}
                   </div>
                   <p className="text-xs text-gray-400 truncate">{u.email}</p>
                   {/* Mobile-only sub-row */}
-                  <div className="flex items-center gap-3 mt-1 sm:hidden">
+                  <div className="flex items-center gap-3 mt-0.5 sm:hidden">
                     <span className="text-xs text-gray-500">{u.tournamentCount} events</span>
                     <span className={`text-xs font-semibold ${u.totalProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                       {formatCurrency(u.totalProfit, currency)}
+                    </span>
+                    <span className={`flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${st.badge}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+                      {st.label}
                     </span>
                   </div>
                 </div>
