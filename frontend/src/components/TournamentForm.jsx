@@ -405,7 +405,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         <div className="space-y-4">
           <div>
             <h3 className="text-sm font-bold text-gray-800">Tournament Details</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Start with the name and location</p>
+            <p className="text-xs text-gray-500 mt-0.5">Start with the tournament name</p>
           </div>
 
           <div data-error-key="name">
@@ -420,20 +420,6 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
               autoFocus
             />
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-          </div>
-
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-              Location <span className="text-gray-400 font-normal">(optional)</span>
-            </label>
-            <LocationAutocomplete
-              value={form.location}
-              onSelect={(place) => setForm((prev) => ({ ...prev, location: place }))}
-              onClear={() => setForm((prev) => ({ ...prev, location: null }))}
-            />
-            {form.location?.address && (
-              <p className="text-xs text-gray-500 mt-1 truncate">{form.location.address}</p>
-            )}
           </div>
         </div>
       )}
@@ -753,8 +739,23 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
       {currentStepId === 'extras' && (
         <div className="space-y-5">
           <div>
-            <h3 className="text-sm font-bold text-gray-800">Travel Expenses</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Optional — log trip costs linked to this tournament</p>
+            <h3 className="text-sm font-bold text-gray-800">Extras</h3>
+            <p className="text-xs text-gray-500 mt-0.5">Optional — location and travel costs</p>
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+              Location <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <LocationAutocomplete
+              value={form.location}
+              onSelect={(place) => setForm((prev) => ({ ...prev, location: place }))}
+              onClear={() => setForm((prev) => ({ ...prev, location: null }))}
+            />
+            {form.location?.address && (
+              <p className="text-xs text-gray-500 mt-1 truncate">{form.location.address}</p>
+            )}
           </div>
 
           {!hasPlayedCategories && (

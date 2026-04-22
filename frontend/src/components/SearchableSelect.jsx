@@ -155,8 +155,8 @@ export default function SearchableSelect({ options, value, onChange, placeholder
         onClick={open}
         onKeyDown={handleKeyDown}
         style={{ touchAction: 'manipulation' }}
-        className={`w-full border rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm cursor-pointer select-none flex items-center justify-between ${
-          isOpen ? 'border-green-500 ring-2 ring-green-500' : 'border-gray-300'
+        className={`w-full bg-white border rounded px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm cursor-pointer select-none flex items-center justify-between ${
+          isOpen ? 'border-[#91BE4D] ring-2 ring-[#91BE4D]/30' : 'border-gray-300 hover:border-gray-400'
         } ${value ? 'text-gray-900' : 'text-gray-400'}`}
       >
         <span className="truncate">{value || placeholder}</span>
