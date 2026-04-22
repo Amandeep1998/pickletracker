@@ -1,5 +1,32 @@
 import { useState, useEffect } from 'react';
 
+// ── PT logo — matches the app icon / FAB branding ────────────────────────────
+function PTLogo({ size = 44 }) {
+  return (
+    <div
+      className="flex-shrink-0 rounded-2xl flex items-center justify-center shadow-md"
+      style={{
+        width: size,
+        height: size,
+        background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 60%, #4a8c10 100%)',
+        border: '1.5px solid rgba(145,190,77,0.35)',
+      }}
+    >
+      <span
+        style={{
+          color: '#c8e875',
+          fontSize: size * 0.34,
+          fontWeight: 900,
+          letterSpacing: '-0.5px',
+          lineHeight: 1,
+        }}
+      >
+        PT
+      </span>
+    </div>
+  );
+}
+
 // ── Browser detection ─────────────────────────────────────────────────────────
 function detectBrowser() {
   const ua = navigator.userAgent;
@@ -39,10 +66,6 @@ function useInstallPrompt() {
     setDeferredPrompt(null);
   };
 
-  // Determine what kind of install action is possible:
-  // - 'native'  → Android Chrome fired beforeinstallprompt, use it directly
-  // - 'manual'  → show step-by-step guide (iOS Safari, iOS Chrome, Android fallback)
-  // - null      → already installed / standalone / unsupported
   const browserType = isSafariIOS ? 'ios-safari' : isChromeiOS ? 'ios-chrome' : isAndroid ? 'android' : null;
   const action = installed || isStandalone ? null
     : deferredPrompt ? 'native'
@@ -53,16 +76,19 @@ function useInstallPrompt() {
 }
 
 // ── Step-by-step install modal ────────────────────────────────────────────────
-function InstallModal({ browserType, onClose }) {
-  const steps = {
-    'ios-safari': [
+const STEPS = {
+  'ios-safari': {
+    label: 'Safari on iPhone',
+    steps: [
       {
         title: 'Tap the Share button',
-        desc: 'The share icon at the bottom centre of Safari',
+        desc: 'The share icon (box with arrow) at the bottom centre of Safari',
         icon: (
-          <svg className="w-7 h-7 mt-1.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-          </svg>
+          <div className="mt-2 w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
+            <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+          </div>
         ),
       },
       {
@@ -75,14 +101,19 @@ function InstallModal({ browserType, onClose }) {
         desc: 'PickleTracker will appear on your home screen',
       },
     ],
-    'ios-chrome': [
+  },
+  'ios-chrome': {
+    label: 'Chrome on iPhone',
+    steps: [
       {
-        title: 'Tap the three-dot menu',
-        desc: 'The ⋮ icon in the bottom-right corner of Chrome',
+        title: 'Tap the three-dot menu  ⋮',
+        desc: 'In the bottom-right corner of Chrome',
         icon: (
-          <svg className="w-7 h-7 mt-1.5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
-          </svg>
+          <div className="mt-2 w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center">
+            <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
+            </svg>
+          </div>
         ),
       },
       {
@@ -95,14 +126,19 @@ function InstallModal({ browserType, onClose }) {
         desc: 'PickleTracker will appear on your home screen',
       },
     ],
-    'android': [
+  },
+  'android': {
+    label: 'Chrome on Android',
+    steps: [
       {
-        title: 'Tap the three-dot menu',
-        desc: 'The ⋮ icon in the top-right corner of Chrome',
+        title: 'Tap the three-dot menu  ⋮',
+        desc: 'In the top-right corner of Chrome',
         icon: (
-          <svg className="w-7 h-7 mt-1.5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
-          </svg>
+          <div className="mt-2 w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center">
+            <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
+            </svg>
+          </div>
         ),
       },
       {
@@ -115,44 +151,59 @@ function InstallModal({ browserType, onClose }) {
         desc: 'PickleTracker will appear on your home screen like a native app',
       },
     ],
-  };
+  },
+};
 
-  const browserLabel = {
-    'ios-safari': 'Safari on iPhone',
-    'ios-chrome': 'Chrome on iPhone',
-    'android': 'Chrome on Android',
-  }[browserType];
+function InstallModal({ browserType, onClose }) {
+  const config = STEPS[browserType];
+  if (!config) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm"
       onClick={onClose}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-1">
-          <h3 className="text-base font-bold text-gray-900">Install PickleTracker</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-lg transition-colors">
+      <div
+        className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div
+          className="px-5 pt-6 pb-5 flex items-center gap-3"
+          style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 60%, #4a8c10 100%)' }}
+        >
+          <PTLogo size={48} />
+          <div className="flex-1 min-w-0">
+            <p className="text-white font-bold text-base leading-tight">Install PickleTracker</p>
+            <p className="text-[#91BE4D] text-xs font-medium mt-0.5">{config.label}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex-shrink-0 text-white/50 hover:text-white p-1.5 rounded-lg transition-colors"
+          >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <p className="text-xs text-gray-400 mb-5">{browserLabel}</p>
-
-        <div className="space-y-4">
-          {(steps[browserType] || []).map((s, i) => (
+        {/* Steps */}
+        <div className="px-5 py-5 space-y-5">
+          {config.steps.map((s, i) => (
             <div key={i} className="flex items-start gap-3">
-              <span className="w-7 h-7 rounded-full bg-[#91BE4D] text-white text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold text-white"
+                style={{ background: 'linear-gradient(135deg, #2d7005, #91BE4D)' }}
+              >
                 {i + 1}
-              </span>
-              <div>
+              </div>
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-800">{s.title}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{s.desc}</p>
+                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{s.desc}</p>
                 {s.icon}
                 {s.chip && (
-                  <div className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-xs font-medium text-gray-700">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-xs font-medium text-gray-700">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
                     {s.chip}
@@ -163,13 +214,16 @@ function InstallModal({ browserType, onClose }) {
           ))}
         </div>
 
-        <button
-          onClick={onClose}
-          className="mt-6 w-full py-2.5 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90"
-          style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
-        >
-          Got it
-        </button>
+        {/* Footer */}
+        <div className="px-5 pb-6" style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}>
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90"
+            style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
+          >
+            Got it
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -242,49 +296,44 @@ export function InstallAppCard() {
 
   return (
     <>
-      <div className="relative rounded-2xl border border-[#91BE4D]/30 bg-[#f4f8e8] px-4 py-4 mb-4 flex items-center gap-4 overflow-hidden">
-        <div className="absolute right-0 top-0 w-32 h-full opacity-10 pointer-events-none"
-          style={{ background: 'radial-gradient(circle at 100% 50%, #91BE4D, transparent 70%)' }} />
+      <div className="relative rounded-2xl overflow-hidden mb-4 shadow-sm border border-[#91BE4D]/20"
+        style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 55%, #4a8c10 100%)' }}>
+        {/* Decorative blobs */}
+        <div className="absolute pointer-events-none" style={{ top: -30, right: -30, width: 120, height: 120, borderRadius: '50%', background: 'rgba(145,190,77,0.12)' }} />
+        <div className="absolute pointer-events-none" style={{ bottom: -20, left: -20, width: 90, height: 90, borderRadius: '50%', background: 'rgba(236,153,55,0.1)' }} />
 
-        <div className="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center shadow-sm"
-          style={{ background: 'linear-gradient(135deg, #1c350a, #2d6e05)' }}>
-          <svg width="28" height="28" viewBox="0 0 80 80" fill="none" aria-hidden="true">
-            <circle cx="40" cy="40" r="32" fill="#C8D636" opacity="0.3" />
-            {[[28,22],[40,18],[52,22],[20,32],[32,30],[44,30],[56,32],[24,42],[36,40],[44,40],[56,42],[28,52],[40,56],[52,52]].map(([cx,cy],i)=>(
-              <circle key={i} cx={cx} cy={cy} r="3" fill="#C8D636" opacity="0.9"/>
-            ))}
-          </svg>
+        <div className="relative flex items-center gap-3 px-4 py-4">
+          <PTLogo size={44} />
+
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-sm font-bold leading-tight">Get the PickleTracker app</p>
+            <p className="text-[#91BE4D] text-xs mt-0.5 leading-snug">
+              {isIOS ? 'Add to Home Screen for a full-screen experience' : 'Install for faster load times and offline access'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              onClick={handleInstall}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#1c350a] transition-opacity hover:opacity-90 whitespace-nowrap"
+              style={{ background: 'linear-gradient(to right, #c8e875, #91BE4D)' }}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              {action === 'native' ? 'Install' : 'How to'}
+            </button>
+            <button
+              onClick={dismiss}
+              className="text-white/40 hover:text-white/70 p-1.5 rounded-lg transition-colors"
+              aria-label="Dismiss"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
-
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-[#1c350a]">Get the PickleTracker app</p>
-          <p className="text-xs text-[#4a6e10] mt-0.5 leading-snug">
-            {isIOS
-              ? 'Add to your Home Screen for a full-screen experience'
-              : 'Install for faster load times and offline access'}
-          </p>
-        </div>
-
-        <button
-          onClick={handleInstall}
-          className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition-opacity hover:opacity-90 shadow-sm"
-          style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 60%, #ec9937)' }}
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          {action === 'native' ? 'Install' : 'How to install'}
-        </button>
-
-        <button
-          onClick={dismiss}
-          className="flex-shrink-0 text-[#4a6e10]/50 hover:text-[#4a6e10] p-1 rounded-lg transition-colors"
-          aria-label="Dismiss"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
       </div>
 
       {showModal && <InstallModal browserType={browserType} onClose={() => setShowModal(false)} />}
