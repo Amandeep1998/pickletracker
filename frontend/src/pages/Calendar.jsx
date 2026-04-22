@@ -6,6 +6,8 @@ import TournamentForm from '../components/TournamentForm';
 import SessionForm from '../components/SessionForm';
 import TournamentShareModal from '../components/TournamentShareModal';
 import BannerMedalStrip from '../components/BannerMedalStrip';
+import PushPermissionPrompt from '../components/PushPermissionPrompt';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { formatCurrency, getCurrencySymbol } from '../utils/format';
 import useCurrency from '../hooks/useCurrency';
 import { getMapUrl } from '../utils/mapUrl';
@@ -82,6 +84,10 @@ export default function Calendar() {
 
   // Share modal
   const [shareModalOpen, setShareModalOpen] = useState(false);
+
+  // Push notifications
+  const { permission: pushPermission, isSupported: pushSupported, requestAndSubscribe, silentSubscribe } = usePushNotifications();
+  const [pushPrompt, setPushPrompt] = useState({ open: false, name: '' });
 
   // Pending tournament notification toast + highlight
   const [pendingToast, setPendingToast] = useState('');
@@ -340,6 +346,18 @@ export default function Calendar() {
     }
   };
 
+  const maybeTriggerPushPrompt = (tournamentName, categories) => {
+    if (!pushSupported) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const hasFuture = categories?.some((c) => c.date >= today);
+    if (!hasFuture) return;
+    if (pushPermission === 'granted') {
+      silentSubscribe();
+    } else if (pushPermission === 'default') {
+      setPushPrompt({ open: true, name: tournamentName });
+    }
+  };
+
   const handleAddTournament = async (data) => {
     setFormLoading(true);
     setAddError('');
@@ -358,9 +376,8 @@ export default function Calendar() {
       });
       setAddModal({ open: false, date: null });
       await fetchTournaments();
-      // Navigate to the new tournament's first category date and flash the
-      // cell so the user sees where it was added.
       focusAndHighlightDate(created?.categories?.[0]?.date || data?.categories?.[0]?.date);
+      maybeTriggerPushPrompt(data.name, data.categories);
     } catch (err) {
       const msg = err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add tournament';
       setAddError(msg);
@@ -387,9 +404,8 @@ export default function Calendar() {
       setIsEditing(false);
       setSelectedTournament(null);
       await fetchTournaments();
-      // Same flash-highlight as on create so the user can see their edit
-      // landed on the right date (especially useful if the date changed).
       focusAndHighlightDate(updated?.categories?.[0]?.date || data?.categories?.[0]?.date);
+      maybeTriggerPushPrompt(data.name, data.categories);
     } catch (err) {
       setFormError(err.response?.data?.message || 'Failed to update tournament');
     } finally {
@@ -473,6 +489,18 @@ export default function Calendar() {
 
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+
+      {/* Push permission prompt — shown after saving a future tournament */}
+      {pushPrompt.open && (
+        <PushPermissionPrompt
+          tournamentName={pushPrompt.name}
+          onAccept={async () => {
+            setPushPrompt({ open: false, name: '' });
+            await requestAndSubscribe();
+          }}
+          onDismiss={() => setPushPrompt({ open: false, name: '' })}
+        />
+      )}
 
       {/* Pending tournament saved toast */}
       {pendingToast && (

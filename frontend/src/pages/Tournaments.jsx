@@ -7,6 +7,8 @@ import useCurrency from '../hooks/useCurrency';
 import { getMapUrl } from '../utils/mapUrl';
 import { syncTournamentToCalendar, deleteTournamentFromCalendar, isCalendarConnected } from '../services/googleCalendar';
 import { NavLink } from 'react-router-dom';
+import PushPermissionPrompt from '../components/PushPermissionPrompt';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 export default function Tournaments() {
   const currency = useCurrency();
@@ -23,6 +25,21 @@ export default function Tournaments() {
   const [modalOpen, setModalOpen] = useState(false);
   const [mode, setMode] = useState('add'); // 'add' | 'edit'
   const [selectedTournament, setSelectedTournament] = useState(null);
+
+  const { permission: pushPermission, isSupported: pushSupported, requestAndSubscribe, silentSubscribe } = usePushNotifications();
+  const [pushPrompt, setPushPrompt] = useState({ open: false, name: '' });
+
+  const maybeTriggerPushPrompt = (tournamentName, categories) => {
+    if (!pushSupported) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const hasFuture = categories?.some((c) => c.date >= today);
+    if (!hasFuture) return;
+    if (pushPermission === 'granted') {
+      silentSubscribe();
+    } else if (pushPermission === 'default') {
+      setPushPrompt({ open: true, name: tournamentName });
+    }
+  };
 
   const fetchTournaments = async () => {
     try {
@@ -117,6 +134,7 @@ export default function Tournaments() {
 
       closeModal();
       fetchTournaments();
+      maybeTriggerPushPrompt(data.name, data.categories);
     } catch (err) {
       const msg =
         err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add tournament';
@@ -196,6 +214,7 @@ export default function Tournaments() {
 
       closeModal();
       fetchTournaments();
+      maybeTriggerPushPrompt(data.name, data.categories);
     } catch (err) {
       const msg =
         err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to update';
@@ -269,6 +288,19 @@ export default function Tournaments() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+      {/* Push permission prompt — shown after saving a future tournament */}
+      {pushPrompt.open && (
+        <PushPermissionPrompt
+          tournamentName={pushPrompt.name}
+          onAccept={async () => {
+            setPushPrompt({ open: false, name: '' });
+            await requestAndSubscribe();
+          }}
+          onDismiss={() => setPushPrompt({ open: false, name: '' })}
+        />
+      )}
+
       {/* Hero Banner */}
       <div className="rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-6 flex items-center justify-between overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}>
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />

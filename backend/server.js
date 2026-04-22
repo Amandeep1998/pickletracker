@@ -27,12 +27,14 @@ const exportRoutes = require('./src/routes/export.routes');
 const playersRoutes = require('./src/routes/players.routes');
 const notificationsRoutes = require('./src/routes/notifications.routes');
 const friendshipRoutes = require('./src/routes/friendship.routes');
+const pushRoutes = require('./src/routes/push.routes');
 const errorHandler = require('./src/middleware/error.middleware');
 const { startTournamentReminderJob } = require('./src/jobs/tournamentReminder');
 const { startResultNudgeJob } = require('./src/jobs/resultNudge');
 const { startWeeklySummaryJob } = require('./src/jobs/weeklySummary');
 const { startMonthlyPnlJob } = require('./src/jobs/monthlyPnl');
 const { startInactiveUserNudgeJob } = require('./src/jobs/inactiveUserNudge');
+const { startPushReminderJob } = require('./src/jobs/pushReminder');
 
 const app = express();
 const server = http.createServer(app);
@@ -89,6 +91,7 @@ app.use('/api/export', exportRoutes);
 app.use('/api/players', playersRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/friends', friendshipRoutes);
+app.use('/api/push', pushRoutes);
 
 app.use(Sentry.Handlers.errorHandler()); // captures unhandled errors and sends to Sentry
 app.use(errorHandler);
@@ -102,6 +105,7 @@ if (require.main === module) {
     startWeeklySummaryJob();
     startMonthlyPnlJob();
     startInactiveUserNudgeJob();
+    startPushReminderJob();
   });
 }
 

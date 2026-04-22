@@ -16,6 +16,7 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        importScripts: ['sw-push.js'],
         // Always fetch fresh HTML from the network so every deployment reaches
         // users on their next visit — even if their SW is from an older build.
         // Falls back to the cached response only when the network is unavailable.

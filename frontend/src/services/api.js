@@ -66,6 +66,10 @@ export const sendTestEmail = () => api.post('/notifications/test');
 // Admin
 export const toggleWhatsAppAccess = (userId) => api.put(`/admin/users/${userId}/whatsapp-access`);
 
+// Push notifications
+export const subscribePush = (subscription) => api.post('/push/subscribe', subscription);
+export const unsubscribePush = (endpoint) => api.post('/push/unsubscribe', { endpoint });
+
 // Export
 export const exportData = () => api.get('/export', { responseType: 'blob' });
 
