@@ -429,10 +429,11 @@ const getUsers = async (req, res, next) => {
 
 const getUserTournaments = async (req, res, next) => {
   try {
-    const tournaments = await Tournament.find({ userId: req.params.id })
-      .sort({ createdAt: -1 })
-      .lean();
-    res.json({ success: true, data: tournaments });
+    const [tournaments, sessions] = await Promise.all([
+      Tournament.find({ userId: req.params.id }).sort({ createdAt: -1 }).lean(),
+      Session.find({ userId: req.params.id }).sort({ date: -1 }).lean(),
+    ]);
+    res.json({ success: true, data: { tournaments, sessions } });
   } catch (err) {
     next(err);
   }
