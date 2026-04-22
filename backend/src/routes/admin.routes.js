@@ -10,6 +10,7 @@ const {
   getAdminStories,
   createAdminStory,
   updateAdminStory,
+  deleteAdminStory,
 } = require('../controllers/admin.controller');
 
 const router = express.Router();
@@ -25,5 +26,6 @@ router.post('/broadcast-email', broadcastEmail);
 router.get('/stories', getAdminStories);
 router.post('/stories', createAdminStory);
 router.put('/stories/:id', updateAdminStory);
+router.delete('/stories/:id', deleteAdminStory);
 
 module.exports = router;

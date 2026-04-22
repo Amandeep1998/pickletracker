@@ -127,6 +127,7 @@ export default function Admin() {
   const [storyDescription, setStoryDescription] = useState('');
   const [storyPriority, setStoryPriority] = useState('medium');
   const [storySaving, setStorySaving] = useState(false);
+  const [storyDeletingId, setStoryDeletingId] = useState('');
 
   // Guard: only admin can access
   useEffect(() => {
@@ -234,6 +235,22 @@ export default function Admin() {
       setStories((prev) => prev.map((s) => (s._id === storyId ? updated : s)));
     } catch {
       setStoryError('Could not update story status.');
+    }
+  };
+
+  const handleDeleteStory = async (story) => {
+    if (!story?._id) return;
+    const confirmed = window.confirm(`Delete story "${story.title}"? This cannot be undone.`);
+    if (!confirmed) return;
+    setStoryDeletingId(story._id);
+    setStoryError('');
+    try {
+      await api.deleteAdminStory(story._id);
+      setStories((prev) => prev.filter((s) => s._id !== story._id));
+    } catch (err) {
+      setStoryError(err?.response?.data?.message || 'Could not delete story.');
+    } finally {
+      setStoryDeletingId('');
     }
   };
 
@@ -979,15 +996,24 @@ export default function Admin() {
                               <p className="text-[11px] text-gray-400">
                                 By {story.createdBy?.name || story.createdBy?.email || 'Admin'} · {timeAgo(story.createdAt)}
                               </p>
-                              <select
-                                value={story.status}
-                                onChange={(e) => handleUpdateStoryStatus(story._id, e.target.value)}
-                                className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                              >
-                                <option value="open">Open</option>
-                                <option value="in-progress">In Progress</option>
-                                <option value="done">Done</option>
-                              </select>
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={story.status}
+                                  onChange={(e) => handleUpdateStoryStatus(story._id, e.target.value)}
+                                  className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                                >
+                                  <option value="open">Open</option>
+                                  <option value="in-progress">In Progress</option>
+                                  <option value="done">Done</option>
+                                </select>
+                                <button
+                                  onClick={() => handleDeleteStory(story)}
+                                  disabled={storyDeletingId === story._id}
+                                  className="text-xs border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg px-2 py-1 font-medium disabled:opacity-60"
+                                >
+                                  {storyDeletingId === story._id ? 'Deleting...' : 'Delete'}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))}

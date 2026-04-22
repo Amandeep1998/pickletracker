@@ -620,6 +620,17 @@ const updateAdminStory = async (req, res, next) => {
   }
 };
 
+const deleteAdminStory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const deleted = await AdminStory.findByIdAndDelete(id).lean();
+    if (!deleted) return res.status(404).json({ success: false, message: 'Story not found' });
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   getUsers,
   getUserTournaments,
@@ -629,4 +640,5 @@ module.exports = {
   getAdminStories,
   createAdminStory,
   updateAdminStory,
+  deleteAdminStory,
 };

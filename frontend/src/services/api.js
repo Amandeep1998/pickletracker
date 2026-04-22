@@ -60,6 +60,7 @@ export const broadcastEmail = (template, target) => api.post('/admin/broadcast-e
 export const getAdminStories = () => api.get('/admin/stories');
 export const createAdminStory = (data) => api.post('/admin/stories', data);
 export const updateAdminStory = (id, data) => api.put(`/admin/stories/${id}`, data);
+export const deleteAdminStory = (id) => api.delete(`/admin/stories/${id}`);
 
 // Email notifications
 export const getEmailPrefs = () => api.get('/notifications/prefs');
