@@ -219,8 +219,8 @@ export default function Admin() {
       setStoryTitle('');
       setStoryDescription('');
       setStoryPriority('medium');
-    } catch {
-      setStoryError('Could not create story. Please try again.');
+    } catch (err) {
+      setStoryError(err?.response?.data?.message || 'Could not create story. Please try again.');
     } finally {
       setStorySaving(false);
     }

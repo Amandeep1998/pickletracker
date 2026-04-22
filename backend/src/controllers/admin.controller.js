@@ -579,7 +579,7 @@ const createAdminStory = async (req, res, next) => {
       title: cleanTitle,
       description: String(description || '').trim(),
       priority,
-      createdBy: req.user._id,
+      createdBy: req.user.id,
     });
     const story = await AdminStory.findById(created._id).populate('createdBy', 'name email').lean();
     res.status(201).json({ success: true, data: story });
