@@ -173,6 +173,13 @@ export default function Admin() {
   const [broadcastLoading, setBroadcastLoading] = useState(false);
   const [broadcastResult, setBroadcastResult] = useState(null); // { sent, failed, total, failures }
   const [showFailures, setShowFailures] = useState(false);
+
+  // Per-user selection for targeted email
+  const [selectedUserIds, setSelectedUserIds] = useState(new Set());
+  const [selectionTemplate, setSelectionTemplate] = useState('retention');
+  const [selectionConfirm, setSelectionConfirm] = useState(false);
+  const [selectionLoading, setSelectionLoading] = useState(false);
+  const [selectionResult, setSelectionResult] = useState(null);
   const [ideasOpen, setIdeasOpen] = useState(false);
   const [ideasTab, setIdeasTab] = useState('stories');
   const [stories, setStories] = useState([]);
@@ -220,6 +227,30 @@ export default function Admin() {
       setDeleteError('Failed to delete user. Please try again.');
     } finally {
       setDeleteLoading(false);
+    }
+  };
+
+  const toggleUserSelect = (id, e) => {
+    e.stopPropagation();
+    setSelectedUserIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+    setSelectionResult(null);
+  };
+
+  const handleSelectionSend = async () => {
+    setSelectionLoading(true);
+    setSelectionResult(null);
+    try {
+      const res = await apiBroadcastEmail(selectionTemplate, null, [...selectedUserIds]);
+      setSelectionResult(res.data);
+      setSelectionConfirm(false);
+    } catch {
+      setSelectionResult({ error: true });
+    } finally {
+      setSelectionLoading(false);
     }
   };
 
@@ -587,7 +618,60 @@ export default function Admin() {
       {/* User count */}
       <p className="text-xs text-gray-400 mb-3">
         Showing {filteredUsers.length} of {data.users.length} users
+        {selectedUserIds.size > 0 && (
+          <button
+            onClick={() => { setSelectedUserIds(new Set()); setSelectionResult(null); }}
+            className="ml-3 text-green-600 underline font-medium"
+          >
+            Clear {selectedUserIds.size} selected
+          </button>
+        )}
       </p>
+
+      {/* Selection action bar */}
+      {selectedUserIds.size > 0 && (
+        <div className="mb-4 bg-green-900 rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="w-6 h-6 rounded-full bg-green-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+              {selectedUserIds.size}
+            </span>
+            <span className="text-sm font-semibold text-white">
+              {selectedUserIds.size === 1 ? '1 user selected' : `${selectedUserIds.size} users selected`}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={selectionTemplate}
+              onChange={(e) => setSelectionTemplate(e.target.value)}
+              className="text-sm border border-green-700 bg-green-800 text-white rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-green-400"
+            >
+              <option value="retention">Retention — financial hook</option>
+              <option value="first_entry">First entry nudge</option>
+              <option value="tournament_reminder">Tournament reminder</option>
+              <option value="monthly_checkin">Monthly check-in</option>
+            </select>
+            <button
+              onClick={() => setSelectionConfirm(true)}
+              disabled={selectionLoading}
+              className="inline-flex items-center gap-1.5 bg-white text-green-900 text-sm font-bold px-4 py-1.5 rounded-lg hover:bg-green-50 transition-colors disabled:opacity-50"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+              Send email
+            </button>
+          </div>
+          {selectionResult && !selectionResult.error && (
+            <p className="text-xs text-green-300 font-medium">
+              Sent to {selectionResult.sent}/{selectionResult.total}
+              {selectionResult.failed > 0 && ` · ${selectionResult.failed} failed`}
+            </p>
+          )}
+          {selectionResult?.error && (
+            <p className="text-xs text-red-300">Something went wrong. Try again.</p>
+          )}
+        </div>
+      )}
 
       {/* User list */}
       <div className="space-y-2">
@@ -602,9 +686,18 @@ export default function Admin() {
             >
               {/* Row — click to expand */}
               <div
-                className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 cursor-pointer transition-colors ${selectedUserIds.has(u._id) ? 'bg-green-50' : 'hover:bg-gray-50'}`}
                 onClick={() => setExpandedId(isExpanded ? null : u._id)}
               >
+                {/* Selection checkbox */}
+                <input
+                  type="checkbox"
+                  checked={selectedUserIds.has(u._id)}
+                  onChange={(e) => toggleUserSelect(u._id, e)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500 flex-shrink-0 cursor-pointer"
+                />
+
                 {/* Avatar */}
                 <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-100 text-green-700 font-bold text-sm flex items-center justify-center flex-shrink-0 uppercase">
                   {u.name.charAt(0)}
@@ -1258,6 +1351,52 @@ export default function Admin() {
                 className="flex-1 text-sm bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl transition-colors disabled:opacity-60"
               >
                 {broadcastLoading ? 'Sending...' : 'Send now'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Selection send confirm modal */}
+      {selectionConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-900">Send email to selected users</h3>
+                <p className="text-xs text-gray-400">This will send to real users immediately</p>
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-xl px-4 py-3 mb-4 border border-gray-100 space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Template</span>
+                <span className="font-semibold text-gray-900 capitalize">{selectionTemplate.replace(/_/g, ' ')}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Recipients</span>
+                <span className="font-semibold text-gray-900">{selectedUserIds.size} selected users</span>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mb-5">Users who have turned off email reminders will be skipped automatically.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setSelectionConfirm(false)}
+                disabled={selectionLoading}
+                className="flex-1 text-sm text-gray-600 font-medium py-2.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSelectionSend}
+                disabled={selectionLoading}
+                className="flex-1 text-sm bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl transition-colors disabled:opacity-60"
+              >
+                {selectionLoading ? 'Sending...' : 'Send now'}
               </button>
             </div>
           </div>

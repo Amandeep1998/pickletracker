@@ -597,36 +597,46 @@ const deleteUser = async (req, res, next) => {
 
 const broadcastEmail = async (req, res, next) => {
   try {
-    const { template, target } = req.body;
+    const { template, target, userIds } = req.body;
 
     if (!BROADCAST_TEMPLATES[template]) {
       return res.status(400).json({ success: false, message: 'Invalid template' });
     }
-    if (!['all', 'inactive', 'active'].includes(target)) {
-      return res.status(400).json({ success: false, message: 'Invalid target' });
-    }
 
     const { buildHtml, subject } = BROADCAST_TEMPLATES[template];
 
-    // Fetch all opted-in users
-    const users = await User.find({ emailReminders: { $ne: false } }, 'name email').lean();
+    let candidates;
 
-    let candidates = users;
+    if (Array.isArray(userIds) && userIds.length > 0) {
+      // Send to specific selected users only
+      candidates = await User.find(
+        { _id: { $in: userIds }, emailReminders: { $ne: false } },
+        'name email'
+      ).lean();
+    } else {
+      if (!['all', 'inactive', 'active'].includes(target)) {
+        return res.status(400).json({ success: false, message: 'Invalid target' });
+      }
 
-    if (target !== 'all') {
-      // Determine active/inactive by checking tournament + session counts
-      const activityChecks = await Promise.all(
-        users.map(async (u) => {
-          const [tCount, sCount] = await Promise.all([
-            Tournament.countDocuments({ userId: u._id }),
-            Session.countDocuments({ userId: u._id }),
-          ]);
-          return { user: u, hasActivity: tCount > 0 || sCount > 0 };
-        })
-      );
-      candidates = activityChecks
-        .filter((x) => target === 'inactive' ? !x.hasActivity : x.hasActivity)
-        .map((x) => x.user);
+      // Fetch all opted-in users
+      const users = await User.find({ emailReminders: { $ne: false } }, 'name email').lean();
+      candidates = users;
+
+      if (target !== 'all') {
+        // Determine active/inactive by checking tournament + session counts
+        const activityChecks = await Promise.all(
+          users.map(async (u) => {
+            const [tCount, sCount] = await Promise.all([
+              Tournament.countDocuments({ userId: u._id }),
+              Session.countDocuments({ userId: u._id }),
+            ]);
+            return { user: u, hasActivity: tCount > 0 || sCount > 0 };
+          })
+        );
+        candidates = activityChecks
+          .filter((x) => target === 'inactive' ? !x.hasActivity : x.hasActivity)
+          .map((x) => x.user);
+      }
     }
 
     console.log(`[BroadcastEmail] template=${template} target=${target} candidates=${candidates.length}`);
