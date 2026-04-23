@@ -426,19 +426,25 @@ export default function Admin() {
           <div className="border-t border-gray-100 px-5 py-5 bg-gray-50">
             {/* Template picker */}
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Choose a template</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
               {[
                 {
-                  id: 'tournament_reminder',
-                  icon: '🏆',
-                  title: 'Tournament reminder',
-                  desc: '"Got a tournament coming up? Log it now." Good for all users.',
+                  id: 'retention',
+                  icon: '💸',
+                  title: 'Retention — financial hook',
+                  desc: '"Do you actually make money playing pickleball?" Best for inactive signups.',
                 },
                 {
                   id: 'first_entry',
                   icon: '🚀',
                   title: 'First entry nudge',
                   desc: '"Your dashboard is empty — start in 2 minutes." Best for inactive users.',
+                },
+                {
+                  id: 'tournament_reminder',
+                  icon: '🏆',
+                  title: 'Tournament reminder',
+                  desc: '"Got a tournament coming up? Log it now." Good for all users.',
                 },
                 {
                   id: 'monthly_checkin',

@@ -243,6 +243,85 @@ function buildMonthlyCheckInHtml(firstName) {
 </html>`;
 }
 
+function buildRetentionHtml(firstName) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr>
+          <td style="background:linear-gradient(135deg,#1c350a 0%,#2d6e05 50%,#a86010 100%);padding:28px 32px;">
+            <table cellpadding="0" cellspacing="0" style="margin-bottom:16px;">
+              <tr>
+                <td style="width:32px;height:32px;border-radius:8px;background:rgba(145,190,77,0.2);border:1px solid rgba(145,190,77,0.4);text-align:center;vertical-align:middle;">
+                  <span style="color:#c8e875;font-size:12px;font-weight:900;letter-spacing:-0.5px;line-height:32px;">PT</span>
+                </td>
+                <td style="padding-left:8px;vertical-align:middle;">
+                  <span style="color:#91BE4D;font-size:11px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase;">PickleTracker</span>
+                </td>
+              </tr>
+            </table>
+            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:900;line-height:1.3;">
+              Do you actually make money playing pickleball?
+            </h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,0.7);font-size:14px;">
+              Most players don't know. Now you can find out.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 32px 8px;">
+            <p style="margin:0 0 16px;color:#374151;font-size:14px;line-height:1.6;">
+              Hi ${firstName},
+            </p>
+            <p style="margin:0 0 16px;color:#374151;font-size:14px;line-height:1.6;">
+              Entry fees, travel, registration — it adds up fast. Most pickleball players focus on winning, but never stop to check if the prize money actually covers what they spent to get there.
+            </p>
+            <table width="100%" cellpadding="0" cellspacing="0" style="background:#fef9ec;border-radius:12px;padding:16px 20px;border:1px solid #f5d97a;margin-bottom:16px;">
+              <tr>
+                <td>
+                  <p style="margin:0;color:#78350f;font-size:13px;font-weight:700;">Here's what most players never calculate:</p>
+                  <p style="margin:8px 0 0;color:#374151;font-size:13px;line-height:1.9;">
+                    💸 Entry fee × tournaments per year = ?<br/>
+                    🏆 Prize money won − entry fees = actual profit<br/>
+                    ✈️ Add travel &amp; gear and you might be surprised
+                  </p>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:0 0 0;color:#374151;font-size:14px;line-height:1.6;">
+              PickleTracker shows you the exact number — per tournament, per month, per year.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 32px 28px;">
+            <a href="${APP_URL}/tournaments"
+               style="display:inline-block;background:linear-gradient(to right,#2d7005,#91BE4D);color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:10px;">
+              Find out now — log your first tournament →
+            </a>
+            <p style="margin:16px 0 0;color:#9ca3af;font-size:12px;">
+              Takes under 2 minutes. No card required.
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="background:#f9fafb;padding:16px 32px;border-top:1px solid #e5e7eb;">
+            <p style="margin:0;color:#9ca3af;font-size:11px;line-height:1.5;">
+              You're receiving this because you signed up at <a href="${APP_URL}" style="color:#4a6e10;">pickletracker.in</a>.
+              To stop these emails, go to Profile → Notifications in the app.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 const BROADCAST_TEMPLATES = {
   tournament_reminder: {
     subject: (firstName) => `Got a tournament coming up, ${firstName}? Log it on PickleTracker 🏆`,
@@ -255,6 +334,10 @@ const BROADCAST_TEMPLATES = {
   monthly_checkin: {
     subject: (firstName) => `How's your pickleball going, ${firstName}? Check your stats`,
     buildHtml: buildMonthlyCheckInHtml,
+  },
+  retention: {
+    subject: () => `Do you actually make money playing pickleball?`,
+    buildHtml: buildRetentionHtml,
   },
 };
 
@@ -548,26 +631,42 @@ const broadcastEmail = async (req, res, next) => {
 
     console.log(`[BroadcastEmail] template=${template} target=${target} candidates=${candidates.length}`);
 
+    const BATCH_SIZE = 5;
+    const DELAY_BETWEEN_EMAILS_MS = 200;
+    const DELAY_BETWEEN_BATCHES_MS = 2000;
+
     let sent = 0;
     const failures = [];
-    for (const u of candidates) {
-      const firstName = u.name?.split(' ')[0] || 'Player';
-      const result = await sendNotificationEmail({
-        to: u.email,
-        subject: subject(firstName),
-        html: buildHtml(firstName),
-      });
-      if (result?.ok) {
-        sent++;
-      } else {
-        const reason = result?.error
-          ? (typeof result.error === 'object' ? JSON.stringify(result.error) : String(result.error))
-          : 'unknown';
-        failures.push({ name: u.name, email: u.email, reason });
-        console.warn(`[BroadcastEmail] Failed for ${u.email}: ${reason}`);
+
+    for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+      const batch = candidates.slice(i, i + BATCH_SIZE);
+      const batchNum = Math.floor(i / BATCH_SIZE) + 1;
+      console.log(`[BroadcastEmail] Batch ${batchNum} — sending ${batch.length} emails`);
+
+      for (const u of batch) {
+        const firstName = u.name?.split(' ')[0] || 'Player';
+        const result = await sendNotificationEmail({
+          to: u.email,
+          subject: subject(firstName),
+          html: buildHtml(firstName),
+        });
+        if (result?.ok) {
+          sent++;
+        } else {
+          const reason = result?.error
+            ? (typeof result.error === 'object' ? JSON.stringify(result.error) : String(result.error))
+            : 'unknown';
+          failures.push({ name: u.name, email: u.email, reason });
+          console.warn(`[BroadcastEmail] Failed for ${u.email}: ${reason}`);
+        }
+        await new Promise((r) => setTimeout(r, DELAY_BETWEEN_EMAILS_MS));
       }
-      // Small delay to avoid hitting Resend rate limits
-      await new Promise((r) => setTimeout(r, 150));
+
+      // Pause between batches (skip after the last batch)
+      if (i + BATCH_SIZE < candidates.length) {
+        console.log(`[BroadcastEmail] Batch ${batchNum} done — pausing ${DELAY_BETWEEN_BATCHES_MS}ms before next batch`);
+        await new Promise((r) => setTimeout(r, DELAY_BETWEEN_BATCHES_MS));
+      }
     }
 
     console.log(`[BroadcastEmail] Done — sent: ${sent}, failed: ${failures.length}`);
