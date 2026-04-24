@@ -175,9 +175,10 @@ export default function Calendar() {
       sessionsByDate[s.date].push(s);
 
       const monthKey = s.date.slice(0, 7);
-      if (!monthSessionStats[monthKey]) monthSessionStats[monthKey] = { sessions: 0, courtFees: 0 };
+      if (!monthSessionStats[monthKey]) monthSessionStats[monthKey] = { sessions: 0, courtFees: 0, travelExpenses: 0 };
       monthSessionStats[monthKey].sessions += 1;
       monthSessionStats[monthKey].courtFees += (s.courtFee || 0);
+      monthSessionStats[monthKey].travelExpenses += (s.travelExpense || 0);
 
       if (s.date >= todayStr) {
         insertByDateLimit(upcomingEvents, { kind: 'session', date: s.date, data: s }, 5);
@@ -248,13 +249,13 @@ export default function Calendar() {
   // Month summary stats for the viewed month
   const monthStats = useMemo(() => {
     const monthStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
-    const sessionStats = monthSessionStats[monthStr] || { sessions: 0, courtFees: 0 };
+    const sessionStats = monthSessionStats[monthStr] || { sessions: 0, courtFees: 0, travelExpenses: 0 };
     const tournamentsInMonth = monthTournamentSets[monthStr]?.size || 0;
 
     return {
       sessions: sessionStats.sessions,
       tournaments: tournamentsInMonth,
-      courtFees: sessionStats.courtFees,
+      courtFees: (sessionStats.courtFees || 0) + (sessionStats.travelExpenses || 0),
     };
   }, [monthSessionStats, monthTournamentSets, viewYear, viewMonth]);
 
@@ -901,7 +902,11 @@ export default function Calendar() {
                       </div>
                       <div className="flex-shrink-0 text-right">
                         <span className="text-xl">{RATING_EMOJI[s.rating] || '—'}</span>
-                        {s.courtFee > 0 && <p className="text-xs text-gray-400 mt-0.5">{symbol}{s.courtFee}</p>}
+                        {((s.courtFee || 0) + (s.travelExpense || 0)) > 0 && (
+                          <p className="text-xs text-orange-500 font-semibold mt-0.5">
+                            −{symbol}{(s.courtFee || 0) + (s.travelExpense || 0)}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className={`mt-2 pt-2 border-t border-dashed ${divider} flex items-center justify-between gap-2`}>
@@ -1045,6 +1050,30 @@ export default function Calendar() {
             <div className="overflow-y-auto flex-1 px-4 sm:px-6 pb-4 sm:pb-6">
               {sessionFormError && (
                 <div className="mb-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{sessionFormError}</div>
+              )}
+              {/* Net expense summary — shown when session has any expense recorded */}
+              {((editSessionModal.session?.courtFee || 0) + (editSessionModal.session?.travelExpense || 0)) > 0 && (
+                <div className="mb-4 bg-orange-50 border border-orange-100 rounded-xl px-4 py-3">
+                  <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mb-2">Session Expense Breakdown</p>
+                  <div className="space-y-1">
+                    {(editSessionModal.session?.courtFee || 0) > 0 && (
+                      <div className="flex justify-between text-xs text-orange-800">
+                        <span className="text-orange-600">Court Fee</span>
+                        <span className="font-semibold">{formatCurrency(editSessionModal.session.courtFee, currency)}</span>
+                      </div>
+                    )}
+                    {(editSessionModal.session?.travelExpense || 0) > 0 && (
+                      <div className="flex justify-between text-xs text-orange-800">
+                        <span className="text-orange-600">Travel</span>
+                        <span className="font-semibold">{formatCurrency(editSessionModal.session.travelExpense, currency)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-xs font-bold text-orange-900 border-t border-orange-200 pt-1.5 mt-1">
+                      <span>Net Expense</span>
+                      <span>{formatCurrency((editSessionModal.session?.courtFee || 0) + (editSessionModal.session?.travelExpense || 0), currency)}</span>
+                    </div>
+                  </div>
+                </div>
               )}
               <SessionForm
                 initial={editSessionModal.session}

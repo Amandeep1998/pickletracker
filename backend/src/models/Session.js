@@ -77,6 +77,11 @@ const sessionSchema = new mongoose.Schema(
       min: [0, 'Court fee cannot be negative'],
       default: 0,
     },
+    travelExpense: {
+      type: Number,
+      min: [0, 'Travel expense cannot be negative'],
+      default: 0,
+    },
     // Optional link to a Tournament document (for tournament-type sessions)
     tournamentId: {
       type: mongoose.Schema.Types.ObjectId,

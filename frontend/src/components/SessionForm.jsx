@@ -62,6 +62,7 @@ const EMPTY = {
   date: today(),
   location: null,
   courtFee: '',
+  travelExpense: '',
   rating: null,
   notes: '',
   // casual-only
@@ -84,19 +85,20 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
   useEffect(() => {
     if (initial) {
       setForm({
-        type:       initial.type       || 'casual',
-        date:       initial.date       || today(),
-        location:   initial.location   || null,
-        courtFee:   initial.courtFee   || '',
-        rating:     initial.rating     || null,
-        notes:      initial.notes      || '',
-        playFormat: initial.playFormat || null,
-        wentWell:   initial.wentWell   || [],
-        wentWrong:  initial.wentWrong  || [],
-        drillFocus: initial.drillFocus || [],
-        drillMode:  initial.drillMode  || null,
-        coached:    initial.coached    || false,
-        duration:   initial.duration   || '',
+        type:          initial.type          || 'casual',
+        date:          initial.date          || today(),
+        location:      initial.location      || null,
+        courtFee:      initial.courtFee      || '',
+        travelExpense: initial.travelExpense || '',
+        rating:        initial.rating        || null,
+        notes:         initial.notes         || '',
+        playFormat:    initial.playFormat    || null,
+        wentWell:      initial.wentWell      || [],
+        wentWrong:     initial.wentWrong     || [],
+        drillFocus:    initial.drillFocus    || [],
+        drillMode:     initial.drillMode     || null,
+        coached:       initial.coached       || false,
+        duration:      initial.duration      || '',
       });
     }
   }, [initial]);
@@ -142,12 +144,13 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
     }
 
     const payload = {
-      type:     form.type,
-      date:     form.date,
-      location: form.location || undefined,
-      courtFee: form.courtFee !== '' ? Number(form.courtFee) : 0,
-      rating:   form.rating,
-      notes:    form.notes.trim(),
+      type:          form.type,
+      date:          form.date,
+      location:      form.location || undefined,
+      courtFee:      form.courtFee      !== '' ? Number(form.courtFee)      : 0,
+      travelExpense: form.travelExpense  !== '' ? Number(form.travelExpense) : 0,
+      rating:        form.rating,
+      notes:         form.notes.trim(),
     };
 
     if (isCasual) {
@@ -350,22 +353,49 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
         </div>
       </div>
 
-      {/* ── Court fee (shared) ── */}
-      <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-          Court Fee ({symbol}) <span className="text-gray-400 font-normal normal-case">(optional)</span>
-        </label>
-        <input
-          type="number"
-          min="0"
-          step="1"
-          value={form.courtFee}
-          onChange={(e) => setForm((p) => ({ ...p, courtFee: e.target.value }))}
-          placeholder="0"
-          className="w-full sm:w-40 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
-        />
-        <p className="text-[11px] text-gray-400 mt-1">What you paid to book the court for this session</p>
+      {/* ── Court fee + Travel expense (shared) ── */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+            Court Fee ({symbol}) <span className="text-gray-400 font-normal normal-case">(optional)</span>
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={form.courtFee}
+            onChange={(e) => setForm((p) => ({ ...p, courtFee: e.target.value }))}
+            placeholder="0"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
+          />
+          <p className="text-[11px] text-gray-400 mt-1">Court booking fee</p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+            Travel ({symbol}) <span className="text-gray-400 font-normal normal-case">(optional)</span>
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={form.travelExpense}
+            onChange={(e) => setForm((p) => ({ ...p, travelExpense: e.target.value }))}
+            placeholder="0"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
+          />
+          <p className="text-[11px] text-gray-400 mt-1">Cab, fuel, transport</p>
+        </div>
       </div>
+
+      {/* Net expense pill — shown only when at least one expense is entered */}
+      {(Number(form.courtFee) > 0 || Number(form.travelExpense) > 0) && (
+        <div className="flex items-center justify-between bg-orange-50 border border-orange-100 rounded-xl px-4 py-2.5">
+          <span className="text-xs font-semibold text-orange-700">Net Session Expense</span>
+          <span className="text-sm font-black text-orange-700">
+            {symbol}{(Number(form.courtFee) || 0) + (Number(form.travelExpense) || 0)}
+          </span>
+        </div>
+      )}
 
       {/* ── Rating (shared, label differs by type) ── */}
       <div data-error-key="rating">
