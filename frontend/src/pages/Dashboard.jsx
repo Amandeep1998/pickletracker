@@ -54,10 +54,6 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [filterYear, setFilterYear] = useState(String(currentYear));
   const [filterMonth, setFilterMonth] = useState('');
-  const [includeTournaments, setIncludeTournaments] = useState(true);
-  const [includeCourtFees, setIncludeCourtFees] = useState(true);
-  const [includeGear, setIncludeGear] = useState(false);
-  const [includeTravel, setIncludeTravel] = useState(false);
 
   // Profile nudge — hidden if user already has phone+city, or if dismissed this session
   const nudgeKey = `profileNudgeDismissed_${user?.id}`;
@@ -188,42 +184,42 @@ export default function Dashboard() {
     });
   }, [allSessions, filterYear, filterMonth]);
 
-  // Stat card totals
+  // Financial breakdown totals — always computed, no toggles
   const totals = useMemo(() => {
-    const earnings = includeTournaments
-      ? filteredTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0)
-      : 0;
-    const tournamentExpenses = includeTournaments
-      ? filteredTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0)
-      : 0;
-    const courtFeesTotal = includeCourtFees
-      ? filteredSessions.reduce((s, x) => s + (x.courtFee || 0), 0)
-      : 0;
+    const earnings = filteredTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0);
+
+    const tournamentEntryFees = filteredTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0);
+    const tournamentTravel = filteredExpenses
+      .filter((e) => e.type === 'travel')
+      .reduce((s, e) => s + e.amount, 0);
+    const tournamentTotal = tournamentEntryFees + tournamentTravel;
+
+    const sessionCourtFees = filteredSessions.reduce((s, x) => s + (x.courtFee || 0), 0);
+    const sessionTravel = filteredSessions.reduce((s, x) => s + (x.travelExpense?.total || 0), 0);
+    const sessionTotal = sessionCourtFees + sessionTravel;
+
     const gearTotal = filteredExpenses
       .filter((e) => e.type === 'gear')
       .reduce((s, e) => s + e.amount, 0);
-    const travelFromExpenses = filteredExpenses
-      .filter((e) => e.type === 'travel')
-      .reduce((s, e) => s + e.amount, 0);
-    const travelFromSessions = filteredSessions
-      .reduce((s, x) => s + (x.travelExpense?.total || 0), 0);
-    const travelTotal = travelFromExpenses + travelFromSessions;
 
-    const totalExpenses =
-      tournamentExpenses +
-      courtFeesTotal +
-      (includeGear ? gearTotal : 0) +
-      (includeTravel ? travelTotal : 0);
+    const totalSpent = tournamentTotal + sessionTotal + gearTotal;
 
     return {
       earnings,
-      totalExpenses,
-      profit: earnings - totalExpenses,
+      tournamentEntryFees,
+      tournamentTravel,
+      tournamentTotal,
+      sessionCourtFees,
+      sessionTravel,
+      sessionTotal,
+      gearTotal,
+      totalSpent,
+      net: earnings - totalSpent,
       count: filteredTournaments.length,
     };
-  }, [filteredTournaments, filteredExpenses, filteredSessions, includeTournaments, includeCourtFees, includeGear, includeTravel]);
+  }, [filteredTournaments, filteredExpenses, filteredSessions]);
 
-  // Monthly chart data for the selected year
+  // Monthly chart data for the selected year — always includes all cost categories
   const chartData = useMemo(() => {
     const yearTournaments = tournaments.filter((t) =>
       tournamentDateMap[t._id]?.startsWith(filterYear)
@@ -241,24 +237,16 @@ export default function Dashboard() {
       const monthExpenses = yearExpenses.filter((e) => e.date.split('-')[1] === monthStr);
       const monthSessions = yearSessions.filter((s) => s.date.split('-')[1] === monthStr);
 
-      const tournamentExp = includeTournaments
-        ? monthTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0)
-        : 0;
-      const courtFees = includeCourtFees
-        ? monthSessions.reduce((s, x) => s + (x.courtFee || 0), 0)
-        : 0;
-      const gear = includeGear
-        ? monthExpenses.filter((e) => e.type === 'gear').reduce((s, e) => s + e.amount, 0)
-        : 0;
-      const travel = includeTravel
-        ? monthExpenses.filter((e) => e.type === 'travel').reduce((s, e) => s + e.amount, 0)
-          + monthSessions.reduce((s, x) => s + (x.travelExpense?.total || 0), 0)
-        : 0;
+      const tournamentExp =
+        monthTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0) +
+        monthExpenses.filter((e) => e.type === 'travel').reduce((s, e) => s + e.amount, 0);
+      const sessionExp = monthSessions.reduce(
+        (s, x) => s + (x.courtFee || 0) + (x.travelExpense?.total || 0), 0
+      );
+      const gear = monthExpenses.filter((e) => e.type === 'gear').reduce((s, e) => s + e.amount, 0);
 
-      const totalExp = tournamentExp + courtFees + gear + travel;
-      const earnings = includeTournaments
-        ? monthTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0)
-        : 0;
+      const totalExp = tournamentExp + sessionExp + gear;
+      const earnings = monthTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0);
 
       return {
         month,
@@ -266,7 +254,7 @@ export default function Dashboard() {
         Profit: +(earnings - totalExp).toFixed(2),
       };
     });
-  }, [tournaments, expenses, allSessions, tournamentDateMap, filterYear, includeTournaments, includeCourtFees, includeGear, includeTravel]);
+  }, [tournaments, expenses, allSessions, tournamentDateMap, filterYear]);
 
   // Per-category profit breakdown — uses filteredTournaments so year/month filter applies
   const categoryBreakdown = useMemo(() => {
@@ -368,34 +356,36 @@ export default function Dashboard() {
 
   const statCards = [
     {
-      label: 'Total Expenses',
-      value: formatCurrency(totals.totalExpenses, currency),
-      gradient: 'from-[#ec9937] to-[#c07010]',
-      icon: '💸',
-    },
-    {
-      label: 'Total Earnings',
+      label: 'Prize Earned',
       value: formatCurrency(totals.earnings, currency),
       gradient: 'from-[#91BE4D] to-[#6a9020]',
       icon: '🏆',
     },
     {
-      label: 'Net Profit',
-      value: formatCurrency(totals.profit, currency),
-      gradient: totals.profit >= 0 ? 'from-blue-500 to-indigo-600' : 'from-rose-600 to-red-700',
-      icon: '📊',
+      label: 'Tournament Costs',
+      sublabel: 'Entry + Travel',
+      value: formatCurrency(totals.tournamentTotal, currency),
+      gradient: 'from-[#ec9937] to-[#c07010]',
+      icon: '🏆',
     },
     {
-      label: 'Sessions',
-      value: filteredSessions.length,
-      gradient: 'from-violet-500 to-purple-600',
+      label: 'Practice Costs',
+      sublabel: 'Court + Travel',
+      value: formatCurrency(totals.sessionTotal, currency),
+      gradient: 'from-blue-500 to-blue-700',
       icon: '🎯',
     },
     {
-      label: 'Tournaments',
-      value: totals.count,
-      gradient: 'from-[#1c350a] to-[#2a5010]',
-      icon: '🎾',
+      label: 'Gear',
+      value: formatCurrency(totals.gearTotal, currency),
+      gradient: 'from-violet-500 to-purple-600',
+      icon: '🎒',
+    },
+    {
+      label: 'Net P&L',
+      value: formatCurrency(totals.net, currency),
+      gradient: totals.net >= 0 ? 'from-emerald-500 to-green-700' : 'from-rose-600 to-red-700',
+      icon: '📊',
     },
   ];
 
@@ -496,63 +486,115 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Expense filter toggles */}
-      <div className="flex items-center gap-2 flex-wrap mb-4">
-        <span className="text-xs text-gray-500 font-medium">Include in expenses:</span>
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setIncludeTournaments((v) => !v)}
-            className={`text-xs px-3 py-1.5 rounded font-semibold tracking-wide transition-colors border ${
-              includeTournaments
-                ? 'bg-[#91BE4D] text-white border-[#91BE4D]'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-[#91BE4D] hover:text-[#91BE4D]'
-            }`}
-          >
-            {includeTournaments ? '✓' : '+'} Tournament
-          </button>
-          <button
-            onClick={() => setIncludeCourtFees((v) => !v)}
-            className={`text-xs px-3 py-1.5 rounded font-semibold tracking-wide transition-colors border ${
-              includeCourtFees
-                ? 'bg-blue-500 text-white border-blue-500'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-500'
-            }`}
-          >
-            {includeCourtFees ? '✓' : '+'} Court Fees
-          </button>
-          <button
-            onClick={() => setIncludeGear((v) => !v)}
-            className={`text-xs px-3 py-1.5 rounded font-semibold tracking-wide transition-colors border ${
-              includeGear
-                ? 'bg-[#ec9937] text-white border-[#ec9937]'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-[#ec9937] hover:text-[#ec9937]'
-            }`}
-          >
-            {includeGear ? '✓' : '+'} Gear
-          </button>
-          <button
-            onClick={() => setIncludeTravel((v) => !v)}
-            className={`text-xs px-3 py-1.5 rounded font-semibold tracking-wide transition-colors border ${
-              includeTravel
-                ? 'bg-teal-500 text-white border-teal-500'
-                : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400 hover:text-teal-600'
-            }`}
-          >
-            {includeTravel ? '✓' : '+'} Travel
-          </button>
-        </div>
-      </div>
-
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-4">
         {statCards.map((card) => (
           <div key={card.label} className={`rounded-2xl p-4 sm:p-5 bg-gradient-to-br ${card.gradient} shadow-md`}>
-            <div className="text-xl sm:text-2xl mb-2 filter drop-shadow-sm">{card.icon}</div>
-            <p className="text-xs text-white/70 font-medium mb-1">{card.label}</p>
+            <p className="text-xs text-white/70 font-medium mb-0.5">{card.label}</p>
+            {card.sublabel && (
+              <p className="text-[10px] text-white/50 mb-1.5">{card.sublabel}</p>
+            )}
             <p className="text-lg sm:text-xl font-extrabold text-white leading-tight">{card.value}</p>
           </div>
         ))}
       </div>
+
+      {/* Financial Breakdown Card */}
+      {(totals.earnings > 0 || totals.totalSpent > 0) && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-5 mb-4">
+          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+            Spending Breakdown — {filterYear}{filterMonth !== '' ? ` · ${MONTHS[Number(filterMonth)]}` : ''}
+          </h2>
+
+          <div className="space-y-2">
+            {/* Earnings */}
+            <div className="flex items-center justify-between rounded-xl bg-green-50 border border-green-100 px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-base">💰</span>
+                <span className="text-sm font-semibold text-green-800">Prize Money Won</span>
+              </div>
+              <span className="text-sm font-extrabold text-green-700">{formatCurrency(totals.earnings, currency)}</span>
+            </div>
+
+            {/* Tournament block */}
+            <div className="rounded-xl border border-orange-100 overflow-hidden">
+              <div className="flex items-center justify-between bg-orange-50 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🏆</span>
+                  <span className="text-sm font-bold text-orange-800">Tournament</span>
+                </div>
+                <span className="text-sm font-extrabold text-orange-700">{formatCurrency(totals.tournamentTotal, currency)}</span>
+              </div>
+              <div className="px-3 py-2 space-y-1.5 bg-white">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-300 inline-block"></span>
+                    Entry fees
+                  </span>
+                  <span className="text-xs font-semibold text-gray-700">{formatCurrency(totals.tournamentEntryFees, currency)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-300 inline-block"></span>
+                    Travel
+                  </span>
+                  <span className="text-xs font-semibold text-gray-700">{formatCurrency(totals.tournamentTravel, currency)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Practice block */}
+            <div className="rounded-xl border border-blue-100 overflow-hidden">
+              <div className="flex items-center justify-between bg-blue-50 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🎯</span>
+                  <span className="text-sm font-bold text-blue-800">Practice <span className="font-normal text-blue-500 text-xs">(Casual + Drill)</span></span>
+                </div>
+                <span className="text-sm font-extrabold text-blue-700">{formatCurrency(totals.sessionTotal, currency)}</span>
+              </div>
+              <div className="px-3 py-2 space-y-1.5 bg-white">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-300 inline-block"></span>
+                    Court fees
+                  </span>
+                  <span className="text-xs font-semibold text-gray-700">{formatCurrency(totals.sessionCourtFees, currency)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-300 inline-block"></span>
+                    Travel
+                  </span>
+                  <span className="text-xs font-semibold text-gray-700">{formatCurrency(totals.sessionTravel, currency)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Gear */}
+            <div className="flex items-center justify-between rounded-xl bg-violet-50 border border-violet-100 px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🎒</span>
+                <span className="text-sm font-semibold text-violet-800">Gear</span>
+              </div>
+              <span className="text-sm font-extrabold text-violet-700">{formatCurrency(totals.gearTotal, currency)}</span>
+            </div>
+          </div>
+
+          {/* Totals footer */}
+          <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-semibold text-gray-500">Total Spent</span>
+              <span className="text-sm font-bold text-gray-800">{formatCurrency(totals.totalSpent, currency)}</span>
+            </div>
+            <div className="flex justify-between items-center rounded-xl px-3 py-2" style={{ background: totals.net >= 0 ? '#f0fdf4' : '#fff1f2', border: `1px solid ${totals.net >= 0 ? '#bbf7d0' : '#fecdd3'}` }}>
+              <span className="text-sm font-bold" style={{ color: totals.net >= 0 ? '#166534' : '#9f1239' }}>Net P&L</span>
+              <span className="text-base font-extrabold" style={{ color: totals.net >= 0 ? '#16a34a' : '#e11d48' }}>
+                {totals.net >= 0 ? '+' : ''}{formatCurrency(totals.net, currency)}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="grid grid-cols-4 gap-2 mb-4">
