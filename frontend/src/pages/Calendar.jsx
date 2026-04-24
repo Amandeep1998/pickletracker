@@ -385,7 +385,9 @@ export default function Calendar() {
     if (pushPermission === 'granted') {
       silentSubscribe();
     } else if (pushPermission === 'default') {
-      setPushPrompt({ open: true, name: tournamentName });
+      setPushPrompt({ open: true, name: tournamentName, blocked: false });
+    } else if (pushPermission === 'denied') {
+      setPushPrompt({ open: true, name: tournamentName, blocked: true });
     }
   };
 
@@ -525,11 +527,12 @@ export default function Calendar() {
       {pushPrompt.open && (
         <PushPermissionPrompt
           tournamentName={pushPrompt.name}
+          blocked={pushPrompt.blocked}
           onAccept={async () => {
-            setPushPrompt({ open: false, name: '' });
+            setPushPrompt({ open: false, name: '', blocked: false });
             await requestAndSubscribe();
           }}
-          onDismiss={() => setPushPrompt({ open: false, name: '' })}
+          onDismiss={() => setPushPrompt({ open: false, name: '', blocked: false })}
         />
       )}
 
