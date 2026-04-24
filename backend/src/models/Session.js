@@ -78,9 +78,19 @@ const sessionSchema = new mongoose.Schema(
       default: 0,
     },
     travelExpense: {
-      type: Number,
-      min: [0, 'Travel expense cannot be negative'],
-      default: 0,
+      fromCity:        { type: String, default: '' },
+      toCity:          { type: String, default: '' },
+      isInternational: { type: Boolean, default: false },
+      transport:       { type: Number, default: 0 },
+      localCommute:    { type: Number, default: 0 },
+      accommodation:   { type: Number, default: 0 },
+      food:            { type: Number, default: 0 },
+      equipment:       { type: Number, default: 0 },
+      others:          { type: Number, default: 0 },
+      visaDocs:        { type: Number, default: 0 },
+      travelInsurance: { type: Number, default: 0 },
+      total:           { type: Number, default: 0 },
+      _id:             false,
     },
     // Optional link to a Tournament document (for tournament-type sessions)
     tournamentId: {

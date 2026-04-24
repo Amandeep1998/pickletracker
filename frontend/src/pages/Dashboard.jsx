@@ -202,9 +202,12 @@ export default function Dashboard() {
     const gearTotal = filteredExpenses
       .filter((e) => e.type === 'gear')
       .reduce((s, e) => s + e.amount, 0);
-    const travelTotal = filteredExpenses
+    const travelFromExpenses = filteredExpenses
       .filter((e) => e.type === 'travel')
       .reduce((s, e) => s + e.amount, 0);
+    const travelFromSessions = filteredSessions
+      .reduce((s, x) => s + (x.travelExpense?.total || 0), 0);
+    const travelTotal = travelFromExpenses + travelFromSessions;
 
     const totalExpenses =
       tournamentExpenses +
@@ -249,6 +252,7 @@ export default function Dashboard() {
         : 0;
       const travel = includeTravel
         ? monthExpenses.filter((e) => e.type === 'travel').reduce((s, e) => s + e.amount, 0)
+          + monthSessions.reduce((s, x) => s + (x.travelExpense?.total || 0), 0)
         : 0;
 
       const totalExp = tournamentExp + courtFees + gear + travel;
