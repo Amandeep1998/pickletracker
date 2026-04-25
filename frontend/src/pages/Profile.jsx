@@ -466,15 +466,7 @@ export default function Profile() {
                 </div>
               </div>
 
-              {pushChecking ? (
-                <div className="flex items-center gap-2 py-2">
-                  <svg className="w-4 h-4 animate-spin text-gray-300" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                  </svg>
-                  <span className="text-xs text-gray-400">Checking status…</span>
-                </div>
-              ) : permission === 'denied' ? (
+              {permission === 'denied' ? (
                 <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
                   <p className="text-xs font-semibold text-red-600 mb-0.5">Notifications blocked</p>
                   <p className="text-xs text-red-400 leading-relaxed">

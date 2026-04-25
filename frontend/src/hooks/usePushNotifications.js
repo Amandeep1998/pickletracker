@@ -32,6 +32,14 @@ export function usePushNotifications() {
       .finally(() => setChecking(false));
   }, []);
 
+  const swReady = (timeoutMs = 8000) =>
+    Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Service worker not ready')), timeoutMs)
+      ),
+    ]);
+
   // Request browser permission then subscribe with VAPID key
   const requestAndSubscribe = async () => {
     if (!isSupported || !VAPID_PUBLIC_KEY) return false;
@@ -40,7 +48,7 @@ export function usePushNotifications() {
       setPermission(result);
       if (result !== 'granted') return false;
 
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await swReady();
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
@@ -57,7 +65,7 @@ export function usePushNotifications() {
   const silentSubscribe = async () => {
     if (!isSupported || !VAPID_PUBLIC_KEY || Notification.permission !== 'granted') return;
     try {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await swReady();
       const existing = await reg.pushManager.getSubscription();
       if (existing) {
         setSubscribed(true);
@@ -77,7 +85,7 @@ export function usePushNotifications() {
   const unsubscribe = async () => {
     if (!isSupported) return;
     try {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await swReady();
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
         await api.unsubscribePush(sub.endpoint);

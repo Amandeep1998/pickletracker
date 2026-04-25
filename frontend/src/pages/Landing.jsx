@@ -297,6 +297,93 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* ── Who It's For ─────────────────────────────────────── */}
+        <section className="bg-[#f9fafb] border-y border-gray-100 py-16 sm:py-20">
+          <div className="max-w-6xl mx-auto px-5 sm:px-8">
+            <div className="text-center mb-10">
+              <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-[0.15em] mb-3">Who it's for</p>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#272702] leading-tight tracking-tight">
+                Your role. Your features.
+              </h2>
+              <p className="text-gray-500 text-base mt-3 max-w-xl mx-auto leading-relaxed">
+                PickleTracker adapts to how you play. Pick your role when you sign up — the app shows only what's relevant to you.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-3xl mx-auto">
+              {/* Player card */}
+              <div className="bg-white rounded-2xl border-2 border-[#91BE4D]/30 p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-28 h-28 bg-[#91BE4D] opacity-5 rounded-full blur-2xl" />
+                <div className="w-11 h-11 rounded-xl bg-[#f4f8e8] flex items-center justify-center mb-4">
+                  <svg className="w-6 h-6 text-[#4a6e10]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                    <circle cx="12" cy="8" r="4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                  </svg>
+                </div>
+                <div className="inline-block bg-[#91BE4D] text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider mb-3">Player</div>
+                <h3 className="text-lg font-extrabold text-[#1c350a] mb-2 leading-snug">Know if pickleball is paying you — or costing you</h3>
+                <ul className="space-y-2.5 mb-5">
+                  {[
+                    'Track prize money vs. entry fees per tournament',
+                    'See which category (Singles / Doubles) earns more',
+                    'Log practice sessions with court fees & travel',
+                    'Track gear spend — paddles, shoes, accessories',
+                    'Full calendar view of your season',
+                  ].map((f) => (
+                    <li key={f} className="flex items-start gap-2.5 text-sm text-gray-600">
+                      <svg className="w-4 h-4 text-[#91BE4D] flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  to="/signup"
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-[#4a6e10] hover:text-[#2d7005] transition-colors"
+                >
+                  Get started as a Player <ArrowRight />
+                </Link>
+              </div>
+
+              {/* Coach card */}
+              <div className="bg-white rounded-2xl border-2 border-green-200 p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-28 h-28 bg-green-400 opacity-5 rounded-full blur-2xl" />
+                <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center mb-4">
+                  <svg className="w-6 h-6 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422A12.083 12.083 0 0121 13c0 3.314-4.03 6-9 6S3 16.314 3 13c0-.235.01-.469.03-.7L9 14z" />
+                  </svg>
+                </div>
+                <div className="inline-block bg-green-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider mb-3">Coach</div>
+                <h3 className="text-lg font-extrabold text-[#1c350a] mb-2 leading-snug">Know exactly what your coaching is worth</h3>
+                <ul className="space-y-2.5 mb-5">
+                  {[
+                    'Log private, group, or monthly coaching in one place',
+                    'Record total income and any costs (travel, court, etc.)',
+                    'See coaching in your Dashboard totals and month chart',
+                    'Optionally add names to track totals by student',
+                    'Everything a player gets — plus coaching on top',
+                  ].map((f) => (
+                    <li key={f} className="flex items-start gap-2.5 text-sm text-gray-600">
+                      <svg className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  to="/signup"
+                  className="inline-flex items-center gap-1.5 text-sm font-bold text-green-700 hover:text-green-800 transition-colors"
+                >
+                  Get started as a Coach <ArrowRight />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ── Tournament Form Section ──────────────────────────── */}
         <section className="bg-[#f4f8e8] border-y border-[#91BE4D]/20 py-16 sm:py-20">
           <div className="max-w-6xl mx-auto px-5 sm:px-8">

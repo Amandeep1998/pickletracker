@@ -26,22 +26,22 @@ export default function Welcome() {
     } else {
       setReady(true);
     }
-  }, []);
+  }, [navigate]);
 
-  const handleAdd = async (data) => {
+  const handleAddTournament = async (data) => {
     setFormLoading(true);
     setFormError('');
     try {
       const res = await api.createTournament(data);
       completeOnboarding();
-      setAdded(res.data.data.name);
+      setAdded({ type: 'tournament', name: res.data.data.name });
       setModalOpen(false);
     } catch (err) {
-      const msg =
+      setFormError(
         err.response?.data?.errors?.[0] ||
         err.response?.data?.message ||
-        'Failed to add tournament';
-      setFormError(msg);
+        'Failed to add tournament'
+      );
     } finally {
       setFormLoading(false);
     }
@@ -56,7 +56,6 @@ export default function Welcome() {
 
   const firstName = user?.name?.split(' ')[0] || 'there';
 
-  // ── Success screen ──
   if (added) {
     return (
       <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-12">
@@ -69,10 +68,10 @@ export default function Welcome() {
 
           <h1 className="text-2xl font-bold text-[#272702] mb-2">Tournament added!</h1>
           <div className="inline-block bg-[#f4f8e8] border border-[#d6e89a] text-[#4a6e10] text-sm font-semibold px-4 py-2 rounded-xl mb-3">
-            {added}
+            {added.name}
           </div>
           <p className="text-sm text-gray-500 mb-8">
-            Your first tournament is being tracked. Here's what you can do next:
+            Here&apos;s what you can do next:
           </p>
 
           <div className="space-y-3">
@@ -88,7 +87,7 @@ export default function Welcome() {
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-semibold text-gray-900">View in Calendar</p>
-                  <p className="text-xs text-gray-400">See your tournament on the schedule</p>
+                  <p className="text-xs text-gray-400">See your schedule</p>
                 </div>
               </div>
               <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -108,7 +107,7 @@ export default function Welcome() {
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-semibold text-gray-900">Go to Dashboard</p>
-                  <p className="text-xs text-gray-400">Check your earnings and profit</p>
+                  <p className="text-xs text-gray-400">See your earnings and expenses</p>
                 </div>
               </div>
               <svg className="w-4 h-4 text-gray-300 group-hover:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -121,7 +120,6 @@ export default function Welcome() {
     );
   }
 
-  // ── Welcome screen ──
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm text-center">
@@ -142,8 +140,8 @@ export default function Welcome() {
         <h1 className="text-xl font-bold text-[#272702] mt-3 mb-2">
           Welcome, {firstName}!
         </h1>
-        <p className="text-sm text-gray-500 mb-8 leading-relaxed">
-          Let's add your first tournament to get started. It only takes a minute.
+        <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+          Add your first tournament to get started — it only takes a minute.
         </p>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-6 text-left space-y-3">
@@ -151,25 +149,23 @@ export default function Welcome() {
             { icon: '🏆', text: 'Add tournament name and location' },
             { icon: '📅', text: 'Set the date and category' },
             { icon: '💰', text: 'Enter entry fee and prize won' },
-          ].map((step, i) => (
+          ].map((s, i) => (
             <div key={i} className="flex items-center gap-3">
-              <span className="text-base">{step.icon}</span>
-              <p className="text-sm text-gray-600">{step.text}</p>
+              <span className="text-base">{s.icon}</span>
+              <p className="text-sm text-gray-600">{s.text}</p>
             </div>
           ))}
         </div>
 
         <button
-          onClick={() => setModalOpen(true)}
+          type="button"
+          onClick={() => { setFormError(''); setModalOpen(true); }}
           className="w-full bg-[#ec9937] hover:bg-[#d4831f] text-white font-bold py-3.5 rounded-xl text-sm tracking-wide transition-colors shadow-md shadow-orange-100 mb-3"
         >
-          + Add My First Tournament
+          + Add my first tournament
         </button>
 
-        <button
-          onClick={skip}
-          className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-        >
+        <button type="button" onClick={skip} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">
           Skip for now, take me to the app
         </button>
       </div>
@@ -177,7 +173,7 @@ export default function Welcome() {
       <Modal
         isOpen={modalOpen}
         onClose={() => { setModalOpen(false); setFormError(''); }}
-        title="New Tournament"
+        title="New tournament"
       >
         {formError && (
           <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
@@ -185,7 +181,7 @@ export default function Welcome() {
           </div>
         )}
         <TournamentForm
-          onSubmit={handleAdd}
+          onSubmit={handleAddTournament}
           onCancel={() => { setModalOpen(false); setFormError(''); }}
           loading={formLoading}
         />

@@ -102,6 +102,12 @@ export const parseTournamentVoice = (transcript, currentForm) =>
 // AI — personal coach
 export const getCoachInsight = (messages) => api.post('/ai/coach', { messages });
 
+// Coaching Income
+export const getCoachingIncomes = () => api.get('/coaching-income');
+export const createCoachingIncome = (data) => api.post('/coaching-income', data);
+export const updateCoachingIncome = (id, data) => api.put(`/coaching-income/${id}`, data);
+export const deleteCoachingIncome = (id) => api.delete(`/coaching-income/${id}`);
+
 // AI — document (URL or file)
 export const parseFromFile = (file, currentForm) => {
   const formData = new FormData();

@@ -28,6 +28,7 @@ const playersRoutes = require('./src/routes/players.routes');
 const notificationsRoutes = require('./src/routes/notifications.routes');
 const friendshipRoutes = require('./src/routes/friendship.routes');
 const pushRoutes = require('./src/routes/push.routes');
+const coachingIncomeRoutes = require('./src/routes/coachingIncome.routes');
 const errorHandler = require('./src/middleware/error.middleware');
 const { startTournamentReminderJob } = require('./src/jobs/tournamentReminder');
 const { startResultNudgeJob } = require('./src/jobs/resultNudge');
@@ -92,6 +93,7 @@ app.use('/api/players', playersRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/friends', friendshipRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/coaching-income', coachingIncomeRoutes);
 
 app.use(Sentry.Handlers.errorHandler()); // captures unhandled errors and sends to Sentry
 app.use(errorHandler);

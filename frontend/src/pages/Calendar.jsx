@@ -1,18 +1,18 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import posthog from 'posthog-js';
 import * as api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import TournamentForm from '../components/TournamentForm';
 import SessionForm from '../components/SessionForm';
+import CoachingIncomeForm from '../components/CoachingIncomeForm';
 import TournamentShareModal from '../components/TournamentShareModal';
-import BannerMedalStrip from '../components/BannerMedalStrip';
 import PushPermissionPrompt from '../components/PushPermissionPrompt';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { formatCurrency, getCurrencySymbol } from '../utils/format';
 import useCurrency from '../hooks/useCurrency';
 import { getMapUrl } from '../utils/mapUrl';
-import { computeMedalTally } from '../utils/medals';
 import PaddleLoader from '../components/PaddleLoader';
+import OnboardingWizard from '../components/OnboardingWizard';
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -53,6 +53,8 @@ export default function Calendar() {
 
   const [tournaments, setTournaments] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [expenses, setExpenses] = useState([]);
+  const [coachingIncomes, setCoachingIncomes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -80,19 +82,64 @@ export default function Calendar() {
   // Edit session modal — opened by tapping a session card in the day popup
   const [editSessionModal, setEditSessionModal] = useState({ open: false, session: null });
 
+  // Add / edit coaching income modal
+  const [addCoachingModal, setAddCoachingModal] = useState({ open: false, date: null });
+  const [editCoachingModal, setEditCoachingModal] = useState({ open: false, entry: null });
+  const [coachingFormLoading, setCoachingFormLoading] = useState(false);
+  const [coachingFormError, setCoachingFormError] = useState('');
+
   // Floating action button (speed-dial) state
   const [fabOpen, setFabOpen] = useState(false);
+
+  // Onboarding wizard — shown once for new users
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Share modal
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
+  /** Money summary accordion — starts closed so the grid stays high on the page */
+  const [moneySummaryOpen, setMoneySummaryOpen] = useState(false);
+
   // Push notifications
-  const { permission: pushPermission, isSupported: pushSupported, requestAndSubscribe, silentSubscribe } = usePushNotifications();
+  const { permission: pushPermission, subscribed: pushSubscribed, isSupported: pushSupported, requestAndSubscribe, silentSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
   const [pushPrompt, setPushPrompt] = useState({ open: false, name: '' });
+  const [pushLoading, setPushLoading] = useState(false);
+  const isReminderOn = pushSubscribed;
 
   // Pending tournament notification toast + highlight
   const [pendingToast, setPendingToast] = useState('');
   const [highlightDate, setHighlightDate] = useState('');
+
+  const fetchTournaments = async () => {
+    const res = await api.getTournaments();
+    setTournaments(res.data.data);
+  };
+
+  const fetchData = useCallback(async () => {
+    try {
+      setError('');
+      // Render the calendar as soon as tournaments arrive; sessions/coaching can hydrate right after.
+      const tournamentsPromise = api.getTournaments();
+      const sessionsPromise = api.getSessions();
+      const expensesPromise = api.getExpenses();
+      const coachingPromise = api.getCoachingIncomes();
+
+      const tRes = await tournamentsPromise;
+      setTournaments(tRes.data.data || []);
+      setLoading(false);
+
+      const [sRes, eRes, cRes] = await Promise.allSettled([sessionsPromise, expensesPromise, coachingPromise]);
+      if (sRes.status === 'fulfilled') setSessions(sRes.value.data.data || []);
+      else setSessions([]);
+      if (eRes.status === 'fulfilled') setExpenses(eRes.value.data.data || []);
+      else setExpenses([]);
+      if (cRes.status === 'fulfilled') setCoachingIncomes(cRes.value.data.data || []);
+      else setCoachingIncomes([]);
+    } catch {
+      setError('Failed to load calendar data');
+      setLoading(false);
+    }
+  }, []);
 
   // On mount: if there's a pending tournament from the landing page form,
   // create it first then fetch all data once — avoids a race condition where
@@ -122,42 +169,31 @@ export default function Calendar() {
         // Tournament save failed — still load the calendar normally
         fetchData();
       });
+  }, [fetchData]);
+
+  // Re-register push subscription silently on devices where permission was already granted
+  useEffect(() => {
+    if (pushPermission === 'granted') silentSubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchTournaments = async () => {
-    const res = await api.getTournaments();
-    setTournaments(res.data.data);
-  };
-
-  const fetchData = async () => {
-    try {
-      setError('');
-      // Render the calendar as soon as tournaments arrive; sessions can hydrate right after.
-      const tournamentsPromise = api.getTournaments();
-      const sessionsPromise = api.getSessions();
-
-      const tRes = await tournamentsPromise;
-      setTournaments(tRes.data.data || []);
-      setLoading(false);
-
-      try {
-        const sRes = await sessionsPromise;
-        setSessions(sRes.data.data || []);
-      } catch {
-        setSessions([]);
-      }
-    } catch {
-      setError('Failed to load calendar data');
-      setLoading(false);
-    }
-  };
+  // Show onboarding wizard for new users who haven't completed it
+  useEffect(() => {
+    if (loading) return;
+    if (!user || user.onboardingDone) return;
+    if (tournaments.length > 0) return;
+    setShowOnboarding(true);
+  }, [loading, user?.onboardingDone, tournaments.length]);
 
   const calendarDerived = useMemo(() => {
     const eventsByDate = {};
     const sessionsByDate = {};
+    const coachingByDate = {};
     const groupedTournamentsByDate = {};
     const monthSessionStats = {};
     const monthTournamentSets = {};
+    const monthTournamentFinancials = {};
+    const monthCoachingFinancials = {};
 
     const insertByDateLimit = (list, item, limit) => {
       let idx = list.findIndex((x) => x.date > item.date);
@@ -168,6 +204,16 @@ export default function Calendar() {
 
     const upcomingEvents = [];
     const upcomingTournaments = [];
+
+    coachingIncomes.forEach((c) => {
+      if (!c?.date) return;
+      if (!coachingByDate[c.date]) coachingByDate[c.date] = [];
+      coachingByDate[c.date].push(c);
+      const ck = c.date.slice(0, 7);
+      if (!monthCoachingFinancials[ck]) monthCoachingFinancials[ck] = { income: 0, expenses: 0 };
+      monthCoachingFinancials[ck].income += (c.totalEarned || 0);
+      monthCoachingFinancials[ck].expenses += (c.expensesTotal || 0);
+    });
 
     sessions.forEach((s) => {
       if (!s?.date) return;
@@ -210,6 +256,9 @@ export default function Calendar() {
         const monthKey = d.slice(0, 7);
         if (!monthTournamentSets[monthKey]) monthTournamentSets[monthKey] = new Set();
         monthTournamentSets[monthKey].add(String(t._id));
+        if (!monthTournamentFinancials[monthKey]) monthTournamentFinancials[monthKey] = { entryFees: 0, prizeWon: 0 };
+        monthTournamentFinancials[monthKey].entryFees += (cat.entryFee || 0);
+        monthTournamentFinancials[monthKey].prizeWon += (cat.prizeAmount || 0);
 
         if (d >= todayStr) {
           upcomingCats.push({ ...cat, date: d });
@@ -231,15 +280,18 @@ export default function Calendar() {
     return {
       eventsByDate,
       sessionsByDate,
+      coachingByDate,
       popupByDate,
       monthSessionStats,
       monthTournamentSets,
+      monthTournamentFinancials,
+      monthCoachingFinancials,
       upcomingTournaments,
       upcomingEvents,
     };
-  }, [sessions, tournaments, todayStr]);
+  }, [sessions, coachingIncomes, tournaments, todayStr]);
 
-  const { eventsByDate, sessionsByDate, popupByDate, monthSessionStats, monthTournamentSets, upcomingTournaments, upcomingEvents } = calendarDerived;
+  const { eventsByDate, sessionsByDate, coachingByDate, popupByDate, monthSessionStats, monthTournamentSets, monthTournamentFinancials, monthCoachingFinancials, upcomingTournaments, upcomingEvents } = calendarDerived;
 
   const popupByTournament = useMemo(
     () => (dayPopup.date ? (popupByDate[dayPopup.date] || []) : []),
@@ -250,22 +302,43 @@ export default function Calendar() {
   const monthStats = useMemo(() => {
     const monthStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
     const sessionStats = monthSessionStats[monthStr] || { sessions: 0, courtFees: 0, travelExpenses: 0 };
+    const tournamentFin = monthTournamentFinancials[monthStr] || { entryFees: 0, prizeWon: 0 };
+    const coachingFin = monthCoachingFinancials[monthStr] || { income: 0, expenses: 0 };
     const tournamentsInMonth = monthTournamentSets[monthStr]?.size || 0;
+    const upcomingCount = upcomingTournaments.length;
+
+    const monthExpenses = (expenses || []).filter((e) => e?.date && String(e.date).slice(0, 7) === monthStr);
+    const tournamentTravel = monthExpenses
+      .filter((e) => e.type === 'travel')
+      .reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    const gearTotal = monthExpenses
+      .filter((e) => e.type === 'gear')
+      .reduce((s, e) => s + (Number(e.amount) || 0), 0);
+
+    const sessionCosts = (sessionStats.courtFees || 0) + (sessionStats.travelExpenses || 0);
+    const totalOut =
+      tournamentFin.entryFees + tournamentTravel + sessionCosts + coachingFin.expenses + gearTotal;
+    const totalIn = tournamentFin.prizeWon + coachingFin.income;
+    const net = totalIn - totalOut;
 
     return {
       sessions: sessionStats.sessions,
       tournaments: tournamentsInMonth,
-      courtFees: (sessionStats.courtFees || 0) + (sessionStats.travelExpenses || 0),
+      upcomingCount,
+      tournamentEntryFees: tournamentFin.entryFees,
+      tournamentTravel,
+      gearTotal,
+      prizeWon: tournamentFin.prizeWon,
+      sessionCosts,
+      coachingIncome: coachingFin.income,
+      coachingExpenses: coachingFin.expenses,
+      totalOut,
+      totalIn,
+      net,
     };
-  }, [monthSessionStats, monthTournamentSets, viewYear, viewMonth]);
+  }, [monthSessionStats, monthTournamentSets, monthTournamentFinancials, monthCoachingFinancials, upcomingTournaments, expenses, viewYear, viewMonth]);
 
   const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
-
-  const medalTally = useMemo(
-    () => computeMedalTally(tournaments, user?.manualAchievements),
-    [tournaments, user?.manualAchievements]
-  );
-
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewYear((y) => y - 1); setViewMonth(11); }
@@ -376,6 +449,18 @@ export default function Calendar() {
     } catch (err) {
       console.error('[saveTravelExpense] Failed', err);
     }
+  };
+
+  const handleTogglePush = async () => {
+    setPushLoading(true);
+    try {
+      if (isReminderOn) {
+        await pushUnsubscribe();
+      } else {
+        await requestAndSubscribe();
+      }
+    } catch { /* handled in hook */ }
+    finally { setPushLoading(false); }
   };
 
   const maybeTriggerPushPrompt = (tournamentName, categories) => {
@@ -503,6 +588,54 @@ export default function Calendar() {
     }
   };
 
+  // ── Coaching Income CRUD ──
+  const handleAddCoaching = async (data) => {
+    setCoachingFormLoading(true);
+    setCoachingFormError('');
+    try {
+      await api.createCoachingIncome(data);
+      setAddCoachingModal({ open: false, date: null });
+      await fetchData();
+    } catch (err) {
+      setCoachingFormError(err.response?.data?.message || 'Failed to save coaching entry');
+    } finally {
+      setCoachingFormLoading(false);
+    }
+  };
+
+  const handleEditCoaching = async (data) => {
+    if (!editCoachingModal.entry?._id) return;
+    setCoachingFormLoading(true);
+    setCoachingFormError('');
+    try {
+      await api.updateCoachingIncome(editCoachingModal.entry._id, data);
+      setEditCoachingModal({ open: false, entry: null });
+      await fetchData();
+    } catch (err) {
+      setCoachingFormError(err.response?.data?.message || 'Failed to update coaching entry');
+    } finally {
+      setCoachingFormLoading(false);
+    }
+  };
+
+  const handleDeleteCoaching = async () => {
+    const id = editCoachingModal.entry?._id;
+    if (!id) return;
+    const ok = typeof window !== 'undefined' ? window.confirm('Delete this coaching entry? This cannot be undone.') : true;
+    if (!ok) return;
+    setCoachingFormLoading(true);
+    setCoachingFormError('');
+    try {
+      await api.deleteCoachingIncome(id);
+      setEditCoachingModal({ open: false, entry: null });
+      await fetchData();
+    } catch (err) {
+      setCoachingFormError(err.response?.data?.message || 'Failed to delete coaching entry');
+    } finally {
+      setCoachingFormLoading(false);
+    }
+  };
+
   const addInitial = useMemo(() => {
     if (!addModal.date) return undefined;
     return { name: '', location: null, categories: [{ categoryName: '', date: addModal.date, medal: 'None', prizeAmount: '', entryFee: '' }] };
@@ -512,6 +645,11 @@ export default function Calendar() {
     if (!addSessionModal.date) return undefined;
     return { date: addSessionModal.date };
   }, [addSessionModal.date]);
+
+  const coachingAddInitial = useMemo(() => {
+    if (!addCoachingModal.date) return undefined;
+    return { date: addCoachingModal.date };
+  }, [addCoachingModal.date]);
 
   const openDayPopup = (dateStr) => setDayPopup({ open: true, date: dateStr });
   const closeDayPopup = () => setDayPopup({ open: false, date: null });
@@ -523,6 +661,18 @@ export default function Calendar() {
 
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+
+      {/* Onboarding wizard — new users only */}
+      {showOnboarding && (
+        <OnboardingWizard
+          onDismiss={() => setShowOnboarding(false)}
+          onConfirm={() => {
+            setShowOnboarding(false);
+            setAddModal({ open: true, date: todayStr });
+            setAddError('');
+          }}
+        />
+      )}
 
       {/* Push permission prompt — shown after saving a future tournament */}
       {pushPrompt.open && (
@@ -546,51 +696,210 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* Hero Banner */}
-      {(() => {
-        return (
-          <div
-            className="rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-4 flex items-center justify-between overflow-hidden relative"
-            style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}
-          >
-            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
-            <div className="relative min-w-0">
-              <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-1">PickleTracker</p>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">Calendar</h1>
-              <p className="text-slate-400 text-xs sm:text-sm mt-1">Sessions &amp; tournaments by date</p>
-              <BannerMedalStrip medals={medalTally} className="mt-3" />
-            </div>
-            <div className="relative select-none flex-shrink-0 hidden sm:block opacity-80">
-              <svg width="60" height="60" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-                <rect x="4" y="10" width="56" height="50" rx="8" fill="white" fillOpacity="0.08"/>
-                <rect x="4" y="10" width="56" height="50" rx="8" stroke="white" strokeOpacity="0.2" strokeWidth="1.5"/>
-                <path d="M4 24h56" stroke="white" strokeOpacity="0.25" strokeWidth="1.5"/>
-                <path d="M22 4v12M42 4v12" stroke="white" strokeOpacity="0.4" strokeWidth="2" strokeLinecap="round"/>
-                <rect x="12" y="32" width="8" height="8" rx="2" fill="#91BE4D" fillOpacity="0.6"/>
-                <rect x="28" y="32" width="8" height="8" rx="2" fill="#ec9937" fillOpacity="0.6"/>
-                <rect x="44" y="32" width="8" height="8" rx="2" fill="#3b82f6" fillOpacity="0.5"/>
-                <rect x="12" y="46" width="8" height="8" rx="2" fill="#a855f7" fillOpacity="0.5"/>
-                <rect x="28" y="46" width="8" height="8" rx="2" fill="#91BE4D" fillOpacity="0.35"/>
-              </svg>
-            </div>
-          </div>
-        );
-      })()}
+      {/* Hero — layered gradient, glass accents, month chip */}
+      <div className="relative mb-4 rounded-3xl overflow-hidden shadow-xl shadow-[#0f2006]/25 ring-1 ring-white/15">
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'linear-gradient(145deg, #0a1404 0%, #1c350a 38%, #2d6e05 62%, #6b3d0a 100%)',
+          }}
+        />
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2280%22%20height=%2280%22%3E%3Cfilter%20id=%22n%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.9%22%20numOctaves=%223%22%20stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect%20width=%2280%22%20height=%2280%22%20filter=%22url(%23n)%22%20opacity=%220.04%22/%3E%3C/svg%3E')]" />
+        <div className="absolute -right-24 -top-20 w-72 h-72 rounded-full bg-[#91BE4D]/25 blur-3xl pointer-events-none" />
+        <div className="absolute -left-20 top-1/2 -translate-y-1/2 w-56 h-56 rounded-full bg-[#ec9937]/20 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
-      {/* Stats strip */}
-      <div className="grid grid-cols-3 gap-2 mb-4">
-        {[
-          { icon: '🎯', label: 'Sessions',    month: monthStats.sessions,    color: 'text-blue-600' },
-          { icon: '🏆', label: 'Tournaments', month: monthStats.tournaments, color: 'text-[#4a6e10]' },
-          { icon: '🏟️', label: 'Court Fees',  month: monthStats.courtFees > 0 ? formatCurrency(monthStats.courtFees, currency) : '—', color: 'text-orange-600' },
-        ].map((s) => (
-          <div key={s.label} className="bg-white rounded-xl border border-gray-100 shadow-sm px-2 py-3 flex flex-col items-center text-center">
-            <p className="text-base leading-none mb-1.5">{s.icon}</p>
-            <p className={`text-xl font-black leading-none ${s.color}`}>{s.month}</p>
-            <p className="text-[10px] font-bold text-gray-500 mt-1 leading-tight">{s.label}</p>
-            <p className="text-[9px] font-semibold text-gray-400 mt-0.5 leading-tight">in {monthName}</p>
+        <div className="relative px-5 py-5 sm:px-8 sm:py-7">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <span className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-[#c8e875]">PickleTracker</span>
+                <span className="text-white/25 hidden sm:inline">·</span>
+                <span className="inline-flex items-center rounded-full bg-white/10 border border-white/20 px-2.5 py-0.5 text-[10px] sm:text-xs font-bold text-white/90 backdrop-blur-sm">
+                  {monthName}
+                </span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-[1.1]">
+                Calendar
+              </h1>
+              <p className="mt-2 text-sm text-white/55 max-w-md leading-relaxed">
+                Tap any day to log sessions, coaching, or tournaments. Your month money summary lives below in a fold-out panel.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
+              <div className="hidden sm:flex h-24 w-24 rounded-2xl bg-white/[0.07] border border-white/15 items-center justify-center backdrop-blur-md shadow-inner">
+                <svg width="56" height="56" viewBox="0 0 64 64" fill="none" aria-hidden="true" className="opacity-90">
+                  <rect x="4" y="10" width="56" height="50" rx="8" stroke="white" strokeOpacity="0.35" strokeWidth="1.5"/>
+                  <path d="M4 24h56" stroke="white" strokeOpacity="0.3" strokeWidth="1.5"/>
+                  <path d="M22 4v12M42 4v12" stroke="#c8e875" strokeOpacity="0.9" strokeWidth="2" strokeLinecap="round"/>
+                  <rect x="14" y="30" width="10" height="10" rx="2" fill="#91BE4D" fillOpacity="0.85"/>
+                  <rect x="27" y="30" width="10" height="10" rx="2" fill="#ec9937" fillOpacity="0.75"/>
+                  <rect x="40" y="30" width="10" height="10" rx="2" fill="#60a5fa" fillOpacity="0.7"/>
+                  <rect x="14" y="44" width="10" height="10" rx="2" fill="#a78bfa" fillOpacity="0.65"/>
+                </svg>
+              </div>
+
+              {pushSupported && pushPermission !== 'denied' && (
+                <button
+                  type="button"
+                  onClick={handleTogglePush}
+                  disabled={pushLoading}
+                  className={`inline-flex items-center gap-3 rounded-2xl px-4 py-3 transition-all active:scale-[0.98] disabled:opacity-60 border w-full sm:w-auto justify-center sm:justify-start ${
+                    isReminderOn
+                      ? 'bg-white/10 border-white/20 hover:bg-white/15'
+                      : 'bg-amber-500/15 border-amber-300/35 hover:bg-amber-500/25'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isReminderOn ? 'bg-[#91BE4D]/35' : 'bg-amber-400/30'}`}>
+                    <span className="text-lg leading-none">{isReminderOn ? '🔔' : '🔕'}</span>
+                  </div>
+                  <div className="text-left min-w-0">
+                    <p className={`text-xs font-extrabold leading-tight ${isReminderOn ? 'text-[#d4f5a8]' : 'text-amber-100'}`}>
+                      {pushLoading
+                        ? (isReminderOn ? 'Turning off…' : 'Enabling…')
+                        : isReminderOn
+                        ? 'Reminders on'
+                        : 'Tournament reminders'}
+                    </p>
+                    <p className="text-[10px] text-white/45 leading-snug mt-0.5">
+                      {isReminderOn ? 'Tap to turn off' : 'Day-before alerts for upcoming events'}
+                    </p>
+                  </div>
+                </button>
+              )}
+            </div>
           </div>
-        ))}
+        </div>
+      </div>
+
+      {/* Monthly money summary — accordion (collapsed by default) */}
+      <div className="bg-white rounded-2xl border border-gray-200/90 shadow-sm mb-4 overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setMoneySummaryOpen((o) => !o)}
+          aria-expanded={moneySummaryOpen}
+          className="w-full flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5 text-left hover:bg-gray-50/90 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#91BE4D]/50 focus-visible:ring-inset"
+        >
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Money summary</p>
+            <p className="text-sm sm:text-base font-extrabold text-gray-900 truncate">{monthName}</p>
+            {!moneySummaryOpen && (
+              <p className="text-xs text-gray-500 mt-0.5">
+                {monthStats.totalOut === 0 && monthStats.totalIn === 0
+                  ? 'No money logged this month — tap to expand'
+                  : (
+                    <>
+                      Net this month:{' '}
+                      <span className={`font-bold tabular-nums ${monthStats.net >= 0 ? 'text-[#4a6e10]' : 'text-red-600'}`}>
+                        {monthStats.net >= 0 ? '+' : '−'}{formatCurrency(Math.abs(monthStats.net), currency)}
+                      </span>
+                      <span className="text-gray-400 font-normal"> · tap for breakdown</span>
+                    </>
+                  )}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="hidden sm:inline text-[10px] font-semibold text-gray-400 uppercase tracking-wide">
+              {moneySummaryOpen ? 'Hide' : 'Show'}
+            </span>
+            <span className={`flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-500 transition-transform duration-200 ${moneySummaryOpen ? 'rotate-180' : ''}`}>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </span>
+          </div>
+        </button>
+
+        {moneySummaryOpen && (
+          <div className="px-4 pb-4 sm:px-5 border-t border-gray-100 pt-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-orange-400 flex-shrink-0" />
+                <span className="text-xs text-gray-600">Tournament entry fees</span>
+              </div>
+              <span className="text-xs font-semibold text-gray-700 tabular-nums">
+                {monthStats.tournamentEntryFees > 0 ? `- ${formatCurrency(monthStats.tournamentEntryFees, currency)}` : '—'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-sky-400 flex-shrink-0" />
+                <span className="text-xs text-gray-600">Tournament travel</span>
+              </div>
+              <span className="text-xs font-semibold text-gray-700 tabular-nums">
+                {monthStats.tournamentTravel > 0 ? `- ${formatCurrency(monthStats.tournamentTravel, currency)}` : '—'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
+                <span className="text-xs text-gray-600">Sessions (court + travel)</span>
+              </div>
+              <span className="text-xs font-semibold text-gray-700 tabular-nums">
+                {monthStats.sessionCosts > 0 ? `- ${formatCurrency(monthStats.sessionCosts, currency)}` : '—'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-violet-400 flex-shrink-0" />
+                <span className="text-xs text-gray-600">Gear</span>
+              </div>
+              <span className="text-xs font-semibold text-gray-700 tabular-nums">
+                {monthStats.gearTotal > 0 ? `- ${formatCurrency(monthStats.gearTotal, currency)}` : '—'}
+              </span>
+            </div>
+
+            {monthStats.prizeWon > 0 && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0" />
+                  <span className="text-xs text-gray-600">Prize money won</span>
+                </div>
+                <span className="text-xs font-semibold text-[#4a6e10] tabular-nums">
+                  + {formatCurrency(monthStats.prizeWon, currency)}
+                </span>
+              </div>
+            )}
+
+            {(monthStats.coachingIncome > 0 || monthStats.coachingExpenses > 0) && (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-teal-400 flex-shrink-0" />
+                    <span className="text-xs text-gray-600">Coaching income</span>
+                  </div>
+                  <span className="text-xs font-semibold text-teal-700 tabular-nums">
+                    + {formatCurrency(monthStats.coachingIncome, currency)}
+                  </span>
+                </div>
+                {monthStats.coachingExpenses > 0 && (
+                  <div className="flex items-center justify-between pl-4">
+                    <span className="text-xs text-gray-400">└ Expenses paid</span>
+                    <span className="text-xs text-gray-500 tabular-nums">
+                      - {formatCurrency(monthStats.coachingExpenses, currency)}
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="border-t border-gray-100 pt-2.5 mt-1 flex items-center justify-between">
+              <span className="text-xs font-extrabold text-gray-800">Net this month</span>
+              <span className={`text-sm font-extrabold tabular-nums ${monthStats.net >= 0 ? 'text-[#4a6e10]' : 'text-red-500'}`}>
+                {monthStats.net >= 0 ? '+' : '-'} {formatCurrency(Math.abs(monthStats.net), currency)}
+              </span>
+            </div>
+
+            {monthStats.totalOut === 0 && monthStats.totalIn === 0 && (
+              <p className="text-xs text-gray-400 text-center py-2">No activity logged in {monthName} yet.</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Calendar Card ── */}
@@ -649,7 +958,7 @@ export default function Calendar() {
                 Tap any date below
               </p>
               <p className="text-[11px] sm:text-xs text-[#4a6e10]/90 font-semibold mt-0.5 leading-snug">
-                to quickly log a session or tournament
+                to log a session, coaching income or tournament
               </p>
             </div>
           </div>
@@ -661,6 +970,7 @@ export default function Calendar() {
             { dot: 'bg-blue-400', label: 'Casual' },
             { dot: 'bg-purple-400', label: 'Drill' },
             { dot: 'bg-orange-400', label: 'Session (Tourney)' },
+            { dot: 'bg-green-400', label: 'Coaching' },
             { dot: 'bg-[#91BE4D]', label: 'Tournament' },
           ].map((l) => (
             <span key={l.label} className="flex items-center gap-1.5 flex-shrink-0">
@@ -690,9 +1000,10 @@ export default function Calendar() {
             const dateStr = toDateStr(viewYear, viewMonth, day);
             const events = eventsByDate[dateStr] || [];
             const daySessions = sessionsByDate[dateStr] || [];
+            const dayCoaching = coachingByDate[dateStr] || [];
             const isToday = dateStr === todayStr;
             const isFuture = dateStr > todayStr;
-            const hasActivity = events.length > 0 || daySessions.length > 0;
+            const hasActivity = events.length > 0 || daySessions.length > 0 || dayCoaching.length > 0;
             const isHighlighted = dateStr === highlightDate;
 
             return (
@@ -739,6 +1050,16 @@ export default function Calendar() {
                         {daySessions.length > 1 && ` ×${daySessions.length}`}
                       </div>
                     ))}
+                    {dayCoaching.slice(0, 1).map((c, i) => (
+                      <div
+                        key={`c-${i}`}
+                        className="text-[8px] sm:text-[11px] rounded px-1 py-0.5 truncate font-semibold leading-tight bg-green-100 text-green-700"
+                      >
+                        <span className="hidden sm:inline">👨‍🏫 </span>
+                        Coaching
+                        {dayCoaching.length > 1 && ` ×${dayCoaching.length}`}
+                      </div>
+                    ))}
                     {events.slice(0, 2).map((ev, i) => (
                       <div
                         key={i}
@@ -752,8 +1073,9 @@ export default function Calendar() {
                     ))}
                     {(() => {
                       const shownSessions = Math.min(daySessions.length, 1);
+                      const shownCoaching = Math.min(dayCoaching.length, 1);
                       const shownEvents = Math.min(events.length, 2);
-                      const remaining = (daySessions.length - shownSessions) + (events.length - shownEvents);
+                      const remaining = (daySessions.length - shownSessions) + (dayCoaching.length - shownCoaching) + (events.length - shownEvents);
                       return remaining > 0 ? (
                         <div className="text-[8px] sm:text-[10px] text-gray-400 px-1 font-medium">
                           +{remaining} more
@@ -853,9 +1175,9 @@ export default function Calendar() {
               </button>
             </div>
 
-            {/* Content — sessions then tournaments */}
+            {/* Content — sessions, coaching then tournaments */}
             <div className="px-3 py-3 space-y-2 max-h-64 overflow-y-auto">
-              {(sessionsByDate[dayPopup.date] || []).length === 0 && popupByTournament.length === 0 && (
+              {(sessionsByDate[dayPopup.date] || []).length === 0 && (coachingByDate[dayPopup.date] || []).length === 0 && popupByTournament.length === 0 && (
                 <p className="text-sm text-gray-400 text-center py-3">Nothing logged on this day yet.</p>
               )}
               {(sessionsByDate[dayPopup.date] || []).map((s) => {
@@ -924,6 +1246,62 @@ export default function Calendar() {
                   </button>
                 );
               })}
+              {(coachingByDate[dayPopup.date] || []).map((c) => {
+                const TYPE_LABELS = {
+                  private_lesson: 'Private Lesson',
+                  group_session: 'Group Session',
+                  workshop: 'Workshop',
+                  bootcamp: 'Bootcamp',
+                  monthly_package: 'Monthly / package',
+                };
+                const TYPE_ICONS  = { private_lesson: '👤', group_session: '👥', workshop: '📋', bootcamp: '🏕️' };
+                return (
+                  <button
+                    key={c._id}
+                    type="button"
+                    onClick={() => { setEditCoachingModal({ open: true, entry: c }); setCoachingFormError(''); closeDayPopup(); }}
+                    aria-label={`Open coaching income details`}
+                    className="group w-full text-left rounded-xl px-3 py-2.5 border shadow-sm hover:shadow-md active:scale-[0.99] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-green-400/60 bg-green-50 border-green-200 hover:bg-green-100 hover:border-green-300"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-base">{TYPE_ICONS[c.type] || '👨‍🏫'}</span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900">{TYPE_LABELS[c.type] || 'Coaching'}</p>
+                          <p className="text-xs text-gray-500">
+                            {c.students} student{c.students !== 1 ? 's' : ''}
+                            {c.studentNames?.length > 0 && ` · ${c.studentNames.slice(0, 2).join(', ')}${c.studentNames.length > 2 ? '…' : ''}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 text-right">
+                        {(() => {
+                          const g = c.totalEarned || 0;
+                          const ex = c.expensesTotal || 0;
+                          const n = g - ex;
+                          return ex > 0 ? (
+                            <>
+                              <p className="text-sm font-extrabold text-emerald-800">+{symbol}{n.toLocaleString()}</p>
+                              <p className="text-[9px] text-gray-500">Gross {symbol}{g.toLocaleString()}</p>
+                            </>
+                          ) : (
+                            <p className="text-sm font-extrabold text-green-700">+{symbol}{g.toLocaleString()}</p>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-dashed border-green-200 flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-semibold text-green-700 tracking-wide uppercase">Tap to edit</span>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full px-2 py-0.5 bg-green-100 text-green-700 group-hover:bg-green-200 transition-colors" aria-hidden="true">
+                        Open
+                        <svg className="w-3 h-3 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
               {popupByTournament.map(({ tournament, categories }) => (
                 <button
                   key={tournament._id}
@@ -969,17 +1347,23 @@ export default function Calendar() {
               ))}
             </div>
 
-            {/* Add actions — two buttons */}
-            <div className="px-3 pb-4 pt-2 border-t border-gray-100 grid grid-cols-2 gap-2">
+            {/* Add actions — two or three buttons */}
+            <div className="px-3 pb-4 pt-2 border-t border-gray-100 grid gap-2 grid-cols-3">
               <button
                 onClick={() => { closeDayPopup(); setAddSessionModal({ open: true, date: dayPopup.date }); setSessionFormError(''); }}
-                className="flex items-center justify-center gap-1.5 border-2 border-[#91BE4D]/40 bg-[#91BE4D]/5 hover:bg-[#91BE4D]/10 text-[#4a6e10] font-semibold text-sm py-2.5 rounded-xl transition-colors"
+                className="flex items-center justify-center gap-1 border-2 border-[#91BE4D]/40 bg-[#91BE4D]/5 hover:bg-[#91BE4D]/10 text-[#4a6e10] font-semibold text-xs py-2.5 rounded-xl transition-colors"
               >
-                🎯 Log Session
+                🎯 Session
+              </button>
+              <button
+                onClick={() => { closeDayPopup(); setAddCoachingModal({ open: true, date: dayPopup.date }); setCoachingFormError(''); }}
+                className="flex items-center justify-center gap-1 border-2 border-green-300/60 bg-green-50 hover:bg-green-100 text-green-700 font-semibold text-xs py-2.5 rounded-xl transition-colors"
+              >
+                👨‍🏫 Coaching
               </button>
               <button
                 onClick={() => { closeDayPopup(); setAddModal({ open: true, date: dayPopup.date }); setAddError(''); }}
-                className="flex items-center justify-center gap-1.5 hover:opacity-90 text-white font-semibold text-sm py-2.5 rounded-xl transition-opacity"
+                className="flex items-center justify-center gap-1 hover:opacity-90 text-white font-semibold text-xs py-2.5 rounded-xl transition-opacity"
                 style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
               >
                 🏆 Tournament
@@ -1122,6 +1506,87 @@ export default function Calendar() {
                   className="w-full text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 rounded-xl py-2.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Delete session
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Add Coaching Income Modal ── */}
+      {addCoachingModal.open && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-xl max-h-[92vh] flex flex-col overflow-hidden" style={{ maxHeight: '92svh' }}>
+            <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-6 pb-2 flex-shrink-0 gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Log Coaching Income</h2>
+                {addCoachingModal.date && (
+                  <p className="text-xs text-gray-500 mt-0.5">{formatDate(addCoachingModal.date)}</p>
+                )}
+              </div>
+              <button
+                onClick={() => { setAddCoachingModal({ open: false, date: null }); setCoachingFormError(''); }}
+                className="text-gray-400 hover:text-gray-600 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-4 sm:px-6 pb-4 sm:pb-6">
+              {coachingFormError && (
+                <div className="mb-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{coachingFormError}</div>
+              )}
+              <CoachingIncomeForm
+                initial={coachingAddInitial}
+                onSubmit={handleAddCoaching}
+                onCancel={() => { setAddCoachingModal({ open: false, date: null }); setCoachingFormError(''); }}
+                loading={coachingFormLoading}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Coaching Income Modal ── */}
+      {editCoachingModal.open && editCoachingModal.entry && (
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-xl max-h-[92vh] flex flex-col overflow-hidden" style={{ maxHeight: '92svh' }}>
+            <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-6 pb-2 flex-shrink-0 gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Edit Coaching Entry</h2>
+                {editCoachingModal.entry?.date && (
+                  <p className="text-xs text-gray-500 mt-0.5">{formatDate(editCoachingModal.entry.date)}</p>
+                )}
+              </div>
+              <button
+                onClick={() => { setEditCoachingModal({ open: false, entry: null }); setCoachingFormError(''); }}
+                className="text-gray-400 hover:text-gray-600 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 px-4 sm:px-6 pb-4 sm:pb-6">
+              {coachingFormError && (
+                <div className="mb-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{coachingFormError}</div>
+              )}
+              <CoachingIncomeForm
+                initial={editCoachingModal.entry}
+                onSubmit={handleEditCoaching}
+                onCancel={() => { setEditCoachingModal({ open: false, entry: null }); setCoachingFormError(''); }}
+                loading={coachingFormLoading}
+              />
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={handleDeleteCoaching}
+                  disabled={coachingFormLoading}
+                  className="w-full text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 rounded-xl py-2.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Delete coaching entry
                 </button>
               </div>
             </div>
@@ -1390,17 +1855,19 @@ export default function Calendar() {
 
       {/* ── Floating Action Button (speed-dial) ──
           Hidden whenever a modal/popup is open so it doesn't overlap forms. */}
-      {!dayPopup.open && !addModal.open && !addSessionModal.open && !editSessionModal.open && !selectedTournament && (
+      {!dayPopup.open && !addModal.open && !addSessionModal.open && !editSessionModal.open && !addCoachingModal.open && !editCoachingModal.open && !selectedTournament && (
       <>
-      {/* Scrim */}
       {fabOpen && (
         <div
-          className="fixed inset-0 bg-black/30 z-40 transition-opacity"
+          className="fixed inset-0 z-40 bg-black/30 transition-opacity"
           onClick={() => setFabOpen(false)}
         />
       )}
 
-      <div className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end gap-2.5">
+      <div
+        className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 flex flex-col items-end gap-2.5 z-50"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Speed-dial options */}
         <div
           className={`flex flex-col items-end gap-2.5 transition-all duration-200 ${
@@ -1417,6 +1884,17 @@ export default function Calendar() {
           >
             <span className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-base">🎯</span>
             <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">Log Session</span>
+          </button>
+          <button
+            onClick={() => {
+              setFabOpen(false);
+              setAddCoachingModal({ open: true, date: todayStr });
+              setCoachingFormError('');
+            }}
+            className="flex items-center gap-2.5 bg-white shadow-lg border border-gray-100 rounded-full pl-4 pr-5 py-2.5 hover:shadow-xl active:scale-95 transition-all"
+          >
+            <span className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-base">👨‍🏫</span>
+            <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">Log Coaching</span>
           </button>
           <button
             onClick={() => {

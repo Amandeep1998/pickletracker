@@ -254,7 +254,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         const prizeNum = Number(cat.prizeAmount);
         if (cat.medal !== 'None') {
           if (cat.prizeAmount === '' || !Number.isFinite(prizeNum) || prizeNum <= 0 || !Number.isInteger(prizeNum)) {
-            errs[`cat_${idx}_prizeAmount`] = 'Enter winning amount as a whole number';
+            errs[`cat_${idx}_prizeAmount`] = 'Enter the prize money you won, or 0 if there was no prize';
           }
         }
         if (cat.medal === 'None' && Number.isFinite(prizeNum) && prizeNum > 0) {
@@ -611,7 +611,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
                         placeholder="0"
                       />
                       <p className="text-xs text-gray-400 mt-1">
-                        {cat.medal === 'None' ? 'Select a medal above to enter an amount' : 'Amount won in this event'}
+                        {cat.medal === 'None' ? 'Select a medal above to enter an amount' : 'Enter 0 if there was no prize money'}
                       </p>
                       {errors[`cat_${idx}_prizeAmount`] && (
                         <p className="text-red-500 text-xs mt-1">{errors[`cat_${idx}_prizeAmount`]}</p>

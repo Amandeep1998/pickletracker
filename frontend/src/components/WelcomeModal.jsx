@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 
-const STEPS = [
+const BASE_STEPS = [
   {
     icon: (
       <svg className="w-8 h-8 text-[#ec9937]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -30,6 +30,16 @@ const STEPS = [
   },
   {
     icon: (
+      <svg className="w-8 h-8 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422A12.083 12.083 0 0121 13c0 3.314-4.03 6-9 6S3 16.314 3 13c0-.235.01-.469.03-.7L9 14z" />
+      </svg>
+    ),
+    title: 'Log Coaching Income',
+    desc: 'Coaches: use Coaching Income to log what you earned and your costs, and see totals on your Dashboard.',
+  },
+  {
+    icon: (
       <svg className="w-8 h-8 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
       </svg>
@@ -41,14 +51,19 @@ const STEPS = [
 
 const STORAGE_KEY = 'pt_onboarding_done';
 
-export default function WelcomeModal({ userName }) {
+export default function WelcomeModal({ userName, isCoach = false }) {
+  const steps = useMemo(() => {
+    if (isCoach) return BASE_STEPS;
+    return BASE_STEPS.filter((_, i) => i !== 3);
+  }, [isCoach]);
+
   const [step, setStep] = useState(0);
   const [visible, setVisible] = useState(() => !localStorage.getItem(STORAGE_KEY));
 
   if (!visible) return null;
 
-  const isLast = step === STEPS.length - 1;
-  const current = STEPS[step];
+  const isLast = step === steps.length - 1;
+  const current = steps[step];
 
   const dismiss = () => {
     localStorage.setItem(STORAGE_KEY, '1');
@@ -71,7 +86,7 @@ export default function WelcomeModal({ userName }) {
 
         {/* Step dots */}
         <div className="flex justify-center gap-2 pt-5 px-6">
-          {STEPS.map((_, i) => (
+          {steps.map((_, i) => (
             <button
               key={i}
               onClick={() => setStep(i)}

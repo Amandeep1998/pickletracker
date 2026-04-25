@@ -36,6 +36,9 @@ function publicUser(user) {
     profilePhoto: user.profilePhoto || null,
     manualAchievements: Array.isArray(user.manualAchievements) ? user.manualAchievements : [],
     currency: user.currency || 'INR',
+    roles:
+      Array.isArray(user.roles) && user.roles.length > 0 ? user.roles : ['player'],
+    onboardingDone: Boolean(user.onboardingDone),
   };
 }
 
@@ -342,6 +345,22 @@ const updateProfile = async (req, res, next) => {
       } else {
         update.whatsappPhone = null;
       }
+    }
+
+    if (req.body.onboardingDone !== undefined) {
+      update.onboardingDone = Boolean(req.body.onboardingDone);
+    }
+
+    if (req.body.roles !== undefined) {
+      if (!Array.isArray(req.body.roles)) {
+        return res.status(400).json({ success: false, message: 'roles must be an array' });
+      }
+      const ROLE_ENUM = new Set(['player', 'coach', 'organizer']);
+      const cleaned = [...new Set(req.body.roles.map((r) => String(r).toLowerCase()).filter((r) => ROLE_ENUM.has(r)))];
+      if (!cleaned.includes('player')) {
+        return res.status(400).json({ success: false, message: 'Player is required' });
+      }
+      update.roles = cleaned;
     }
 
     const user = await User.findByIdAndUpdate(req.user.id, update, { new: true, runValidators: true });

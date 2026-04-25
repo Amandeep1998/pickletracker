@@ -40,14 +40,25 @@ const getTournamentDate = (tournament) => {
   return earliest;
 };
 
+/** Parse calendar year + month from API date strings (supports ISO datetimes). */
+function yearMonthFromRecordDate(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return null;
+  const dayPart = dateStr.split('T')[0];
+  const parts = dayPart.split('-');
+  if (parts.length < 2 || !parts[0] || !parts[1]) return null;
+  return { year: parts[0], month: parts[1] };
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const currency = useCurrency();
   const symbol = getCurrencySymbol(currency);
   const navigate = useNavigate();
+
   const [tournaments, setTournaments] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [allSessions, setAllSessions] = useState([]);
+  const [coachingIncomes, setCoachingIncomes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [slowLoad, setSlowLoad] = useState(false);
@@ -55,7 +66,7 @@ export default function Dashboard() {
   const [filterYear, setFilterYear] = useState(String(currentYear));
   const [filterMonth, setFilterMonth] = useState('');
 
-  // Profile nudge — hidden if user already has phone+city, or if dismissed this session
+  // Profile nudge — hidden if user already has city, or if dismissed this session
   const nudgeKey = `profileNudgeDismissed_${user?.id}`;
   const [nudgeDismissed, setNudgeDismissed] = useState(
     () => sessionStorage.getItem(nudgeKey) === '1'
@@ -70,30 +81,31 @@ export default function Dashboard() {
   useEffect(() => {
     let cancelled = false;
 
-    // After 4 s still loading → server is cold-starting; show a friendlier message
     const slowTimer = setTimeout(() => setSlowLoad(true), 4000);
 
     const load = async () => {
       try {
         setError('');
-        // Fast first paint: unblock Dashboard as soon as tournaments arrive.
         const tournamentsPromise = api.getTournaments();
         const expensesPromise = api.getExpenses();
         const sessionsPromise = api.getSessions();
 
         const tRes = await tournamentsPromise;
         if (!cancelled) {
-          setTournaments(tRes.data.data || []);
+          const tData = tRes.data.data || [];
+          setTournaments(tData);
           clearTimeout(slowTimer);
           setLoading(false);
           setSlowLoad(false);
         }
 
-        const [eRes, sRes] = await Promise.allSettled([expensesPromise, sessionsPromise]);
+        const coachingPromise = api.getCoachingIncomes();
+        const [eRes, sRes, cRes] = await Promise.allSettled([expensesPromise, sessionsPromise, coachingPromise]);
         if (cancelled) return;
 
         if (eRes.status === 'fulfilled') setExpenses(eRes.value.data.data || []);
         if (sRes.status === 'fulfilled') setAllSessions(sRes.value.data.data || []);
+        if (cRes.status === 'fulfilled') setCoachingIncomes(cRes.value.data.data || []);
       } catch {
         if (!cancelled) {
           clearTimeout(slowTimer);
@@ -112,6 +124,7 @@ export default function Dashboard() {
     };
   }, []);
 
+
   const tournamentDateMap = useMemo(() => {
     const map = {};
     tournaments.forEach((t) => {
@@ -125,7 +138,7 @@ export default function Dashboard() {
     [tournaments, user?.manualAchievements]
   );
 
-  // Next upcoming tournament (across all years, nearest future date)
+  // Next upcoming tournament
   const nextTournament = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     let nearest = null;
@@ -152,7 +165,7 @@ export default function Dashboard() {
     return { ...nearest, diffDays };
   }, [tournaments]);
 
-  // Tournaments in the selected year+month window
+  // Filtered data for selected year+month
   const filteredTournaments = useMemo(() => {
     return tournaments.filter((t) => {
       const dateStr = tournamentDateMap[t._id];
@@ -164,29 +177,55 @@ export default function Dashboard() {
     });
   }, [tournaments, tournamentDateMap, filterYear, filterMonth]);
 
-  // All expenses in the selected year+month window
   const filteredExpenses = useMemo(() => {
     return expenses.filter((e) => {
-      const [year, month] = e.date.split('-');
-      if (filterYear && year !== filterYear) return false;
-      if (filterMonth !== '' && String(Number(month) - 1) !== filterMonth) return false;
+      const ym = yearMonthFromRecordDate(e.date);
+      if (!ym) return false;
+      if (filterYear && ym.year !== filterYear) return false;
+      if (filterMonth !== '' && String(Number(ym.month) - 1) !== filterMonth) return false;
       return true;
     });
   }, [expenses, filterYear, filterMonth]);
 
-  // Sessions in the selected year+month window
+  const filteredGearExpenses = useMemo(() => {
+    return filteredExpenses
+      .filter((e) => e.type === 'gear')
+      .slice()
+      .sort((a, b) => {
+        const d = (b.date || '').localeCompare(a.date || '');
+        if (d !== 0) return d;
+        const ca = a.createdAt ? String(a.createdAt) : '';
+        const cb = b.createdAt ? String(b.createdAt) : '';
+        return cb.localeCompare(ca);
+      });
+  }, [filteredExpenses]);
+
   const filteredSessions = useMemo(() => {
     return allSessions.filter((s) => {
-      const [year, month] = s.date.split('-');
-      if (filterYear && year !== filterYear) return false;
-      if (filterMonth !== '' && String(Number(month) - 1) !== filterMonth) return false;
+      const ym = yearMonthFromRecordDate(s.date);
+      if (!ym) return false;
+      if (filterYear && ym.year !== filterYear) return false;
+      if (filterMonth !== '' && String(Number(ym.month) - 1) !== filterMonth) return false;
       return true;
     });
   }, [allSessions, filterYear, filterMonth]);
 
-  // Financial breakdown totals — always computed, no toggles
+  const filteredCoachingIncomes = useMemo(() => {
+    return coachingIncomes.filter((c) => {
+      const ym = yearMonthFromRecordDate(c.date);
+      if (!ym) return false;
+      if (filterYear && ym.year !== filterYear) return false;
+      if (filterMonth !== '' && String(Number(ym.month) - 1) !== filterMonth) return false;
+      return true;
+    });
+  }, [coachingIncomes, filterYear, filterMonth]);
+
+  // Financial totals
   const totals = useMemo(() => {
     const earnings = filteredTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0);
+
+    const coachingGross = filteredCoachingIncomes.reduce((s, c) => s + (c.totalEarned || 0), 0);
+    const coachingSessionCosts = filteredCoachingIncomes.reduce((s, c) => s + (c.expensesTotal || 0), 0);
 
     const tournamentEntryFees = filteredTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0);
     const tournamentTravel = filteredExpenses
@@ -202,10 +241,14 @@ export default function Dashboard() {
       .filter((e) => e.type === 'gear')
       .reduce((s, e) => s + e.amount, 0);
 
-    const totalSpent = tournamentTotal + sessionTotal + gearTotal;
+    const totalSpent = tournamentTotal + sessionTotal + gearTotal + coachingSessionCosts;
+    const totalIn = earnings + coachingGross;
+    const net = totalIn - totalSpent;
 
     return {
       earnings,
+      coachingGross,
+      coachingSessionCosts,
       tournamentEntryFees,
       tournamentTravel,
       tournamentTotal,
@@ -214,18 +257,19 @@ export default function Dashboard() {
       sessionTotal,
       gearTotal,
       totalSpent,
-      net: earnings - totalSpent,
+      net,
       count: filteredTournaments.length,
     };
-  }, [filteredTournaments, filteredExpenses, filteredSessions]);
+  }, [filteredTournaments, filteredExpenses, filteredSessions, filteredCoachingIncomes]);
 
-  // Monthly chart data for the selected year — always includes all cost categories
+  // Monthly chart data
   const chartData = useMemo(() => {
     const yearTournaments = tournaments.filter((t) =>
       tournamentDateMap[t._id]?.startsWith(filterYear)
     );
     const yearExpenses = expenses.filter((e) => e.date?.startsWith(filterYear));
     const yearSessions = allSessions.filter((s) => s.date?.startsWith(filterYear));
+    const yearCoaching = coachingIncomes.filter((c) => c.date?.startsWith(filterYear));
 
     return MONTHS.map((month, idx) => {
       const monthStr = String(idx + 1).padStart(2, '0');
@@ -234,8 +278,18 @@ export default function Dashboard() {
         const date = tournamentDateMap[t._id];
         return date && date.split('-')[1] === monthStr;
       });
-      const monthExpenses = yearExpenses.filter((e) => e.date.split('-')[1] === monthStr);
-      const monthSessions = yearSessions.filter((s) => s.date.split('-')[1] === monthStr);
+      const monthExpenses = yearExpenses.filter((e) => {
+        const ym = yearMonthFromRecordDate(e.date);
+        return ym && ym.month === monthStr;
+      });
+      const monthSessions = yearSessions.filter((s) => {
+        const ym = yearMonthFromRecordDate(s.date);
+        return ym && ym.month === monthStr;
+      });
+      const monthCoaching = yearCoaching.filter((c) => {
+        const ym = yearMonthFromRecordDate(c.date);
+        return ym && ym.month === monthStr;
+      });
 
       const tournamentExp =
         monthTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0) +
@@ -244,19 +298,21 @@ export default function Dashboard() {
         (s, x) => s + (x.courtFee || 0) + (x.travelExpense?.total || 0), 0
       );
       const gear = monthExpenses.filter((e) => e.type === 'gear').reduce((s, e) => s + e.amount, 0);
+      const coachingGrossM = monthCoaching.reduce((s, c) => s + (c.totalEarned || 0), 0);
+      const coachingCostsM = monthCoaching.reduce((s, c) => s + (c.expensesTotal || 0), 0);
 
-      const totalExp = tournamentExp + sessionExp + gear;
-      const earnings = monthTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0);
+      const totalExp = tournamentExp + sessionExp + gear + coachingCostsM;
+      const totalIn = monthTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0) + coachingGrossM;
 
       return {
         month,
         Expenses: +totalExp.toFixed(2),
-        Profit: +(earnings - totalExp).toFixed(2),
+        Profit: +(totalIn - totalExp).toFixed(2),
       };
     });
-  }, [tournaments, expenses, allSessions, tournamentDateMap, filterYear]);
+  }, [tournaments, expenses, allSessions, coachingIncomes, tournamentDateMap, filterYear]);
 
-  // Per-category profit breakdown — uses filteredTournaments so year/month filter applies
+  // Per-category profit breakdown
   const categoryBreakdown = useMemo(() => {
     const map = {};
 
@@ -284,7 +340,7 @@ export default function Dashboard() {
       .sort((a, b) => b.profit - a.profit);
   }, [filteredTournaments]);
 
-  // Playing streak — consecutive days with at least one session (ending today or yesterday)
+  // Playing streak
   const streak = useMemo(() => {
     if (allSessions.length === 0) return 0;
     const uniqueDates = [...new Set(allSessions.map((s) => s.date))].sort().reverse();
@@ -318,7 +374,7 @@ export default function Dashboard() {
     return { count: week.length, avg };
   }, [allSessions]);
 
-  // Most-recurring weakness across all sessions
+  // Most-recurring weakness
   const focusArea = useMemo(() => {
     const freq = {};
     allSessions.forEach((s) => {
@@ -328,7 +384,7 @@ export default function Dashboard() {
     return top ? top[0] : null;
   }, [allSessions]);
 
-  // Upcoming tournaments grouped by tournament (not flattened per category)
+  // Upcoming tournaments grouped by tournament
   const todayStr = new Date().toISOString().split('T')[0];
   const upcomingTournaments = useMemo(() => {
     const map = {};
@@ -345,7 +401,6 @@ export default function Dashboard() {
       .slice(0, 6);
   }, [tournaments, todayStr]);
 
-  // Greeting based on time of day
   const greeting = (() => {
     const h = new Date().getHours();
     if (h < 12) return 'Good morning';
@@ -354,40 +409,43 @@ export default function Dashboard() {
   })();
   const firstName = user?.name?.split(' ')[0] || 'Player';
 
+  // Build stat cards — always show all 5; add Coach Income card for coaches
   const statCards = [
     {
       label: 'Prize Earned',
       value: formatCurrency(totals.earnings, currency),
       gradient: 'from-[#91BE4D] to-[#6a9020]',
-      icon: '🏆',
     },
     {
       label: 'Tournament Costs',
       sublabel: 'Entry + Travel',
       value: formatCurrency(totals.tournamentTotal, currency),
       gradient: 'from-[#ec9937] to-[#c07010]',
-      icon: '🏆',
     },
     {
       label: 'Practice Costs',
       sublabel: 'Court + Travel',
       value: formatCurrency(totals.sessionTotal, currency),
       gradient: 'from-blue-500 to-blue-700',
-      icon: '🎯',
     },
     {
       label: 'Gear',
       value: formatCurrency(totals.gearTotal, currency),
       gradient: 'from-violet-500 to-purple-600',
-      icon: '🎒',
     },
     {
-      label: 'Net P&L',
-      value: formatCurrency(totals.net, currency),
+      label: 'Net Profit/Loss',
+      value: (totals.net < 0 ? '-' : '+') + formatCurrency(Math.abs(totals.net), currency),
       gradient: totals.net >= 0 ? 'from-emerald-500 to-green-700' : 'from-rose-600 to-red-700',
-      icon: '📊',
     },
   ];
+
+  const cardCount = statCards.length;
+  const gridCols = cardCount <= 5
+    ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
+    : cardCount === 6
+      ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-6'
+      : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4';
 
   if (loading) {
     return (
@@ -416,6 +474,7 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
       {/* Hero Banner */}
       <div className="rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-4 overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}>
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #91BE4D 0%, transparent 60%)' }} />
@@ -441,7 +500,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
 
       {/* Time filters */}
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
@@ -487,27 +545,40 @@ export default function Dashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-4">
-        {statCards.map((card) => (
-          <div key={card.label} className={`rounded-2xl p-4 sm:p-5 bg-gradient-to-br ${card.gradient} shadow-md`}>
-            <p className="text-xs text-white/70 font-medium mb-0.5">{card.label}</p>
-            {card.sublabel && (
-              <p className="text-[10px] text-white/50 mb-1.5">{card.sublabel}</p>
-            )}
-            <p className="text-lg sm:text-xl font-extrabold text-white leading-tight">{card.value}</p>
-          </div>
-        ))}
+      <div className={`grid ${gridCols} gap-2 sm:gap-3 mb-4`}>
+        {statCards.map((card) => {
+          const vlen = card.value.length;
+          const valueClass =
+            vlen > 13 ? 'text-xs sm:text-sm'
+            : vlen > 10 ? 'text-sm sm:text-base'
+            : vlen > 8  ? 'text-base sm:text-lg'
+            : 'text-lg sm:text-xl';
+          return (
+            <div
+              key={card.label}
+              className={`rounded-2xl p-3 sm:p-4 bg-gradient-to-br ${card.gradient} shadow-md min-w-0 flex flex-col h-full`}
+            >
+              <p className="text-[10px] sm:text-xs text-white/70 font-medium mb-0.5 leading-snug">{card.label}</p>
+              <p className="text-[9px] sm:text-[10px] text-white/50 mb-1 leading-snug min-h-[1.125rem] sm:min-h-[1.25rem]">
+                {card.sublabel || '\u00a0'}
+              </p>
+              <p className={`${valueClass} font-extrabold text-white leading-tight whitespace-nowrap mt-auto`}>
+                {card.value}
+              </p>
+            </div>
+          );
+        })}
       </div>
 
       {/* Financial Breakdown Card */}
-      {(totals.earnings > 0 || totals.totalSpent > 0) && (
+      {(totals.earnings > 0 || totals.coachingGross > 0 || totals.totalSpent > 0) && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-5 mb-4">
           <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
             Spending Breakdown — {filterYear}{filterMonth !== '' ? ` · ${MONTHS[Number(filterMonth)]}` : ''}
           </h2>
 
           <div className="space-y-2">
-            {/* Earnings */}
+            {/* Prize Money */}
             <div className="flex items-center justify-between rounded-xl bg-green-50 border border-green-100 px-3 py-2.5">
               <div className="flex items-center gap-2">
                 <span className="text-base">💰</span>
@@ -571,12 +642,71 @@ export default function Dashboard() {
             </div>
 
             {/* Gear */}
-            <div className="flex items-center justify-between rounded-xl bg-violet-50 border border-violet-100 px-3 py-2.5">
-              <div className="flex items-center gap-2">
-                <span className="text-base">🎒</span>
-                <span className="text-sm font-semibold text-violet-800">Gear</span>
+            <div className="rounded-xl border border-violet-100 overflow-hidden">
+              <div className="flex items-center justify-between bg-violet-50 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🎒</span>
+                  <span className="text-sm font-bold text-violet-800">Gear</span>
+                </div>
+                <span className="text-sm font-extrabold text-violet-700">{formatCurrency(totals.gearTotal, currency)}</span>
               </div>
-              <span className="text-sm font-extrabold text-violet-700">{formatCurrency(totals.gearTotal, currency)}</span>
+              <div className="px-3 py-2 space-y-1.5 bg-white">
+                {filteredGearExpenses.length === 0 ? (
+                  <p className="text-xs text-gray-400">No gear purchases this period</p>
+                ) : (
+                  <>
+                    {filteredGearExpenses.slice(0, 12).map((e, idx) => (
+                      <div
+                        key={e._id != null ? String(e._id) : `gear-${idx}-${e.date || ''}-${e.title || ''}`}
+                        className="flex justify-between items-center gap-2"
+                      >
+                        <span className="text-xs text-gray-500 flex items-center gap-1.5 min-w-0">
+                          <span className="w-1.5 h-1.5 rounded-full bg-violet-300 flex-shrink-0 inline-block" />
+                          <span className="truncate" title={e.title}>{e.title}</span>
+                        </span>
+                        <span className="text-xs font-semibold text-gray-700 flex-shrink-0 tabular-nums">
+                          {formatCurrency(e.amount, currency)}
+                        </span>
+                      </div>
+                    ))}
+                    {filteredGearExpenses.length > 12 && (
+                      <p className="text-[11px] text-gray-400 pt-0.5">
+                        +{filteredGearExpenses.length - 12} more —{' '}
+                        <Link to="/expenses" className="text-violet-600 hover:text-violet-800 font-medium">
+                          view all gear
+                        </Link>
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Coaching income */}
+            <div className="rounded-xl border border-teal-100 overflow-hidden">
+              <div className="flex items-center justify-between bg-teal-50 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">👨‍🏫</span>
+                  <span className="text-sm font-bold text-teal-800">Coaching income</span>
+                </div>
+                <span className="text-sm font-extrabold text-teal-700">{formatCurrency(totals.coachingGross, currency)}</span>
+              </div>
+              <div className="px-3 py-2 space-y-1.5 bg-white">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-teal-300 inline-block"></span>
+                    Gross earned
+                  </span>
+                  <span className="text-xs font-semibold text-gray-700">{formatCurrency(totals.coachingGross, currency)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-300 inline-block"></span>
+                    Expenses paid
+                  </span>
+                  <span className="text-xs font-semibold text-red-500">-{formatCurrency(totals.coachingSessionCosts, currency)}</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -589,7 +719,7 @@ export default function Dashboard() {
             <div className="flex justify-between items-center rounded-xl px-3 py-2" style={{ background: totals.net >= 0 ? '#f0fdf4' : '#fff1f2', border: `1px solid ${totals.net >= 0 ? '#bbf7d0' : '#fecdd3'}` }}>
               <span className="text-sm font-bold" style={{ color: totals.net >= 0 ? '#166534' : '#9f1239' }}>Net P&L</span>
               <span className="text-base font-extrabold" style={{ color: totals.net >= 0 ? '#16a34a' : '#e11d48' }}>
-                {totals.net >= 0 ? '+' : ''}{formatCurrency(totals.net, currency)}
+                {(totals.net < 0 ? '-' : '+') + formatCurrency(Math.abs(totals.net), currency)}
               </span>
             </div>
           </div>
@@ -597,7 +727,7 @@ export default function Dashboard() {
       )}
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-4 gap-2 mb-4">
+      <div className="grid gap-2 mb-4 grid-cols-3">
         <button
           onClick={() => navigate('/sessions')}
           className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-[#91BE4D]/30 bg-[#91BE4D]/5 hover:bg-[#91BE4D]/10 transition-colors text-center"
@@ -619,24 +749,15 @@ export default function Dashboard() {
           <span className="text-xl">🎒</span>
           <span className="text-xs font-bold text-gray-600 leading-tight">Add Gear</span>
         </button>
-        <button
-          onClick={() => navigate('/travel')}
-          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-teal-200 bg-teal-50 hover:bg-teal-100 transition-colors text-center"
-        >
-          <span className="text-xl">✈️</span>
-          <span className="text-xs font-bold text-teal-700 leading-tight">Log Travel</span>
-        </button>
       </div>
 
       <InstallAppCard />
 
       {/* Upcoming Tournaments Share Widget */}
       <div className="rounded-2xl overflow-hidden mb-6 shadow-md relative" style={{ background: 'linear-gradient(145deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}>
-        {/* Decorative blobs */}
         <div className="absolute pointer-events-none" style={{ top: -40, right: -40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(145,190,77,0.1)' }} />
         <div className="absolute pointer-events-none" style={{ bottom: -30, left: -30, width: 120, height: 120, borderRadius: '50%', background: 'rgba(236,153,55,0.08)' }} />
 
-        {/* Branding row */}
         <div className="relative flex items-center justify-between px-4 pt-4 pb-0">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(145,190,77,0.15)', border: '1px solid rgba(145,190,77,0.3)' }}>
@@ -649,7 +770,6 @@ export default function Dashboard() {
           </NavLink>
         </div>
 
-        {/* Headline */}
         <div className="relative px-4 pt-3 pb-3">
           <p className="text-white/50 text-[10px] uppercase tracking-widest font-semibold mb-1">
             {firstName}'s upcoming tournaments
@@ -677,7 +797,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Tournament rows */}
         <div className="relative px-4 pb-3 space-y-2">
           {upcomingTournaments.length === 0 ? (
             <NavLink
@@ -716,7 +835,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Share button */}
         {upcomingTournaments.length > 0 && (
           <div className="relative px-4 pb-4 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
             <button
@@ -733,9 +851,8 @@ export default function Dashboard() {
         )}
       </div>
 
-
-      {/* Monthly Chart — only when there's data */}
-      {tournaments.length > 0 && (
+      {/* Monthly Chart */}
+      {(tournaments.length > 0 || coachingIncomes.length > 0) && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-6 mb-6">
           <h2 className="text-sm sm:text-base font-semibold text-gray-700 mb-4">
             Monthly Expenses vs Profit — {filterYear}
@@ -763,11 +880,11 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Travel Spend Widget — only when there's data */}
+      {/* Travel Spend Widget */}
       {(() => {
-        const yearTravel = expenses.filter(
-          (e) => e.type === 'travel' && e.date?.startsWith(filterYear)
-        ).sort((a, b) => b.date.localeCompare(a.date));
+        const yearTravel = expenses
+          .filter((e) => e.type === 'travel' && e.date?.startsWith(filterYear))
+          .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
         const yearTravelTotal = yearTravel.reduce((s, e) => s + e.amount, 0);
         if (yearTravel.length === 0) return null;
 
@@ -796,7 +913,12 @@ export default function Dashboard() {
                     <p className="text-sm font-medium text-gray-800 truncate">{e.title}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <p className="text-xs text-gray-400">
-                        {new Date(e.date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                        {e.date
+                          ? new Date(`${e.date.split('T')[0]}T00:00:00`).toLocaleDateString(undefined, {
+                              day: 'numeric',
+                              month: 'short',
+                            })
+                          : '—'}
                       </p>
                       {e.fromCity && e.toCity && (
                         <p className="text-xs text-gray-500">{e.fromCity} → {e.toCity}</p>
@@ -820,13 +942,15 @@ export default function Dashboard() {
         );
       })()}
 
-      {/* Get started prompt — shown only when user has no data at all */}
-      {tournaments.length === 0 && allSessions.length === 0 && expenses.length === 0 && (
+      {/* Get started prompt */}
+      {tournaments.length === 0 && allSessions.length === 0 && expenses.length === 0 && coachingIncomes.length === 0 && (
         <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-6 text-center mb-6">
           <p className="text-3xl mb-3">🏆</p>
           <p className="text-sm font-bold text-gray-700 mb-1">Your stats will appear here</p>
-          <p className="text-xs text-gray-400 mb-4">Start by logging a tournament or a drill session to see your analytics.</p>
-          <div className="flex gap-2 justify-center">
+          <p className="text-xs text-gray-400 mb-4">
+            Add a tournament or log a session to see your numbers here.
+          </p>
+          <div className="flex gap-2 justify-center flex-wrap">
             <button
               onClick={() => navigate('/tournaments')}
               className="text-xs font-bold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity"
@@ -872,7 +996,6 @@ export default function Dashboard() {
                       </span>
                     </div>
                   </div>
-                  {/* Progress bar */}
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${isProfit ? 'bg-green-400' : 'bg-red-400'}`}
@@ -884,7 +1007,6 @@ export default function Dashboard() {
             })}
           </div>
 
-          {/* Summary row */}
           <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-4 text-xs text-gray-500">
             <span>
               Best:{' '}
@@ -906,7 +1028,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Share modal — same popup as Calendar */}
       {shareModalOpen && (
         <TournamentShareModal
           items={upcomingTournaments}
@@ -914,7 +1035,7 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Profile completion nudge — bottom of page */}
+      {/* Profile completion nudge */}
       {showNudge && (
         <div className="bg-[#f4f8e8] border border-[#91BE4D]/30 rounded-xl px-4 py-3 mt-6 flex items-start gap-3">
           <span className="text-lg flex-shrink-0 mt-0.5">✨</span>

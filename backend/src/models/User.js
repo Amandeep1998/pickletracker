@@ -119,6 +119,15 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    onboardingDone: {
+      type: Boolean,
+      default: false,
+    },
+    roles: {
+      type: [String],
+      enum: ['player', 'coach', 'organizer'],
+      default: ['player'],
+    },
     lastSeenPlatform: {
       type: String,
       enum: ['pwa', 'mobile-web', 'desktop-web'],

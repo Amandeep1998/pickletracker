@@ -20,7 +20,6 @@ import ResetPassword from './pages/ResetPassword';
 import Profile from './pages/Profile';
 import Players from './pages/Players';
 import Coach from './pages/Coach';
-
 export default function App() {
   return (
     <AuthProvider>
@@ -46,6 +45,7 @@ export default function App() {
           <Route path="/profile" element={<Profile />} />
           <Route path="/players" element={<Players />} />
           <Route path="/coach" element={<Coach />} />
+          <Route path="/coaching-income" element={<Navigate to="/dashboard" replace />} />
           <Route path="/admin" element={<Admin />} />
         </Route>
 
