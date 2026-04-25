@@ -224,8 +224,11 @@ export default function Dashboard() {
   const totals = useMemo(() => {
     const earnings = filteredTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0);
 
-    const coachingGross = filteredCoachingIncomes.reduce((s, c) => s + (c.totalEarned || 0), 0);
-    const coachingSessionCosts = filteredCoachingIncomes.reduce((s, c) => s + (c.expensesTotal || 0), 0);
+    const coachEntries = filteredCoachingIncomes.filter((c) => c.entryRole !== 'player');
+    const playerEntries = filteredCoachingIncomes.filter((c) => c.entryRole === 'player');
+    const coachingGross = coachEntries.reduce((s, c) => s + (c.totalEarned || 0), 0);
+    const coachingSessionCosts = coachEntries.reduce((s, c) => s + (c.expensesTotal || 0), 0);
+    const playerCoachingSpend = playerEntries.reduce((s, c) => s + (Number(c.playerAmountPaid) || 0), 0);
 
     const tournamentEntryFees = filteredTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0);
     const tournamentTravel = filteredExpenses
@@ -241,7 +244,7 @@ export default function Dashboard() {
       .filter((e) => e.type === 'gear')
       .reduce((s, e) => s + e.amount, 0);
 
-    const totalSpent = tournamentTotal + sessionTotal + gearTotal + coachingSessionCosts;
+    const totalSpent = tournamentTotal + sessionTotal + gearTotal + coachingSessionCosts + playerCoachingSpend;
     const totalIn = earnings + coachingGross;
     const net = totalIn - totalSpent;
 
@@ -249,6 +252,7 @@ export default function Dashboard() {
       earnings,
       coachingGross,
       coachingSessionCosts,
+      playerCoachingSpend,
       tournamentEntryFees,
       tournamentTravel,
       tournamentTotal,
@@ -298,8 +302,14 @@ export default function Dashboard() {
         (s, x) => s + (x.courtFee || 0) + (x.travelExpense?.total || 0), 0
       );
       const gear = monthExpenses.filter((e) => e.type === 'gear').reduce((s, e) => s + e.amount, 0);
-      const coachingGrossM = monthCoaching.reduce((s, c) => s + (c.totalEarned || 0), 0);
-      const coachingCostsM = monthCoaching.reduce((s, c) => s + (c.expensesTotal || 0), 0);
+      const coachingGrossM = monthCoaching.reduce(
+        (s, c) => (c.entryRole === 'player' ? s : s + (c.totalEarned || 0)),
+        0
+      );
+      const coachingCostsM = monthCoaching.reduce((s, c) => {
+        if (c.entryRole === 'player') return s + (Number(c.playerAmountPaid) || 0);
+        return s + (c.expensesTotal || 0);
+      }, 0);
 
       const totalExp = tournamentExp + sessionExp + gear + coachingCostsM;
       const totalIn = monthTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0) + coachingGrossM;
@@ -571,7 +581,11 @@ export default function Dashboard() {
       </div>
 
       {/* Financial Breakdown Card */}
-      {(totals.earnings > 0 || totals.coachingGross > 0 || totals.totalSpent > 0) && (
+      {(totals.earnings > 0 ||
+        totals.coachingGross > 0 ||
+        totals.coachingSessionCosts > 0 ||
+        totals.playerCoachingSpend > 0 ||
+        totals.totalSpent > 0) && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-5 mb-4">
           <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
             Spending Breakdown — {filterYear}{filterMonth !== '' ? ` · ${MONTHS[Number(filterMonth)]}` : ''}
@@ -682,32 +696,61 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Coaching income */}
-            <div className="rounded-xl border border-teal-100 overflow-hidden">
-              <div className="flex items-center justify-between bg-teal-50 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">👨‍🏫</span>
-                  <span className="text-sm font-bold text-teal-800">Coaching income</span>
+            {/* Coaching — teaching income + costs, and/or what you paid as a student */}
+            {(totals.coachingGross > 0 ||
+              totals.coachingSessionCosts > 0 ||
+              totals.playerCoachingSpend > 0) && (
+              <div className="rounded-xl border border-teal-100 overflow-hidden">
+                <div className="flex items-center justify-between bg-teal-50 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">👨‍🏫</span>
+                    <span className="text-sm font-bold text-teal-800">Coaching</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-extrabold text-teal-700 leading-tight">
+                      {formatCurrency(
+                        Math.max(0, totals.coachingGross - totals.coachingSessionCosts),
+                        currency
+                      )}
+                    </p>
+                    <p className="text-[9px] font-semibold text-teal-600/80">Coach net</p>
+                  </div>
                 </div>
-                <span className="text-sm font-extrabold text-teal-700">{formatCurrency(totals.coachingGross, currency)}</span>
+                <div className="px-3 py-2 space-y-1.5 bg-white">
+                  {totals.coachingGross > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-teal-300 inline-block"></span>
+                        Gross earned (teaching)
+                      </span>
+                      <span className="text-xs font-semibold text-gray-700">{formatCurrency(totals.coachingGross, currency)}</span>
+                    </div>
+                  )}
+                  {totals.coachingSessionCosts > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-300 inline-block"></span>
+                        Costs running lessons
+                      </span>
+                      <span className="text-xs font-semibold text-red-500">
+                        -{formatCurrency(totals.coachingSessionCosts, currency)}
+                      </span>
+                    </div>
+                  )}
+                  {totals.playerCoachingSpend > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block"></span>
+                        Paid for your lessons
+                      </span>
+                      <span className="text-xs font-semibold text-rose-600">
+                        -{formatCurrency(totals.playerCoachingSpend, currency)}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="px-3 py-2 space-y-1.5 bg-white">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-teal-300 inline-block"></span>
-                    Gross earned
-                  </span>
-                  <span className="text-xs font-semibold text-gray-700">{formatCurrency(totals.coachingGross, currency)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-500 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-300 inline-block"></span>
-                    Expenses paid
-                  </span>
-                  <span className="text-xs font-semibold text-red-500">-{formatCurrency(totals.coachingSessionCosts, currency)}</span>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Totals footer */}
@@ -733,7 +776,7 @@ export default function Dashboard() {
           className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-[#91BE4D]/30 bg-[#91BE4D]/5 hover:bg-[#91BE4D]/10 transition-colors text-center"
         >
           <span className="text-xl">🎯</span>
-          <span className="text-xs font-bold text-[#4a6e10] leading-tight">Log Session</span>
+          <span className="text-xs font-bold text-[#4a6e10] leading-tight text-center">Casual Play / Drill</span>
         </button>
         <button
           onClick={() => navigate('/tournaments')}
@@ -948,7 +991,7 @@ export default function Dashboard() {
           <p className="text-3xl mb-3">🏆</p>
           <p className="text-sm font-bold text-gray-700 mb-1">Your stats will appear here</p>
           <p className="text-xs text-gray-400 mb-4">
-            Add a tournament or log a session to see your numbers here.
+            Add a tournament or log casual play / drill to see your numbers here.
           </p>
           <div className="flex gap-2 justify-center flex-wrap">
             <button
@@ -962,7 +1005,7 @@ export default function Dashboard() {
               onClick={() => navigate('/sessions')}
               className="text-xs font-bold px-4 py-2 rounded-lg border-2 border-[#91BE4D]/40 text-[#4a6e10] hover:bg-[#91BE4D]/5 transition-colors"
             >
-              + Log Session
+              + Casual Play / Drill
             </button>
           </div>
         </div>

@@ -173,7 +173,7 @@ export default function Sessions() {
           className="relative flex-shrink-0 hover:opacity-90 text-white font-bold px-4 py-2.5 rounded-xl text-sm tracking-wide transition-opacity shadow-lg self-start"
           style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
         >
-          + Log Session
+          + Casual Play / Drill
         </button>
       </div>
 
@@ -303,14 +303,14 @@ export default function Sessions() {
           </div>
           <h3 className="text-lg font-bold text-gray-800 mb-1">Start your performance journal</h3>
           <p className="text-sm text-gray-400 max-w-xs mb-6">
-            Log sessions after you play. The more you log, the clearer your patterns become.
+            Log casual play / drill after you play. The more you log, the clearer your patterns become.
           </p>
           <button
             onClick={openAdd}
             className="hover:opacity-90 text-white font-bold px-6 py-3 rounded-xl text-sm tracking-wide transition-opacity shadow-md"
             style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
           >
-            Log your first session
+            Log your first casual play / drill
           </button>
         </div>
       ) : filtered.length === 0 ? (
@@ -414,7 +414,7 @@ export default function Sessions() {
       <Modal
         isOpen={modalOpen}
         onClose={closeModal}
-        title={editSession ? 'Edit Session' : 'Log a Session'}
+        title={editSession ? 'Edit Session' : 'Casual Play / Drill'}
       >
         {formError && (
           <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{formError}</div>

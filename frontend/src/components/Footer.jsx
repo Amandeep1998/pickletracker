@@ -56,7 +56,7 @@ export default function Footer() {
               <BrandLogo size="lg" />
             </div>
             <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
-              Your pickleball performance journal. Log sessions, track tournaments, manage gear, and grow your game.
+              Your pickleball performance journal. Log casual play / drills, track tournaments, manage gear, and grow your game.
             </p>
           </div>
 

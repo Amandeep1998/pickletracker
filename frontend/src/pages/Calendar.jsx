@@ -75,7 +75,7 @@ export default function Calendar() {
   const [addError, setAddError] = useState('');
 
   // Add session modal
-  const [addSessionModal, setAddSessionModal] = useState({ open: false, date: null });
+  const [addSessionModal, setAddSessionModal] = useState({ open: false, date: null, sessionType: null });
   const [sessionFormLoading, setSessionFormLoading] = useState(false);
   const [sessionFormError, setSessionFormError] = useState('');
 
@@ -210,9 +210,15 @@ export default function Calendar() {
       if (!coachingByDate[c.date]) coachingByDate[c.date] = [];
       coachingByDate[c.date].push(c);
       const ck = c.date.slice(0, 7);
-      if (!monthCoachingFinancials[ck]) monthCoachingFinancials[ck] = { income: 0, expenses: 0 };
-      monthCoachingFinancials[ck].income += (c.totalEarned || 0);
-      monthCoachingFinancials[ck].expenses += (c.expensesTotal || 0);
+      if (!monthCoachingFinancials[ck]) {
+        monthCoachingFinancials[ck] = { income: 0, expenses: 0, playerSpend: 0 };
+      }
+      if (c.entryRole === 'player') {
+        monthCoachingFinancials[ck].playerSpend += Number(c.playerAmountPaid) || 0;
+      } else {
+        monthCoachingFinancials[ck].income += c.totalEarned || 0;
+        monthCoachingFinancials[ck].expenses += c.expensesTotal || 0;
+      }
     });
 
     sessions.forEach((s) => {
@@ -303,7 +309,7 @@ export default function Calendar() {
     const monthStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
     const sessionStats = monthSessionStats[monthStr] || { sessions: 0, courtFees: 0, travelExpenses: 0 };
     const tournamentFin = monthTournamentFinancials[monthStr] || { entryFees: 0, prizeWon: 0 };
-    const coachingFin = monthCoachingFinancials[monthStr] || { income: 0, expenses: 0 };
+    const coachingFin = monthCoachingFinancials[monthStr] || { income: 0, expenses: 0, playerSpend: 0 };
     const tournamentsInMonth = monthTournamentSets[monthStr]?.size || 0;
     const upcomingCount = upcomingTournaments.length;
 
@@ -317,7 +323,12 @@ export default function Calendar() {
 
     const sessionCosts = (sessionStats.courtFees || 0) + (sessionStats.travelExpenses || 0);
     const totalOut =
-      tournamentFin.entryFees + tournamentTravel + sessionCosts + coachingFin.expenses + gearTotal;
+      tournamentFin.entryFees +
+      tournamentTravel +
+      sessionCosts +
+      coachingFin.expenses +
+      (coachingFin.playerSpend || 0) +
+      gearTotal;
     const totalIn = tournamentFin.prizeWon + coachingFin.income;
     const net = totalIn - totalOut;
 
@@ -332,6 +343,7 @@ export default function Calendar() {
       sessionCosts,
       coachingIncome: coachingFin.income,
       coachingExpenses: coachingFin.expenses,
+      coachingPlayerSpend: coachingFin.playerSpend || 0,
       totalOut,
       totalIn,
       net,
@@ -546,7 +558,7 @@ export default function Calendar() {
         went_wrong_count: data.wentWrong?.length ?? 0,
         has_notes: !!(data.notes?.trim()),
       });
-      setAddSessionModal({ open: false, date: null });
+      setAddSessionModal({ open: false, date: null, sessionType: null });
       await fetchData();
     } catch (err) {
       setSessionFormError(err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add session');
@@ -643,8 +655,12 @@ export default function Calendar() {
 
   const sessionAddInitial = useMemo(() => {
     if (!addSessionModal.date) return undefined;
-    return { date: addSessionModal.date };
-  }, [addSessionModal.date]);
+    const base = { date: addSessionModal.date };
+    if (addSessionModal.sessionType === 'casual' || addSessionModal.sessionType === 'practice') {
+      return { ...base, type: addSessionModal.sessionType };
+    }
+    return base;
+  }, [addSessionModal.date, addSessionModal.sessionType]);
 
   const coachingAddInitial = useMemo(() => {
     if (!addCoachingModal.date) return undefined;
@@ -722,9 +738,6 @@ export default function Calendar() {
               <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-[1.1]">
                 Calendar
               </h1>
-              <p className="mt-2 text-sm text-white/55 max-w-md leading-relaxed">
-                Tap any day to log sessions, coaching, or tournaments. Your month money summary lives below in a fold-out panel.
-              </p>
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
@@ -743,29 +756,52 @@ export default function Calendar() {
               {pushSupported && pushPermission !== 'denied' && (
                 <button
                   type="button"
+                  aria-pressed={isReminderOn}
+                  aria-label={
+                    pushLoading
+                      ? 'Updating reminders'
+                      : isReminderOn
+                        ? 'Turn off tournament reminders'
+                        : 'Turn on tournament reminders'
+                  }
                   onClick={handleTogglePush}
                   disabled={pushLoading}
-                  className={`inline-flex items-center gap-3 rounded-2xl px-4 py-3 transition-all active:scale-[0.98] disabled:opacity-60 border w-full sm:w-auto justify-center sm:justify-start ${
+                  className={`inline-flex items-center gap-3 rounded-2xl px-4 py-3 transition-all active:scale-[0.98] disabled:opacity-60 border w-full sm:w-auto justify-between sm:justify-start ${
                     isReminderOn
                       ? 'bg-white/10 border-white/20 hover:bg-white/15'
                       : 'bg-amber-500/15 border-amber-300/35 hover:bg-amber-500/25'
                   }`}
                 >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isReminderOn ? 'bg-[#91BE4D]/35' : 'bg-amber-400/30'}`}>
-                    <span className="text-lg leading-none">{isReminderOn ? '🔔' : '🔕'}</span>
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isReminderOn ? 'bg-[#91BE4D]/35' : 'bg-amber-400/30'}`}>
+                      <span className="text-lg leading-none">{isReminderOn ? '🔔' : '🔕'}</span>
+                    </div>
+                    <div className="text-left min-w-0">
+                      <p className={`text-xs font-extrabold leading-tight ${isReminderOn ? 'text-[#d4f5a8]' : 'text-amber-100'}`}>
+                        {pushLoading
+                          ? (isReminderOn ? 'Turning off…' : 'Enabling…')
+                          : isReminderOn
+                            ? 'Reminders on'
+                            : 'Tournament reminders'}
+                      </p>
+                      <p className="text-[10px] text-white/45 leading-snug mt-0.5">
+                        {isReminderOn ? 'Tap or use switch to turn off' : 'Day-before alerts for upcoming events'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-left min-w-0">
-                    <p className={`text-xs font-extrabold leading-tight ${isReminderOn ? 'text-[#d4f5a8]' : 'text-amber-100'}`}>
-                      {pushLoading
-                        ? (isReminderOn ? 'Turning off…' : 'Enabling…')
-                        : isReminderOn
-                        ? 'Reminders on'
-                        : 'Tournament reminders'}
-                    </p>
-                    <p className="text-[10px] text-white/45 leading-snug mt-0.5">
-                      {isReminderOn ? 'Tap to turn off' : 'Day-before alerts for upcoming events'}
-                    </p>
-                  </div>
+                  {/* Visible on/off switch */}
+                  <span
+                    className={`relative ml-1 h-7 w-12 shrink-0 rounded-full p-0.5 transition-colors duration-200 ease-out pointer-events-none ${
+                      isReminderOn ? 'bg-[#91BE4D] ring-1 ring-white/30' : 'bg-white/20 ring-1 ring-white/25'
+                    }`}
+                    aria-hidden
+                  >
+                    <span
+                      className={`block h-6 w-6 rounded-full bg-white shadow-md transition-transform duration-200 ease-out ${
+                        isReminderOn ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </span>
                 </button>
               )}
             </div>
@@ -866,22 +902,34 @@ export default function Calendar() {
               </div>
             )}
 
-            {(monthStats.coachingIncome > 0 || monthStats.coachingExpenses > 0) && (
+            {(monthStats.coachingIncome > 0 ||
+              monthStats.coachingExpenses > 0 ||
+              monthStats.coachingPlayerSpend > 0) && (
               <>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-teal-400 flex-shrink-0" />
-                    <span className="text-xs text-gray-600">Coaching income</span>
+                {monthStats.coachingIncome > 0 && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-teal-400 flex-shrink-0" />
+                      <span className="text-xs text-gray-600">Coaching income</span>
+                    </div>
+                    <span className="text-xs font-semibold text-teal-700 tabular-nums">
+                      + {formatCurrency(monthStats.coachingIncome, currency)}
+                    </span>
                   </div>
-                  <span className="text-xs font-semibold text-teal-700 tabular-nums">
-                    + {formatCurrency(monthStats.coachingIncome, currency)}
-                  </span>
-                </div>
+                )}
                 {monthStats.coachingExpenses > 0 && (
                   <div className="flex items-center justify-between pl-4">
-                    <span className="text-xs text-gray-400">└ Expenses paid</span>
+                    <span className="text-xs text-gray-400">└ Coaching costs (running lessons)</span>
                     <span className="text-xs text-gray-500 tabular-nums">
                       - {formatCurrency(monthStats.coachingExpenses, currency)}
+                    </span>
+                  </div>
+                )}
+                {monthStats.coachingPlayerSpend > 0 && (
+                  <div className="flex items-center justify-between pl-4">
+                    <span className="text-xs text-gray-400">└ Lessons you took (paid)</span>
+                    <span className="text-xs text-gray-500 tabular-nums">
+                      - {formatCurrency(monthStats.coachingPlayerSpend, currency)}
                     </span>
                   </div>
                 )}
@@ -902,8 +950,10 @@ export default function Calendar() {
         )}
       </div>
 
-      {/* ── Calendar Card ── */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
+      {/* ── Calendar Card ──
+          No overflow-hidden: it clipped the legend row on narrow screens (horizontal
+          scroll and wrapped chips must not be cut off by the card radius). */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-4">
 
         {/* Month navigation */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -958,22 +1008,23 @@ export default function Calendar() {
                 Tap any date below
               </p>
               <p className="text-[11px] sm:text-xs text-[#4a6e10]/90 font-semibold mt-0.5 leading-snug">
-                to log a session, coaching income or tournament
+                to log a tournament, casual play, or a drill — plus coaching you{' '}
+                <span className="font-bold text-[#2d5507]">gave</span> (income) or{' '}
+                <span className="font-bold text-[#2d5507]">took</span> (paid).
               </p>
             </div>
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="flex items-center gap-3 sm:gap-4 px-4 py-2 border-b border-gray-50 overflow-x-auto">
+        {/* Legend — wrap on mobile; card parent avoids overflow-hidden so row isn’t clipped */}
+        <div className="flex flex-wrap items-center justify-center sm:justify-start gap-x-2.5 gap-y-2 sm:gap-x-4 px-3 sm:px-4 py-2.5 border-b border-gray-50">
           {[
             { dot: 'bg-blue-400', label: 'Casual' },
             { dot: 'bg-purple-400', label: 'Drill' },
-            { dot: 'bg-orange-400', label: 'Session (Tourney)' },
             { dot: 'bg-green-400', label: 'Coaching' },
             { dot: 'bg-[#91BE4D]', label: 'Tournament' },
           ].map((l) => (
-            <span key={l.label} className="flex items-center gap-1.5 flex-shrink-0">
+            <span key={l.label} className="inline-flex items-center gap-1.5 flex-shrink-0">
               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${l.dot}`} />
               <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">{l.label}</span>
             </span>
@@ -1118,7 +1169,7 @@ export default function Calendar() {
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-0.5 ${SESSION_DOT[s.type] || 'bg-blue-400'}`} />
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-gray-800">{SESSION_LABEL[s.type]} Session</p>
+                        <p className="text-sm font-semibold text-gray-800">{SESSION_LABEL[s.type]}</p>
                         {s.location?.name && <p className="text-xs text-gray-400 truncate">📍 {s.location.name}</p>}
                       </div>
                     </div>
@@ -1205,14 +1256,14 @@ export default function Calendar() {
                     key={s._id}
                     type="button"
                     onClick={() => { setEditSessionModal({ open: true, session: s }); setSessionFormError(''); closeDayPopup(); }}
-                    aria-label={`Open ${SESSION_LABEL[s.type] || 'session'} session details`}
+                    aria-label={`Open ${SESSION_LABEL[s.type] || 'session'} details`}
                     className={`group w-full text-left rounded-xl px-3 py-2.5 border shadow-sm hover:shadow-md active:scale-[0.99] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#91BE4D]/60 ${bg}`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-base">{SESSION_ICON[s.type]}</span>
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900">{SESSION_LABEL[s.type]} Session</p>
+                          <p className="text-sm font-semibold text-gray-900">{SESSION_LABEL[s.type]}</p>
                           {s.location?.name && <p className="text-xs text-gray-400 truncate">📍 {s.location.name}</p>}
                           {s.wentWell?.length > 0 && (
                             <p className="text-xs text-green-700 mt-0.5 truncate">✓ {s.wentWell.slice(0, 2).join(', ')}</p>
@@ -1254,45 +1305,74 @@ export default function Calendar() {
                   bootcamp: 'Bootcamp',
                   monthly_package: 'Monthly / package',
                 };
-                const TYPE_ICONS  = { private_lesson: '👤', group_session: '👥', workshop: '📋', bootcamp: '🏕️' };
+                const TYPE_ICONS = { private_lesson: '👤', group_session: '👥', workshop: '📋', bootcamp: '🏕️' };
+                const isPlayer = c.entryRole === 'player';
+                const cardClass = isPlayer
+                  ? 'bg-cyan-50 border-cyan-200 hover:bg-cyan-100 hover:border-cyan-300 focus-visible:ring-cyan-400/60'
+                  : 'bg-green-50 border-green-200 hover:bg-green-100 hover:border-green-300 focus-visible:ring-green-400/60';
+                const footerBorder = isPlayer ? 'border-cyan-200' : 'border-green-200';
+                const footerText = isPlayer ? 'text-cyan-800' : 'text-green-700';
+                const pillClass = isPlayer
+                  ? 'bg-cyan-100 text-cyan-800 group-hover:bg-cyan-200'
+                  : 'bg-green-100 text-green-700 group-hover:bg-green-200';
                 return (
                   <button
                     key={c._id}
                     type="button"
                     onClick={() => { setEditCoachingModal({ open: true, entry: c }); setCoachingFormError(''); closeDayPopup(); }}
-                    aria-label={`Open coaching income details`}
-                    className="group w-full text-left rounded-xl px-3 py-2.5 border shadow-sm hover:shadow-md active:scale-[0.99] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-green-400/60 bg-green-50 border-green-200 hover:bg-green-100 hover:border-green-300"
+                    aria-label={isPlayer ? 'Open coaching expense details' : 'Open coaching income details'}
+                    className={`group w-full text-left rounded-xl px-3 py-2.5 border shadow-sm hover:shadow-md active:scale-[0.99] transition-colors outline-none focus-visible:ring-2 ${cardClass}`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-base">{TYPE_ICONS[c.type] || '👨‍🏫'}</span>
+                        <span className="text-base">{isPlayer ? '🎾' : TYPE_ICONS[c.type] || '👨‍🏫'}</span>
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900">{TYPE_LABELS[c.type] || 'Coaching'}</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {isPlayer
+                              ? c.type === 'monthly_package'
+                                ? 'Coaching package (paid)'
+                                : 'Coaching lesson (paid)'
+                              : TYPE_LABELS[c.type] || 'Coaching'}
+                          </p>
                           <p className="text-xs text-gray-500">
-                            {c.students} student{c.students !== 1 ? 's' : ''}
-                            {c.studentNames?.length > 0 && ` · ${c.studentNames.slice(0, 2).join(', ')}${c.studentNames.length > 2 ? '…' : ''}`}
+                            {isPlayer
+                              ? (c.coachName ? `Coach: ${c.coachName}` : 'Taking coaching')
+                              : `${c.students} student${c.students !== 1 ? 's' : ''}${
+                                  c.studentNames?.length > 0
+                                    ? ` · ${c.studentNames.slice(0, 2).join(', ')}${c.studentNames.length > 2 ? '…' : ''}`
+                                    : ''
+                                }`}
                           </p>
                         </div>
                       </div>
                       <div className="flex-shrink-0 text-right">
-                        {(() => {
-                          const g = c.totalEarned || 0;
-                          const ex = c.expensesTotal || 0;
-                          const n = g - ex;
-                          return ex > 0 ? (
-                            <>
-                              <p className="text-sm font-extrabold text-emerald-800">+{symbol}{n.toLocaleString()}</p>
-                              <p className="text-[9px] text-gray-500">Gross {symbol}{g.toLocaleString()}</p>
-                            </>
-                          ) : (
-                            <p className="text-sm font-extrabold text-green-700">+{symbol}{g.toLocaleString()}</p>
-                          );
-                        })()}
+                        {isPlayer ? (
+                          <p className="text-sm font-extrabold text-rose-600">
+                            −{symbol}{(Number(c.playerAmountPaid) || 0).toLocaleString()}
+                          </p>
+                        ) : (
+                          (() => {
+                            const g = c.totalEarned || 0;
+                            const ex = c.expensesTotal || 0;
+                            const n = g - ex;
+                            return ex > 0 ? (
+                              <>
+                                <p className="text-sm font-extrabold text-emerald-800">+{symbol}{n.toLocaleString()}</p>
+                                <p className="text-[9px] text-gray-500">Gross {symbol}{g.toLocaleString()}</p>
+                              </>
+                            ) : (
+                              <p className="text-sm font-extrabold text-green-700">+{symbol}{g.toLocaleString()}</p>
+                            );
+                          })()
+                        )}
                       </div>
                     </div>
-                    <div className="mt-2 pt-2 border-t border-dashed border-green-200 flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-semibold text-green-700 tracking-wide uppercase">Tap to edit</span>
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full px-2 py-0.5 bg-green-100 text-green-700 group-hover:bg-green-200 transition-colors" aria-hidden="true">
+                    <div className={`mt-2 pt-2 border-t border-dashed ${footerBorder} flex items-center justify-between gap-2`}>
+                      <span className={`text-[11px] font-semibold tracking-wide uppercase ${footerText}`}>Tap to edit</span>
+                      <span
+                        className={`inline-flex items-center gap-1 text-[11px] font-semibold rounded-full px-2 py-0.5 transition-colors ${pillClass}`}
+                        aria-hidden="true"
+                      >
                         Open
                         <svg className="w-3 h-3 transition-transform duration-150 group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -1347,13 +1427,27 @@ export default function Calendar() {
               ))}
             </div>
 
-            {/* Add actions — two or three buttons */}
-            <div className="px-3 pb-4 pt-2 border-t border-gray-100 grid gap-2 grid-cols-3">
+            {/* Add actions — Casual / Drill + Coaching + Tournament */}
+            <div className="px-3 pb-4 pt-2 border-t border-gray-100 grid grid-cols-2 gap-2">
               <button
-                onClick={() => { closeDayPopup(); setAddSessionModal({ open: true, date: dayPopup.date }); setSessionFormError(''); }}
-                className="flex items-center justify-center gap-1 border-2 border-[#91BE4D]/40 bg-[#91BE4D]/5 hover:bg-[#91BE4D]/10 text-[#4a6e10] font-semibold text-xs py-2.5 rounded-xl transition-colors"
+                onClick={() => {
+                  closeDayPopup();
+                  setAddSessionModal({ open: true, date: dayPopup.date, sessionType: 'casual' });
+                  setSessionFormError('');
+                }}
+                className="flex items-center justify-center gap-1 border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 font-semibold text-xs py-2.5 rounded-xl transition-colors"
               >
-                🎯 Session
+                {SESSION_ICON.casual} Casual
+              </button>
+              <button
+                onClick={() => {
+                  closeDayPopup();
+                  setAddSessionModal({ open: true, date: dayPopup.date, sessionType: 'practice' });
+                  setSessionFormError('');
+                }}
+                className="flex items-center justify-center gap-1 border-2 border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-800 font-semibold text-xs py-2.5 rounded-xl transition-colors"
+              >
+                {SESSION_ICON.practice} Drill
               </button>
               <button
                 onClick={() => { closeDayPopup(); setAddCoachingModal({ open: true, date: dayPopup.date }); setCoachingFormError(''); }}
@@ -1373,20 +1467,26 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* ── Log Session Modal ── */}
+      {/* ── Casual Play / Drill modal ── */}
       {addSessionModal.open && (
         <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-xl max-h-[92vh] flex flex-col overflow-hidden" style={{ maxHeight: '92svh' }}>
             {/* Pinned header — never scrolls behind the URL bar */}
             <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-6 pb-2 flex-shrink-0 gap-3">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Log Session</h2>
+                <h2 className="text-lg font-bold text-gray-900">
+                  {addSessionModal.sessionType === 'practice'
+                    ? 'Drill'
+                    : addSessionModal.sessionType === 'casual'
+                      ? 'Casual Play'
+                      : 'Casual Play / Drill'}
+                </h2>
                 {addSessionModal.date && (
                   <p className="text-xs text-gray-500 mt-0.5">{formatDate(addSessionModal.date)}</p>
                 )}
               </div>
               <button
-                onClick={() => { setAddSessionModal({ open: false, date: null }); setSessionFormError(''); }}
+                onClick={() => { setAddSessionModal({ open: false, date: null, sessionType: null }); setSessionFormError(''); }}
                 className="text-gray-400 hover:text-gray-600 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1402,7 +1502,7 @@ export default function Calendar() {
               <SessionForm
                 initial={sessionAddInitial}
                 onSubmit={handleAddSession}
-                onCancel={() => { setAddSessionModal({ open: false, date: null }); setSessionFormError(''); }}
+                onCancel={() => { setAddSessionModal({ open: false, date: null, sessionType: null }); setSessionFormError(''); }}
                 loading={sessionFormLoading}
               />
             </div>
@@ -1519,7 +1619,7 @@ export default function Calendar() {
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-xl max-h-[92vh] flex flex-col overflow-hidden" style={{ maxHeight: '92svh' }}>
             <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-6 pb-2 flex-shrink-0 gap-3">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Log Coaching Income</h2>
+                <h2 className="text-lg font-bold text-gray-900">Coaching</h2>
                 {addCoachingModal.date && (
                   <p className="text-xs text-gray-500 mt-0.5">{formatDate(addCoachingModal.date)}</p>
                 )}
@@ -1554,7 +1654,7 @@ export default function Calendar() {
           <div className="bg-white rounded-t-2xl sm:rounded-2xl shadow-lg w-full sm:max-w-xl max-h-[92vh] flex flex-col overflow-hidden" style={{ maxHeight: '92svh' }}>
             <div className="flex items-center justify-between px-4 sm:px-6 pt-4 sm:pt-6 pb-2 flex-shrink-0 gap-3">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">Edit Coaching Entry</h2>
+                <h2 className="text-lg font-bold text-gray-900">Edit coaching</h2>
                 {editCoachingModal.entry?.date && (
                   <p className="text-xs text-gray-500 mt-0.5">{formatDate(editCoachingModal.entry.date)}</p>
                 )}
@@ -1877,13 +1977,24 @@ export default function Calendar() {
           <button
             onClick={() => {
               setFabOpen(false);
-              setAddSessionModal({ open: true, date: todayStr });
+              setAddSessionModal({ open: true, date: todayStr, sessionType: null });
               setSessionFormError('');
             }}
             className="flex items-center gap-2.5 bg-white shadow-lg border border-gray-100 rounded-full pl-4 pr-5 py-2.5 hover:shadow-xl active:scale-95 transition-all"
           >
             <span className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center text-base">🎯</span>
-            <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">Log Session</span>
+            <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">Casual Play / Drill</span>
+          </button>
+          <button
+            onClick={() => {
+              setFabOpen(false);
+              setAddModal({ open: true, date: todayStr });
+              setAddError('');
+            }}
+            className="flex items-center gap-2.5 bg-white shadow-lg border border-gray-100 rounded-full pl-4 pr-5 py-2.5 hover:shadow-xl active:scale-95 transition-all"
+          >
+            <span className="w-7 h-7 rounded-full bg-[#91BE4D]/20 flex items-center justify-center text-base">🏆</span>
+            <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">Log Tournament</span>
           </button>
           <button
             onClick={() => {
@@ -1895,17 +2006,6 @@ export default function Calendar() {
           >
             <span className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center text-base">👨‍🏫</span>
             <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">Log Coaching</span>
-          </button>
-          <button
-            onClick={() => {
-              setFabOpen(false);
-              setAddModal({ open: true, date: todayStr });
-              setAddError('');
-            }}
-            className="flex items-center gap-2.5 bg-white shadow-lg border border-gray-100 rounded-full pl-4 pr-5 py-2.5 hover:shadow-xl active:scale-95 transition-all"
-          >
-            <span className="w-7 h-7 rounded-full bg-[#91BE4D]/20 flex items-center justify-center text-base">🏆</span>
-            <span className="text-sm font-semibold text-gray-800 whitespace-nowrap">Add Tournament</span>
           </button>
         </div>
 

@@ -36,7 +36,7 @@ export default defineConfig({
       manifest: {
         name: 'PickleTracker',
         short_name: 'PickleTracker',
-        description: 'Track pickleball tournaments, log sessions, analyse performance and connect with players nearby.',
+        description: 'Track pickleball tournaments, log casual play and drills, analyse performance and connect with players nearby.',
         theme_color: '#1c350a',
         background_color: '#ffffff',
         display: 'standalone',

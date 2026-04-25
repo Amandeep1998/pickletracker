@@ -14,6 +14,8 @@ const INCOME_MODES = ['per_head', 'lump'];
 /** For lump lines: what kind of package (optional, for labels/filters) */
 const LUMP_CONTEXTS = ['', 'monthly', 'prepaid', 'revenue_split', 'other'];
 
+const ENTRY_ROLES = ['coach', 'player'];
+
 const EXPENSE_CATS = [
   'travel',
   'venue_court',
@@ -60,6 +62,26 @@ const coachingIncomeSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    /** coach = income you earned teaching; player = money you paid to take coaching */
+    entryRole: {
+      type: String,
+      enum: ENTRY_ROLES,
+      default: 'coach',
+      index: true,
+    },
+    /** When entryRole is player: coach or academy name (optional) */
+    coachName: {
+      type: String,
+      trim: true,
+      maxlength: [200, 'Coach name is too long'],
+      default: '',
+    },
+    /** When entryRole is player: total you paid (per session or monthly package line) */
+    playerAmountPaid: {
+      type: Number,
+      min: [0, 'Amount cannot be negative'],
+      default: 0,
+    },
     type: {
       type: String,
       enum: COACHING_TYPES,
@@ -77,12 +99,12 @@ const coachingIncomeSchema = new mongoose.Schema(
     students: {
       type: Number,
       min: [1, 'Must have at least 1 student'],
-      required: [true, 'Student count is required'],
+      default: 1,
     },
     feePerStudent: {
       type: Number,
       min: [0, 'Fee cannot be negative'],
-      required: [true, 'Fee per student is required'],
+      default: 0,
     },
     /**
      * per_head — totalEarned = students × feePerStudent (per-session, drop-in, group rate).
@@ -139,6 +161,19 @@ const coachingIncomeSchema = new mongoose.Schema(
 
 // Auto-compute totalEarned and expensesTotal before save
 coachingIncomeSchema.pre('save', function (next) {
+  const role = this.entryRole || 'coach';
+  if (role === 'player') {
+    this.totalEarned = 0;
+    this.expensesTotal = 0;
+    this.expenseItems = [];
+    this.students = 1;
+    this.feePerStudent = 0;
+    this.incomeInputMode = 'lump';
+    this.lumpAmount = 0;
+    this.lumpLabel = '';
+    this.lumpContext = '';
+    return next();
+  }
   if (this.incomeInputMode === 'lump') {
     this.totalEarned = Math.max(0, Number(this.lumpAmount) || 0);
   } else {
@@ -150,6 +185,7 @@ coachingIncomeSchema.pre('save', function (next) {
 
 module.exports = mongoose.model('CoachingIncome', coachingIncomeSchema);
 module.exports.COACHING_TYPES = COACHING_TYPES;
+module.exports.ENTRY_ROLES = ENTRY_ROLES;
 module.exports.EXPENSE_CATS = EXPENSE_CATS;
 module.exports.INCOME_MODES = INCOME_MODES;
 module.exports.LUMP_CONTEXTS = LUMP_CONTEXTS;
