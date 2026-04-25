@@ -9,6 +9,7 @@ import {
   isMobileBrowser,
 } from '../services/firebase';
 import { isStandaloneDisplay } from '../utils/displayMode';
+import { getBrowserIanaTimeZone } from '../utils/browserTimeZone';
 
 const SUPPORTED_CURRENCIES = ['INR', 'USD', 'AUD', 'EUR', 'GBP', 'CAD', 'SGD', 'MYR', 'PHP'];
 
@@ -47,6 +48,25 @@ export const AuthProvider = ({ children }) => {
 
   const clearError = () => setError(null);
 
+  const syncDeviceTimeZoneAfterAuth = React.useCallback(async (baseUser) => {
+    const tz = getBrowserIanaTimeZone();
+    if (!tz || !baseUser) return;
+    try {
+      const res = await api.pingPlatform(detectPlatform(), tz);
+      const d = res?.data;
+      if (!d?.timeZone) return;
+      const merged = {
+        ...baseUser,
+        timeZone: d.timeZone,
+        timeZoneSource: d.timeZoneSource || baseUser.timeZoneSource,
+      };
+      localStorage.setItem('user', JSON.stringify(merged));
+      setUser(merged);
+    } catch {
+      /* optional ping */
+    }
+  }, []);
+
   const clearStoredSession = async () => {
     // Remove per-user currency detection flag so a different user on this device gets re-detected
     try {
@@ -68,6 +88,7 @@ export const AuthProvider = ({ children }) => {
     identifyUser(userData);
     posthog.capture(userData.isNewUser ? 'user_signed_up' : 'user_logged_in', { method: 'google' });
     setUser(userData);
+    void syncDeviceTimeZoneAfterAuth(userData);
     autoDetectCurrency(userData);
   };
 
@@ -87,7 +108,7 @@ export const AuthProvider = ({ children }) => {
         if (userData && active) {
           localStorage.setItem('user', JSON.stringify(userData));
           setUser(userData);
-          api.pingPlatform(detectPlatform()).catch(() => {});
+          await syncDeviceTimeZoneAfterAuth(userData);
         }
       } catch {
         await clearStoredSession();
@@ -99,7 +120,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [syncDeviceTimeZoneAfterAuth]);
 
   // On mobile: listen for Firebase auth state changes to detect a completed redirect.
   // onAuthStateChanged is reliable on iOS Safari where getRedirectResult() often
@@ -217,6 +238,7 @@ export const AuthProvider = ({ children }) => {
         identifyUser(userData);
         posthog.capture('user_signed_up', { method: 'email' });
         setUser(userData);
+        void syncDeviceTimeZoneAfterAuth(userData);
         autoDetectCurrency(userData);
         return { success: true, autoLoggedIn: true };
       }
@@ -242,6 +264,7 @@ export const AuthProvider = ({ children }) => {
       identifyUser(userData);
       posthog.capture('user_logged_in', { method: 'email' });
       setUser(userData);
+      void syncDeviceTimeZoneAfterAuth(userData);
       autoDetectCurrency(userData);
       return { success: true };
     } catch (err) {

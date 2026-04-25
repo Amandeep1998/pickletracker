@@ -1,0 +1,20 @@
+/** Common IANA zones for Profile picker (backend accepts any valid IANA string). */
+export const COMMON_TIME_ZONES = [
+  { value: 'UTC', label: 'UTC — Coordinated Universal Time' },
+  { value: 'America/Los_Angeles', label: 'US / Canada — Pacific' },
+  { value: 'America/Denver', label: 'US / Canada — Mountain' },
+  { value: 'America/Chicago', label: 'US / Canada — Central' },
+  { value: 'America/New_York', label: 'US / Canada — Eastern' },
+  { value: 'America/Sao_Paulo', label: 'Brazil — São Paulo' },
+  { value: 'Europe/London', label: 'UK / Ireland' },
+  { value: 'Europe/Paris', label: 'Western Europe' },
+  { value: 'Europe/Berlin', label: 'Central Europe' },
+  { value: 'Asia/Dubai', label: 'UAE' },
+  { value: 'Asia/Kolkata', label: 'India' },
+  { value: 'Asia/Singapore', label: 'Singapore' },
+  { value: 'Asia/Tokyo', label: 'Japan' },
+  { value: 'Asia/Seoul', label: 'Korea' },
+  { value: 'Australia/Sydney', label: 'Australia — Sydney' },
+  { value: 'Australia/Perth', label: 'Australia — Perth' },
+  { value: 'Pacific/Auckland', label: 'New Zealand' },
+];

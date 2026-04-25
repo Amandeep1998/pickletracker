@@ -9,13 +9,18 @@ self.addEventListener('push', (event) => {
   } catch {
     payload = { title: 'PickleTracker', body: event.data.text() };
   }
-  const { title = 'PickleTracker', body = '', url = '/tournaments' } = payload;
+  const {
+    title = 'PickleTracker',
+    body = '',
+    url = '/tournaments',
+    tag = 'pickletracker',
+  } = payload;
   event.waitUntil(
     self.registration.showNotification(title, {
       body,
       icon: '/icon-192.png',
       badge: '/icon-192.png',
-      tag: 'tournament-reminder',
+      tag,
       renotify: true,
       data: { url },
     })

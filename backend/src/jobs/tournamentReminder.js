@@ -1,17 +1,6 @@
-const cron = require('node-cron');
 const Tournament = require('../models/Tournament');
 const { sendNotificationEmail } = require('../services/email.service');
-
-/** Returns tomorrow's date string in IST (YYYY-MM-DD) */
-function getTomorrowIST() {
-  const nowUTC = Date.now();
-  const istOffsetMs = 5.5 * 60 * 60 * 1000; // IST = UTC+5:30
-  const tomorrowIST = new Date(nowUTC + istOffsetMs + 24 * 60 * 60 * 1000);
-  const y = tomorrowIST.getUTCFullYear();
-  const m = String(tomorrowIST.getUTCMonth() + 1).padStart(2, '0');
-  const d = String(tomorrowIST.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
+const { calendarDatePlusDaysInUserZone } = require('../utils/userTimeZone');
 
 function buildEmailHtml({ userName, tournaments }) {
   const firstName = userName?.split(' ')[0] || 'Player';
@@ -114,68 +103,63 @@ function buildEmailHtml({ userName, tournaments }) {
 </html>`;
 }
 
-async function runTournamentReminders() {
-  const tomorrowStr = getTomorrowIST();
-  console.log(`[TournamentReminder] Checking for tournaments on ${tomorrowStr}`);
+/** Send "tomorrow" reminder if this user has categories tomorrow in their time zone. */
+async function sendTournamentReminderEmailForUser(user) {
+  if (!user?.email || user.emailReminders === false) return false;
 
-  try {
-    // Find all tournaments that have a category with tomorrow's date
-    const tournaments = await Tournament.find({
-      'categories.date': tomorrowStr,
-    }).populate('userId', 'name email emailReminders');
+  const tomorrowStr = calendarDatePlusDaysInUserZone(user, 1);
+  const tournaments = await Tournament.find({
+    userId: user._id,
+    'categories.date': tomorrowStr,
+  }).lean();
 
-    if (!tournaments.length) {
-      console.log('[TournamentReminder] No tournaments tomorrow — nothing to send.');
-      return;
+  if (!tournaments.length) return false;
+
+  const items = [];
+  for (const t of tournaments) {
+    const tomorrowCategories = t.categories.filter((c) => c.date === tomorrowStr);
+    for (const cat of tomorrowCategories) {
+      items.push({
+        name: t.name,
+        categoryName: cat.categoryName || 'Open',
+        location: t.location?.name || null,
+        entryFee: cat.entryFee || null,
+      });
     }
-
-    // Group by user
-    const byUser = new Map();
-    for (const t of tournaments) {
-      const user = t.userId;
-      if (!user?.email) continue;
-      if (user.emailReminders === false) continue; // opt-out
-
-      const tomorrowCategories = t.categories.filter(c => c.date === tomorrowStr);
-      if (!tomorrowCategories.length) continue;
-
-      if (!byUser.has(user._id.toString())) {
-        byUser.set(user._id.toString(), { user, items: [] });
-      }
-      for (const cat of tomorrowCategories) {
-        byUser.get(user._id.toString()).items.push({
-          name: t.name,
-          categoryName: cat.categoryName || 'Open',
-          location: t.location?.name || null,
-          entryFee: cat.entryFee || null,
-        });
-      }
-    }
-
-    console.log(`[TournamentReminder] Sending reminders to ${byUser.size} user(s)`);
-
-    const results = await Promise.allSettled(
-      [...byUser.values()].map(({ user, items }) =>
-        sendNotificationEmail({
-          to: user.email,
-          subject: `Your tournament${items.length > 1 ? 's are' : ' is'} tomorrow! 🏆 — PickleTracker`,
-          html: buildEmailHtml({ userName: user.name, tournaments: items }),
-        })
-      )
-    );
-
-    const sent = results.filter(r => r.status === 'fulfilled').length;
-    const failed = results.filter(r => r.status === 'rejected').length;
-    console.log(`[TournamentReminder] Done — sent: ${sent}, failed: ${failed}`);
-  } catch (err) {
-    console.error('[TournamentReminder] Error running reminders:', err);
   }
+  if (!items.length) return false;
+
+  const result = await sendNotificationEmail({
+    to: user.email,
+    subject: `Your tournament${items.length > 1 ? 's are' : ' is'} tomorrow! 🏆 — PickleTracker`,
+    html: buildEmailHtml({ userName: user.name, tournaments: items }),
+  });
+  return Boolean(result?.ok);
 }
 
-function startTournamentReminderJob() {
-  // 8 AM IST = 02:30 UTC
-  cron.schedule('30 2 * * *', runTournamentReminders, { timezone: 'UTC' });
-  console.log('[TournamentReminder] Cron job scheduled — daily at 08:00 IST');
+/** Manual / test: send tomorrow reminder to every opted-in user (ignores 8 AM window). */
+async function runTournamentReminders() {
+  const User = require('../models/User');
+  const users = await User.find({
+    email: { $exists: true, $nin: [null, ''] },
+    emailReminders: { $ne: false },
+  })
+    .select('name email timeZone emailReminders')
+    .lean();
+
+  let sent = 0;
+  for (const user of users) {
+    try {
+      if (await sendTournamentReminderEmailForUser(user)) sent++;
+    } catch (err) {
+      console.error('[TournamentReminder] Error:', err);
+    }
+  }
+  return sent;
 }
 
-module.exports = { startTournamentReminderJob, runTournamentReminders };
+module.exports = {
+  sendTournamentReminderEmailForUser,
+  runTournamentReminders,
+  buildEmailHtml,
+};

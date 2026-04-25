@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Tournament = require('../models/Tournament');
 const Session = require('../models/Session');
 const { sendNotificationEmail } = require('../services/email.service');
+const { sendTournamentReminderEmailForUser } = require('../jobs/tournamentReminder');
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -36,33 +37,6 @@ const wrapHtml = (inner) => `
     ${inner}
   </div>
 </body></html>`;
-
-// ── Tournament reminder email ──────────────────────────────────────────────────
-
-const buildReminderHtml = (user, entries) => {
-  const rows = entries.map(({ tournamentName, category, entryFee }) => `
-    <div style="background:#f9fafb;border-radius:10px;padding:14px 16px;margin-bottom:10px;border-left:3px solid #91BE4D;">
-      <p style="margin:0;font-size:14px;font-weight:700;color:#111827;">${tournamentName}</p>
-      <p style="margin:4px 0 0;font-size:12px;color:#6b7280;">${category}${entryFee > 0 ? ` · Entry: ${fmtMoney(entryFee)}` : ''}</p>
-    </div>`).join('');
-
-  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-  const dateLabel = fmtDate(`${tomorrow.getFullYear()}-${pad(tomorrow.getMonth()+1)}-${pad(tomorrow.getDate())}`);
-
-  return wrapHtml(`
-    ${headerHtml(`Tournament Tomorrow! 🏆`, dateLabel)}
-    <div style="padding:28px 28px 8px;">
-      <p style="margin:0 0 20px;font-size:15px;color:#374151;">Hi <strong>${user.name}</strong>,<br>You have ${entries.length === 1 ? 'a tournament' : 'tournaments'} tomorrow. Here's what's coming up:</p>
-      ${rows}
-      <div style="background:#f4f8e8;border:1px solid rgba(145,190,77,0.3);border-radius:10px;padding:14px 16px;margin-top:20px;">
-        <p style="margin:0;font-size:13px;color:#4a6e10;font-weight:600;">Good luck out there! 🏓 Give it your best shot.</p>
-      </div>
-      <div style="text-align:center;margin:28px 0 20px;">
-        <a href="https://pickletracker.in/tournaments" style="background:linear-gradient(to right,#2d7005,#91BE4D 45%,#ec9937);color:#ffffff;font-weight:700;font-size:14px;padding:13px 28px;border-radius:10px;text-decoration:none;display:inline-block;">View My Tournaments</a>
-      </div>
-    </div>
-    ${footerHtml()}`);
-};
 
 // ── Weekly digest email ────────────────────────────────────────────────────────
 
@@ -151,35 +125,17 @@ const buildDigestHtml = (user, recentSessions, allSessions, allTournaments) => {
 // ── Cron: Tournament reminders ─────────────────────────────────────────────────
 
 const runTournamentReminders = async () => {
-  const now = new Date();
-  const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth()+1)}-${pad(tomorrow.getDate())}`;
-
-  const users = await User.find({ emailReminders: true }).select('_id name email').lean();
+  const users = await User.find({ emailReminders: { $ne: false }, email: { $exists: true, $nin: [null, ''] } })
+    .select('_id name email timeZone emailReminders')
+    .lean();
   let sent = 0;
 
   for (const user of users) {
-    const tournaments = await Tournament.find({
-      userId: user._id,
-      'categories.date': tomorrowStr,
-    }).lean();
-    if (!tournaments.length) continue;
-
-    const entries = [];
-    for (const t of tournaments) {
-      for (const cat of t.categories.filter((c) => c.date?.startsWith(tomorrowStr))) {
-        entries.push({ tournamentName: t.name, category: cat.categoryName, entryFee: cat.entryFee || 0 });
-      }
+    try {
+      if (await sendTournamentReminderEmailForUser(user)) sent++;
+    } catch (err) {
+      console.error(`[Notifications] Reminder failed for ${user.email}:`, err);
     }
-
-    const html = buildReminderHtml(user, entries);
-    const result = await sendNotificationEmail({
-      to: user.email,
-      subject: `Tournament tomorrow: ${entries[0].tournamentName}${entries.length > 1 ? ` +${entries.length - 1} more` : ''}`,
-      html,
-    });
-    if (result.ok) sent++;
-    else console.error(`[Notifications] Reminder failed for ${user.email}:`, result.error);
   }
   return sent;
 };

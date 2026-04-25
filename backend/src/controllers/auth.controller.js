@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { verifyIdToken } = require('../services/firebaseAdmin.service');
 const { sendPasswordResetEmail } = require('../services/email.service');
+const { isValidIanaTimeZone, shouldAutoUpdateTimeZoneFromDevice } = require('../utils/userTimeZone');
 
 function signUserToken(user) {
   return jwt.sign(
@@ -39,6 +40,15 @@ function publicUser(user) {
     roles:
       Array.isArray(user.roles) && user.roles.length > 0 ? user.roles : ['player'],
     onboardingDone: Boolean(user.onboardingDone),
+    timeZone: user.timeZone || 'UTC',
+    timeZoneSource:
+      user.timeZoneSource === 'manual'
+        ? 'manual'
+        : user.timeZoneSource === 'auto'
+          ? 'auto'
+          : user.timeZone && user.timeZone !== 'UTC'
+            ? 'manual'
+            : 'auto',
   };
 }
 
@@ -363,6 +373,25 @@ const updateProfile = async (req, res, next) => {
       update.roles = cleaned;
     }
 
+    if (req.body.timeZoneSource === 'auto' && req.body.timeZone !== undefined) {
+      const tz = String(req.body.timeZone || '').trim();
+      if (!tz || !isValidIanaTimeZone(tz)) {
+        return res.status(400).json({ success: false, message: 'Invalid time zone.' });
+      }
+      update.timeZone = tz;
+      update.timeZoneSource = 'auto';
+    } else if (req.body.timeZone !== undefined) {
+      const tz = String(req.body.timeZone || '').trim();
+      if (!tz) {
+        update.timeZone = 'UTC';
+      } else if (!isValidIanaTimeZone(tz)) {
+        return res.status(400).json({ success: false, message: 'Invalid time zone. Use an IANA name (e.g. America/New_York).' });
+      } else {
+        update.timeZone = tz;
+      }
+      update.timeZoneSource = 'manual';
+    }
+
     const user = await User.findByIdAndUpdate(req.user.id, update, { new: true, runValidators: true });
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
@@ -374,16 +403,33 @@ const updateProfile = async (req, res, next) => {
 
 const pingPlatform = async (req, res, next) => {
   try {
-    const { platform } = req.body;
+    const { platform, timeZone: bodyTz } = req.body;
     const valid = ['pwa', 'mobile-web', 'desktop-web'];
     if (!valid.includes(platform)) {
       return res.status(400).json({ success: false, message: 'Invalid platform' });
     }
-    await User.findByIdAndUpdate(req.user.id, {
-      lastSeenPlatform: platform,
+
+    const user = await User.findById(req.user.id).lean();
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const mongoUpdate = {
+      $set: { lastSeenPlatform: platform },
       $addToSet: { platformsUsed: platform },
+    };
+
+    const tz = typeof bodyTz === 'string' ? bodyTz.trim() : '';
+    if (tz && isValidIanaTimeZone(tz) && shouldAutoUpdateTimeZoneFromDevice(user)) {
+      mongoUpdate.$set.timeZone = tz;
+      mongoUpdate.$set.timeZoneSource = 'auto';
+    }
+
+    const updated = await User.findByIdAndUpdate(req.user.id, mongoUpdate, { new: true, runValidators: true });
+    const pu = publicUser(updated);
+    res.json({
+      success: true,
+      timeZone: pu.timeZone,
+      timeZoneSource: pu.timeZoneSource,
     });
-    res.json({ success: true });
   } catch (err) {
     next(err);
   }

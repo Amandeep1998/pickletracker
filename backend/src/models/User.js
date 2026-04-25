@@ -119,6 +119,33 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    /** IANA time zone for calendar-based emails & push (e.g. America/Los_Angeles, Europe/London). */
+    timeZone: {
+      type: String,
+      default: 'UTC',
+      maxlength: [80, 'Time zone is too long'],
+    },
+    /** `auto` = keep syncing from device (ping-platform); `manual` = user set it in Profile. */
+    timeZoneSource: {
+      type: String,
+      enum: ['auto', 'manual'],
+      default: 'auto',
+    },
+    /** Local calendar date (YYYY-MM-DD in user's timeZone) when morning emails were last run. */
+    emailMorningRemindersSentOn: {
+      type: String,
+      default: null,
+    },
+    /** Tournament category date (YYYY-MM-DD) we last sent the "play tomorrow" push for. */
+    pushLastDayBeforeNudgeEventDate: {
+      type: String,
+      default: null,
+    },
+    /** Local calendar date when we last sent the "log today's results" evening push. */
+    pushLastEveningResultNudgeLocalDate: {
+      type: String,
+      default: null,
+    },
     onboardingDone: {
       type: Boolean,
       default: false,

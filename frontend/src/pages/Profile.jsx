@@ -3,6 +3,8 @@ import posthog from 'posthog-js';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import CITIES_BY_STATE from '../data/indianCities';
+import { COMMON_TIME_ZONES } from '../data/commonTimeZones';
+import { getBrowserIanaTimeZone } from '../utils/browserTimeZone';
 import { CURRENCIES } from '../utils/format';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import PaddleLoader from '../components/PaddleLoader';
@@ -51,6 +53,10 @@ export default function Profile() {
   const [currencySaving, setCurrencySaving] = useState(false);
   const [currencySaved, setCurrencySaved] = useState(false);
 
+  const [timeZone, setTimeZone] = useState(user?.timeZone || 'UTC');
+  const [timeZoneSaving, setTimeZoneSaving] = useState(false);
+  const [timeZoneSaved, setTimeZoneSaved] = useState(false);
+
   // Location & contact (all optional)
   const [locPhone, setLocPhone] = useState('');
   const [locCity, setLocCity] = useState('');
@@ -77,6 +83,8 @@ export default function Profile() {
         }
         if (p.city) setLocCity(p.city);
         if (p.currency) setCurrency(p.currency);
+        setTimeZone(p.timeZone || 'UTC');
+        refreshUser(p);
       })
       .catch(() => setSaveError('Could not load profile.'))
       .finally(() => setLoading(false));
@@ -167,6 +175,43 @@ export default function Profile() {
       setTimeout(() => setCurrencySaved(false), 3000);
     } finally {
       setCurrencySaving(false);
+    }
+  };
+
+  const handleSaveTimeZone = async (tz) => {
+    setTimeZone(tz);
+    setTimeZoneSaving(true);
+    setTimeZoneSaved(false);
+    try {
+      const res = await api.updateProfile({ timeZone: tz });
+      refreshUser(res.data.data);
+      setTimeZoneSaved(true);
+      setTimeout(() => setTimeZoneSaved(false), 3000);
+    } catch {
+      setSaveError('Could not save time zone.');
+    } finally {
+      setTimeZoneSaving(false);
+    }
+  };
+
+  const useBrowserTimeZone = async () => {
+    const tz = getBrowserIanaTimeZone();
+    if (!tz) {
+      setSaveError('Could not read your device time zone.');
+      return;
+    }
+    setTimeZoneSaving(true);
+    setSaveError('');
+    try {
+      const res = await api.updateProfile({ timeZone: tz, timeZoneSource: 'auto' });
+      refreshUser(res.data.data);
+      setTimeZone(tz);
+      setTimeZoneSaved(true);
+      setTimeout(() => setTimeZoneSaved(false), 3000);
+    } catch {
+      setSaveError('Could not save time zone.');
+    } finally {
+      setTimeZoneSaving(false);
     }
   };
 
@@ -453,6 +498,43 @@ export default function Profile() {
             )}
           </div>
 
+          {/* Time zone — used for email + push reminders vs tournament dates */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5 mt-5">
+            <p className="text-sm font-bold text-gray-900 mb-0.5">Time zone</p>
+            <p className="text-xs text-gray-400 mb-3">
+              Tournament dates are calendar days. Your device time zone is sent automatically when you use the app so reminders match your location — unless you pick a fixed zone below (&quot;manual&quot; mode).
+            </p>
+            {user?.timeZoneSource === 'manual' && (
+              <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 mb-3">
+                You&apos;ve set a fixed time zone. Change the dropdown below or use &quot;Use this device&apos;s time zone&quot; to follow your phone or computer again.
+              </p>
+            )}
+            <select
+              value={timeZone}
+              onChange={(e) => handleSaveTimeZone(e.target.value)}
+              disabled={timeZoneSaving}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D] disabled:opacity-50"
+            >
+              {!COMMON_TIME_ZONES.some((z) => z.value === timeZone) && (
+                <option value={timeZone}>{timeZone} (current)</option>
+              )}
+              {COMMON_TIME_ZONES.map((z) => (
+                <option key={z.value} value={z.value}>{z.label}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={useBrowserTimeZone}
+              disabled={timeZoneSaving}
+              className="mt-3 w-full py-2 rounded-lg border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Use this device&apos;s time zone
+            </button>
+            {timeZoneSaved && (
+              <p className="text-xs text-[#4a6e10] font-semibold mt-2">Time zone saved.</p>
+            )}
+          </div>
+
           {/* Notifications Card */}
           {isSupported && (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5 mt-5">
@@ -461,7 +543,7 @@ export default function Profile() {
                 <div>
                   <p className="text-sm font-bold text-gray-900">Push notifications</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Get a reminder the day before your tournaments — right on your device, no email needed.
+                    Day-before reminders (~7 PM) and a same-day nudge (~11:30 PM) in your profile time zone to log results — on your device, no email needed.
                   </p>
                 </div>
               </div>
@@ -499,7 +581,7 @@ export default function Profile() {
                 <>
                   <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 mb-3">
                     <p className="text-xs text-amber-700 leading-relaxed">
-                      Allow notifications and PickleTracker will remind you the day before every tournament you save.
+                      Allow notifications for a day-before heads-up and a late-evening reminder on play day to log results (times follow your profile time zone).
                     </p>
                   </div>
                   <button

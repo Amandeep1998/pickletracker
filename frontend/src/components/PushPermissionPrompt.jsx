@@ -12,12 +12,12 @@ export default function PushPermissionPrompt({ tournamentName, onAccept, onDismi
         <div className={`px-5 pt-5 pb-4 text-white ${blocked ? 'bg-gradient-to-br from-gray-700 via-gray-600 to-gray-500' : 'bg-gradient-to-br from-[#1c350a] via-[#2d6e05] to-[#3a8a06]'}`}>
           <div className="text-3xl mb-2">{blocked ? '🔕' : '🔔'}</div>
           <h2 className="text-base font-bold leading-tight">
-            {blocked ? 'Notifications are blocked' : 'Get a day-before reminder?'}
+            {blocked ? 'Notifications are blocked' : 'Get tournament reminders?'}
           </h2>
           <p className="text-xs text-white/65 mt-1">
             {blocked
               ? 'You\'ve turned off notifications for PickleTracker.'
-              : 'We\'ll notify you the evening before your tournament.'}
+              : 'Day-before heads-up and a late-evening nudge on play day to log results (your profile time zone).'}
           </p>
         </div>
         <div className="px-5 py-4">
@@ -45,7 +45,7 @@ export default function PushPermissionPrompt({ tournamentName, onAccept, onDismi
               <p className="text-sm text-gray-600 leading-relaxed">
                 Don't miss{' '}
                 <span className="font-semibold text-gray-900">{tournamentName}</span>. Allow
-                notifications and PickleTracker will remind you the day before you play — no
+                notifications for a day-before reminder and a late-evening nudge on play day to log results (your profile time zone) — no
                 app store needed.
               </p>
               <div className="mt-4 flex gap-2.5">

@@ -162,7 +162,7 @@ export default function Calendar() {
         // After data is fresh, navigate to the tournament's month and flash
         // the cell (shared helper — same behaviour as add/edit on Calendar).
         focusAndHighlightDate(data.categories?.[0]?.date);
-        setPendingToast(`"${data.name}" saved! You'll get a reminder the day before. 🏆`);
+        setPendingToast(`"${data.name}" saved! You'll get a reminder the day before you play, and a late-evening push that day to log results (your profile time zone). 🏆`);
         setTimeout(() => setPendingToast(''), 6000);
       })
       .catch(() => {

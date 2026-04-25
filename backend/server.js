@@ -30,8 +30,7 @@ const friendshipRoutes = require('./src/routes/friendship.routes');
 const pushRoutes = require('./src/routes/push.routes');
 const coachingIncomeRoutes = require('./src/routes/coachingIncome.routes');
 const errorHandler = require('./src/middleware/error.middleware');
-const { startTournamentReminderJob } = require('./src/jobs/tournamentReminder');
-const { startResultNudgeJob } = require('./src/jobs/resultNudge');
+const { startMorningEmailJobs } = require('./src/jobs/morningEmailJobs');
 const { startWeeklySummaryJob } = require('./src/jobs/weeklySummary');
 const { startMonthlyPnlJob } = require('./src/jobs/monthlyPnl');
 const { startInactiveUserNudgeJob } = require('./src/jobs/inactiveUserNudge');
@@ -102,8 +101,7 @@ if (require.main === module) {
   connectDB().then(() => {
     const PORT = process.env.PORT || 5000;
     server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-    startTournamentReminderJob();
-    startResultNudgeJob();
+    startMorningEmailJobs();
     startWeeklySummaryJob();
     startMonthlyPnlJob();
     startInactiveUserNudgeJob();

@@ -1,15 +1,7 @@
-const cron = require('node-cron');
 const Tournament = require('../models/Tournament');
+const User = require('../models/User');
 const { sendNotificationEmail } = require('../services/email.service');
-
-function getYesterdayIST() {
-  const istOffsetMs = 5.5 * 60 * 60 * 1000;
-  const d = new Date(Date.now() + istOffsetMs - 24 * 60 * 60 * 1000);
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(d.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+const { calendarDatePlusDaysInUserZone } = require('../utils/userTimeZone');
 
 function buildEmailHtml({ userName, tournaments }) {
   const firstName = userName?.split(' ')[0] || 'Player';
@@ -104,72 +96,64 @@ function buildEmailHtml({ userName, tournaments }) {
 </html>`;
 }
 
-async function runResultNudge() {
-  const yesterdayStr = getYesterdayIST();
-  console.log(`[ResultNudge] Checking for unlogged results on ${yesterdayStr}`);
+/** Email nudge for categories on the user's *previous local calendar day* that are still unlogged. */
+async function sendResultNudgeEmailForUser(user) {
+  if (!user?.email || user.emailReminders === false) return false;
 
-  try {
-    const tournaments = await Tournament.find({
-      'categories.date': yesterdayStr,
-    }).populate('userId', 'name email emailReminders');
+  const yesterdayStr = calendarDatePlusDaysInUserZone(user, -1);
+  const tournaments = await Tournament.find({
+    userId: user._id,
+    'categories.date': yesterdayStr,
+  }).lean();
 
-    if (!tournaments.length) {
-      console.log('[ResultNudge] No tournaments yesterday — nothing to send.');
-      return;
+  if (!tournaments.length) return false;
+
+  const items = [];
+  for (const t of tournaments) {
+    const yesterdayCats = t.categories.filter((c) => c.date === yesterdayStr);
+    const allUnlogged = yesterdayCats.length && yesterdayCats.every((c) => c.medal === 'None');
+    if (!allUnlogged) continue;
+    for (const cat of yesterdayCats) {
+      items.push({
+        name: t.name,
+        categoryName: cat.categoryName || 'Open',
+        location: t.location?.name || null,
+      });
     }
-
-    const byUser = new Map();
-    for (const t of tournaments) {
-      const user = t.userId;
-      if (!user?.email) continue;
-      if (user.emailReminders === false) continue;
-
-      const yesterdayCats = t.categories.filter(c => c.date === yesterdayStr);
-      // Only nudge if all yesterday's categories still have medal === 'None' (results not logged)
-      const allUnlogged = yesterdayCats.every(c => c.medal === 'None');
-      if (!allUnlogged) continue;
-
-      if (!byUser.has(user._id.toString())) {
-        byUser.set(user._id.toString(), { user, items: [] });
-      }
-      for (const cat of yesterdayCats) {
-        byUser.get(user._id.toString()).items.push({
-          name: t.name,
-          categoryName: cat.categoryName || 'Open',
-          location: t.location?.name || null,
-        });
-      }
-    }
-
-    if (!byUser.size) {
-      console.log('[ResultNudge] All results already logged — nothing to send.');
-      return;
-    }
-
-    console.log(`[ResultNudge] Sending nudges to ${byUser.size} user(s)`);
-
-    const results = await Promise.allSettled(
-      [...byUser.values()].map(({ user, items }) =>
-        sendNotificationEmail({
-          to: user.email,
-          subject: `Log your tournament results from yesterday 🏆 — PickleTracker`,
-          html: buildEmailHtml({ userName: user.name, tournaments: items }),
-        })
-      )
-    );
-
-    const sent = results.filter(r => r.status === 'fulfilled').length;
-    const failed = results.filter(r => r.status === 'rejected').length;
-    console.log(`[ResultNudge] Done — sent: ${sent}, failed: ${failed}`);
-  } catch (err) {
-    console.error('[ResultNudge] Error:', err);
   }
+  if (!items.length) return false;
+
+  const result = await sendNotificationEmail({
+    to: user.email,
+    subject: `Log your tournament results from yesterday 🏆 — PickleTracker`,
+    html: buildEmailHtml({ userName: user.name, tournaments: items }),
+  });
+  return Boolean(result?.ok);
 }
 
-function startResultNudgeJob() {
-  // 8 AM IST = 02:30 UTC
-  cron.schedule('30 2 * * *', runResultNudge, { timezone: 'UTC' });
-  console.log('[ResultNudge] Cron job scheduled — daily at 08:00 IST');
+/** Manual / test: run result nudge for all opted-in users (ignores 8 AM window). */
+async function runResultNudge() {
+  const users = await User.find({
+    email: { $exists: true, $nin: [null, ''] },
+    emailReminders: { $ne: false },
+  })
+    .select('name email timeZone emailReminders')
+    .lean();
+
+  let sent = 0;
+  for (const user of users) {
+    try {
+      if (await sendResultNudgeEmailForUser(user)) sent++;
+    } catch (err) {
+      console.error('[ResultNudge] Error:', err);
+    }
+  }
+  console.log(`[ResultNudge] Manual run — emails ok: ${sent}`);
+  return sent;
 }
 
-module.exports = { startResultNudgeJob, runResultNudge };
+module.exports = {
+  sendResultNudgeEmailForUser,
+  runResultNudge,
+  buildEmailHtml,
+};
