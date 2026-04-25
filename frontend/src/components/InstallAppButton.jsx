@@ -1,5 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { isStandaloneDisplay } from '../utils/displayMode';
+import {
+  subscribePwaInstallPrompt,
+  getPwaInstallPromptSnapshot,
+  getPwaInstallPromptServerSnapshot,
+  invokePwaInstallPrompt,
+} from '../utils/pwaInstallPrompt';
 
 // ── PT logo — matches the app icon / FAB branding ────────────────────────────
 function PTLogo({ size = 44 }) {
@@ -42,28 +48,18 @@ function detectBrowser() {
 
 // ── Install prompt hook ───────────────────────────────────────────────────────
 function useInstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [installed, setInstalled] = useState(false);
+  const installSnapshot = useSyncExternalStore(
+    subscribePwaInstallPrompt,
+    getPwaInstallPromptSnapshot,
+    getPwaInstallPromptServerSnapshot
+  );
   const { isAndroid, isChromeiOS, isSafariIOS, isAndroidFirefox, isStandalone } = detectBrowser();
 
-  useEffect(() => {
-    if (isStandalone) { setInstalled(true); return; }
-    const onPrompt = (e) => { e.preventDefault(); setDeferredPrompt(e); };
-    const onInstalled = () => setInstalled(true);
-    window.addEventListener('beforeinstallprompt', onPrompt);
-    window.addEventListener('appinstalled', onInstalled);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onPrompt);
-      window.removeEventListener('appinstalled', onInstalled);
-    };
-  }, [isStandalone]);
+  const hasNativePrompt = installSnapshot === 'native';
+  const installFinished = installSnapshot === 'done';
 
   const trigger = async (onAccepted) => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') { setInstalled(true); onAccepted?.(); }
-    setDeferredPrompt(null);
+    await invokePwaInstallPrompt(onAccepted);
   };
 
   const browserType = isSafariIOS
@@ -75,10 +71,13 @@ function useInstallPrompt() {
         : isAndroid
           ? 'android'
           : null;
-  const action = installed || isStandalone ? null
-    : deferredPrompt ? 'native'
-    : browserType ? 'manual'
-    : null;
+  const action = installFinished || isStandalone
+    ? null
+    : hasNativePrompt
+      ? 'native'
+      : browserType
+        ? 'manual'
+        : null;
 
   return { action, browserType, trigger };
 }
@@ -278,6 +277,10 @@ export default function InstallAppButton({ variant = 'default' }) {
     setShowModal(true);
   };
 
+  const nativeHint =
+    'Opens your browser install prompt (add PickleTracker to your device).';
+  const manualHint = 'Shows steps to add PickleTracker to your home screen.';
+
   const inner = (
     <>
       <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -287,18 +290,29 @@ export default function InstallAppButton({ variant = 'default' }) {
     </>
   );
 
+  const installAria =
+    action === 'native'
+      ? 'Install PickleTracker using the browser install prompt'
+      : 'Install PickleTracker — show how-to steps';
+
   return (
     <>
       {variant === 'menu' ? (
         <button
+          type="button"
           onClick={handleClick}
+          title={action === 'native' ? nativeHint : manualHint}
+          aria-label={installAria}
           className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl border border-[#91BE4D]/40 bg-[#f4f8e8] hover:bg-[#eaf3d4] transition-colors text-left text-sm font-semibold text-[#4a6e10]"
         >
           {inner}
         </button>
       ) : (
         <button
+          type="button"
           onClick={handleClick}
+          title={action === 'native' ? nativeHint : manualHint}
+          aria-label={installAria}
           className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#91BE4D]/40 bg-[#f4f8e8] hover:bg-[#eaf3d4] text-[#4a6e10] transition-colors whitespace-nowrap"
         >
           {inner}
@@ -343,6 +357,23 @@ export function InstallAppCard() {
 
   const isIOS = browserType === 'ios-safari' || browserType === 'ios-chrome';
 
+  const cardSubtitle =
+    action === 'native'
+      ? "Tap Install to open your browser's install prompt (Chrome, Edge, Samsung Internet, and similar)."
+      : isIOS
+        ? 'Add to Home Screen for a full-screen experience. Tap How to for steps.'
+        : 'Install for faster load times and a native app feel. Tap How to if your browser does not show a one-tap install yet.';
+
+  const primaryTitle =
+    action === 'native'
+      ? "Opens your browser's install dialog to add PickleTracker"
+      : 'Show step-by-step instructions to add PickleTracker';
+
+  const primaryAria =
+    action === 'native'
+      ? 'Install PickleTracker using the browser install prompt'
+      : 'Show how to install PickleTracker on this device';
+
   return (
     <>
       <div className="relative rounded-2xl overflow-hidden mb-4 shadow-sm border border-[#91BE4D]/20"
@@ -357,13 +388,16 @@ export function InstallAppCard() {
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-bold leading-tight">Get the PickleTracker app</p>
             <p className="text-[#91BE4D] text-xs mt-0.5 leading-snug">
-              {isIOS ? 'Add to Home Screen for a full-screen experience' : 'Install for faster load times and a native app feel'}
+              {cardSubtitle}
             </p>
           </div>
 
           <div className="flex items-center space-x-1.5 flex-shrink-0">
             <button
+              type="button"
               onClick={handleInstall}
+              title={primaryTitle}
+              aria-label={primaryAria}
               className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#1c350a] transition-opacity hover:opacity-90 whitespace-nowrap"
               style={{ background: 'linear-gradient(to right, #c8e875, #91BE4D)' }}
             >

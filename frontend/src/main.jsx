@@ -1,3 +1,5 @@
+// Register PWA install listener before the rest of the bundle (race with beforeinstallprompt).
+import './utils/pwaInstallPrompt';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
