@@ -8,6 +8,7 @@ import {
   firebaseSignOut,
   isMobileBrowser,
 } from '../services/firebase';
+import { isStandaloneDisplay } from '../utils/displayMode';
 
 const SUPPORTED_CURRENCIES = ['INR', 'USD', 'AUD', 'EUR', 'GBP', 'CAD', 'SGD', 'MYR', 'PHP'];
 
@@ -21,10 +22,7 @@ function identifyUser(userData) {
 }
 
 function detectPlatform() {
-  const isStandalone =
-    window.matchMedia('(display-mode: standalone)').matches ||
-    navigator.standalone === true;
-  if (isStandalone) return 'pwa';
+  if (isStandaloneDisplay()) return 'pwa';
   if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) return 'mobile-web';
   return 'desktop-web';
 }

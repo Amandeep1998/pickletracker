@@ -41,6 +41,15 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /*
+ * Install-app modal footer: base padding always applies; second line upgrades
+ * on browsers that support max() (avoids one invalid inline breaking padding).
+ */
+.install-modal-footer {
+  padding-bottom: 24px;
+  padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+}
+
+/*
  * Breathing scale animation used on a calendar day cell right after a
  * tournament / session is saved to that date. Defined here (not only in
  * tailwind.config.js) so it applies without a dev-server restart and so

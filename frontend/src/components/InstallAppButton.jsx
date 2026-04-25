@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { isStandaloneDisplay } from '../utils/displayMode';
 
 // ── PT logo — matches the app icon / FAB branding ────────────────────────────
 function PTLogo({ size = 44 }) {
@@ -29,22 +30,21 @@ function PTLogo({ size = 44 }) {
 
 // ── Browser detection ─────────────────────────────────────────────────────────
 function detectBrowser() {
-  const ua = navigator.userAgent;
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
   const isIOS = /iPhone|iPad|iPod/i.test(ua);
   const isAndroid = /Android/i.test(ua);
   const isChromeiOS = isIOS && /CriOS/i.test(ua);
   const isSafariIOS = isIOS && !isChromeiOS;
-  const isStandalone =
-    window.matchMedia('(display-mode: standalone)').matches ||
-    navigator.standalone === true;
-  return { isIOS, isAndroid, isChromeiOS, isSafariIOS, isStandalone };
+  const isAndroidFirefox = isAndroid && /Firefox/i.test(ua);
+  const isStandalone = isStandaloneDisplay();
+  return { isIOS, isAndroid, isChromeiOS, isSafariIOS, isAndroidFirefox, isStandalone };
 }
 
 // ── Install prompt hook ───────────────────────────────────────────────────────
 function useInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [installed, setInstalled] = useState(false);
-  const { isIOS, isAndroid, isChromeiOS, isSafariIOS, isStandalone } = detectBrowser();
+  const { isAndroid, isChromeiOS, isSafariIOS, isAndroidFirefox, isStandalone } = detectBrowser();
 
   useEffect(() => {
     if (isStandalone) { setInstalled(true); return; }
@@ -66,7 +66,15 @@ function useInstallPrompt() {
     setDeferredPrompt(null);
   };
 
-  const browserType = isSafariIOS ? 'ios-safari' : isChromeiOS ? 'ios-chrome' : isAndroid ? 'android' : null;
+  const browserType = isSafariIOS
+    ? 'ios-safari'
+    : isChromeiOS
+      ? 'ios-chrome'
+      : isAndroidFirefox
+        ? 'android-firefox'
+        : isAndroid
+          ? 'android'
+          : null;
   const action = installed || isStandalone ? null
     : deferredPrompt ? 'native'
     : browserType ? 'manual'
@@ -78,11 +86,11 @@ function useInstallPrompt() {
 // ── Step-by-step install modal ────────────────────────────────────────────────
 const STEPS = {
   'ios-safari': {
-    label: 'Safari on iPhone',
+    label: 'Safari on iPhone or iPad',
     steps: [
       {
         title: 'Tap the Share button',
-        desc: 'The share icon (box with arrow) at the bottom centre of Safari',
+        desc: 'The share icon (square with an arrow). On iPhone it is usually at the bottom of Safari; on iPad it is often at the top-right.',
         icon: (
           <div className="mt-2 w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
             <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -93,7 +101,7 @@ const STEPS = {
       },
       {
         title: 'Tap "Add to Home Screen"',
-        desc: 'Scroll down in the share sheet to find it',
+        desc: 'Scroll the share sheet if you do not see it right away — it is below the top actions.',
         chip: 'Add to Home Screen',
       },
       {
@@ -106,8 +114,8 @@ const STEPS = {
     label: 'Chrome on iPhone',
     steps: [
       {
-        title: 'Tap the three-dot menu  ⋮',
-        desc: 'In the bottom-right corner of Chrome',
+        title: 'Tap the three-dot menu',
+        desc: 'Usually bottom-right on iPhone; top-right on iPad.',
         icon: (
           <div className="mt-2 w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center">
             <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
@@ -118,7 +126,7 @@ const STEPS = {
       },
       {
         title: 'Tap "Add to Home Screen"',
-        desc: 'You\'ll find it in the menu list',
+        desc: 'Scroll the menu if you do not see it immediately.',
         chip: 'Add to Home Screen',
       },
       {
@@ -128,11 +136,11 @@ const STEPS = {
     ],
   },
   'android': {
-    label: 'Chrome on Android',
+    label: 'Chrome or Samsung Internet on Android',
     steps: [
       {
-        title: 'Tap the three-dot menu  ⋮',
-        desc: 'In the top-right corner of Chrome',
+        title: 'Tap the three-dot menu',
+        desc: 'Usually top-right in Chrome; on some phones the menu is at the bottom. Samsung Internet uses a similar menu icon.',
         icon: (
           <div className="mt-2 w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center">
             <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
@@ -142,13 +150,38 @@ const STEPS = {
         ),
       },
       {
-        title: 'Tap "Add to Home Screen" or "Install app"',
-        desc: 'Either option works — both install PickleTracker',
-        chip: 'Add to Home Screen',
+        title: 'Tap "Install app", "Add to Home screen", or similar',
+        desc: 'Wording varies by phone and browser; any option that adds PickleTracker to your home screen is correct.',
+        chip: 'Install app',
       },
       {
-        title: 'Tap "Install"',
-        desc: 'PickleTracker will appear on your home screen like a native app',
+        title: 'Confirm Install or Add',
+        desc: 'PickleTracker will appear on your home screen like a native app.',
+      },
+    ],
+  },
+  'android-firefox': {
+    label: 'Firefox on Android',
+    steps: [
+      {
+        title: 'Tap the three-dot menu',
+        desc: 'Top-right corner of Firefox.',
+        icon: (
+          <div className="mt-2 w-9 h-9 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center">
+            <svg className="w-5 h-5 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="5" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="12" cy="19" r="1.5" />
+            </svg>
+          </div>
+        ),
+      },
+      {
+        title: 'Tap "Install" or "Add to Home screen"',
+        desc: 'If you only see "Add to Home screen", use that — it does the same job.',
+        chip: 'Install',
+      },
+      {
+        title: 'Confirm',
+        desc: 'PickleTracker will appear on your home screen.',
       },
     ],
   },
@@ -160,21 +193,25 @@ function InstallModal({ browserType, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm"
       onClick={onClose}
+      role="presentation"
     >
       <div
-        className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="install-modal-title"
+        className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div
-          className="px-5 pt-6 pb-5 flex items-center gap-3"
+          className="px-5 pt-6 pb-5 flex items-center space-x-3"
           style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 60%, #4a8c10 100%)' }}
         >
           <PTLogo size={48} />
           <div className="flex-1 min-w-0">
-            <p className="text-white font-bold text-base leading-tight">Install PickleTracker</p>
+            <p id="install-modal-title" className="text-white font-bold text-base leading-tight">Install PickleTracker</p>
             <p className="text-[#91BE4D] text-xs font-medium mt-0.5">{config.label}</p>
           </div>
           <button
@@ -190,7 +227,7 @@ function InstallModal({ browserType, onClose }) {
         {/* Steps */}
         <div className="px-5 py-5 space-y-5">
           {config.steps.map((s, i) => (
-            <div key={i} className="flex items-start gap-3">
+            <div key={i} className="flex items-start space-x-3">
               <div
                 className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold text-white"
                 style={{ background: 'linear-gradient(135deg, #2d7005, #91BE4D)' }}
@@ -202,7 +239,7 @@ function InstallModal({ browserType, onClose }) {
                 <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{s.desc}</p>
                 {s.icon}
                 {s.chip && (
-                  <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-xs font-medium text-gray-700">
+                  <div className="mt-2 inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-xs font-medium text-gray-700">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
@@ -214,8 +251,8 @@ function InstallModal({ browserType, onClose }) {
           ))}
         </div>
 
-        {/* Footer */}
-        <div className="px-5 pb-6" style={{ paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}>
+        {/* Footer — .install-modal-footer: cascade safe-area for older WebKit */}
+        <div className="px-5 install-modal-footer">
           <button
             onClick={onClose}
             className="w-full py-3 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90"
@@ -255,14 +292,14 @@ export default function InstallAppButton({ variant = 'default' }) {
       {variant === 'menu' ? (
         <button
           onClick={handleClick}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-[#91BE4D]/40 bg-[#f4f8e8] hover:bg-[#eaf3d4] transition-colors text-left text-sm font-semibold text-[#4a6e10]"
+          className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl border border-[#91BE4D]/40 bg-[#f4f8e8] hover:bg-[#eaf3d4] transition-colors text-left text-sm font-semibold text-[#4a6e10]"
         >
           {inner}
         </button>
       ) : (
         <button
           onClick={handleClick}
-          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#91BE4D]/40 bg-[#f4f8e8] hover:bg-[#eaf3d4] text-[#4a6e10] transition-colors whitespace-nowrap"
+          className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#91BE4D]/40 bg-[#f4f8e8] hover:bg-[#eaf3d4] text-[#4a6e10] transition-colors whitespace-nowrap"
         >
           {inner}
         </button>
@@ -273,17 +310,29 @@ export default function InstallAppButton({ variant = 'default' }) {
 }
 
 // ── Rich install card (Dashboard) ─────────────────────────────────────────────
+function readInstallCardDismissed() {
+  try {
+    return sessionStorage.getItem('installCardDismissed') === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeInstallCardDismissed() {
+  try {
+    sessionStorage.setItem('installCardDismissed', '1');
+  } catch { /* private mode / storage blocked */ }
+}
+
 export function InstallAppCard() {
   const { action, browserType, trigger } = useInstallPrompt();
   const [showModal, setShowModal] = useState(false);
-  const [dismissed, setDismissed] = useState(
-    () => sessionStorage.getItem('installCardDismissed') === '1'
-  );
+  const [dismissed, setDismissed] = useState(readInstallCardDismissed);
 
   if (!action || dismissed) return null;
 
   const dismiss = () => {
-    sessionStorage.setItem('installCardDismissed', '1');
+    writeInstallCardDismissed();
     setDismissed(true);
   };
 
@@ -302,7 +351,7 @@ export function InstallAppCard() {
         <div className="absolute pointer-events-none" style={{ top: -30, right: -30, width: 120, height: 120, borderRadius: '50%', background: 'rgba(145,190,77,0.12)' }} />
         <div className="absolute pointer-events-none" style={{ bottom: -20, left: -20, width: 90, height: 90, borderRadius: '50%', background: 'rgba(236,153,55,0.1)' }} />
 
-        <div className="relative flex items-center gap-3 px-4 py-4">
+        <div className="relative flex items-center space-x-3 px-4 py-4">
           <PTLogo size={44} />
 
           <div className="flex-1 min-w-0">
@@ -312,10 +361,10 @@ export function InstallAppCard() {
             </p>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="flex items-center space-x-1.5 flex-shrink-0">
             <button
               onClick={handleInstall}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#1c350a] transition-opacity hover:opacity-90 whitespace-nowrap"
+              className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#1c350a] transition-opacity hover:opacity-90 whitespace-nowrap"
               style={{ background: 'linear-gradient(to right, #c8e875, #91BE4D)' }}
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
