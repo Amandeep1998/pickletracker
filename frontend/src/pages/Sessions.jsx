@@ -8,6 +8,7 @@ import Modal from '../components/Modal';
 import BannerMedalStrip from '../components/BannerMedalStrip';
 import { computeMedalTally } from '../utils/medals';
 import PaddleLoader from '../components/PaddleLoader';
+import { buildVideoUrl } from '../utils/pickleVideo';
 
 const TYPE_LABELS = { tournament: 'Tournament', casual: 'Casual Play', practice: 'Drill' };
 const TYPE_COLORS = {
@@ -102,7 +103,14 @@ export default function Sessions() {
       .map(([tag]) => tag)
       .slice(0, 2);
 
-    return { weaknesses, strengths, avgRating, sessionsThisWeek: recent7.length, improving };
+    const now = new Date();
+    const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const monthlyCourtFee = sessions
+      .filter((s) => s.date?.startsWith(monthPrefix))
+      .reduce((sum, s) => sum + (s.courtFee || 0), 0);
+
+    return { weaknesses, strengths, avgRating, sessionsThisWeek: recent7.length, improving, monthlyCourtFee, monthName: MONTHS[now.getMonth()] };
   }, [sessions]);
 
   // ── Filtered list ──────────────────────────────────────────────────────────
@@ -254,6 +262,12 @@ export default function Sessions() {
                   ))}
                 </div>
               )}
+              {insights.monthlyCourtFee > 0 && (
+                <div className="mt-2 pt-2 border-t border-gray-100">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Court fees · {insights.monthName}</p>
+                  <p className="text-xs font-bold text-orange-600">{symbol}{insights.monthlyCourtFee.toLocaleString()}</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -370,6 +384,27 @@ export default function Sessions() {
               {/* Notes */}
               {s.notes && (
                 <p className="text-xs text-gray-500 italic border-t border-gray-100 pt-2 mt-2 line-clamp-2">{s.notes}</p>
+              )}
+
+              {/* Videos for weaknesses */}
+              {(s.wentWrong?.length > 0 || s.drillFocus?.length > 0) && (
+                <div className="mt-2 pt-2 border-t border-gray-100 space-y-1">
+                  {(s.wentWrong?.length > 0 ? s.wentWrong : s.drillFocus).map((skill) => (
+                    <a
+                      key={skill}
+                      href={buildVideoUrl(skill, s.rating)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-800 font-medium"
+                    >
+                      <svg className="w-3.5 h-3.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                      </svg>
+                      <span className="text-gray-700 font-semibold">{skill}</span>
+                      <span className="text-gray-400">· Watch on YouTube</span>
+                    </a>
+                  ))}
+                </div>
               )}
 
               {/* Actions */}

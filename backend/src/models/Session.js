@@ -107,8 +107,9 @@ const sessionSchema = new mongoose.Schema(
     // Drill-only fields
     drillFocus:  { type: [String], default: [] },
     drillMode:   { type: String, enum: ['solo', 'partner', 'group'], default: null },
-    coached:     { type: Boolean, default: false },
-    duration:    { type: Number, min: 1, default: null },
+    coachFee:    { type: Number, min: 0, default: 0 },
+    aiTip:         { type: String, default: null },
+    aiVideoSearch: { type: String, default: null },
   },
   { timestamps: true }
 );

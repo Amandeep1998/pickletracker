@@ -97,10 +97,12 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
   const [step, setStep] = useState(1);
   const [travelOpen, setTravelOpen] = useState(false);
   const [travel, setTravel] = useState({ ...EMPTY_TRAVEL });
+  const [locationOpen, setLocationOpen] = useState(!!initial?.location);
   const stepTopRef = useRef(null);
 
   useEffect(() => {
     if (initial) {
+      setLocationOpen(!!initial.location);
       setForm({
         name: initial.name || '',
         location: initial.location || null,
@@ -745,16 +747,46 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
 
           {/* Location */}
           <div>
-            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-              Location <span className="text-gray-400 font-normal">(optional)</span>
-            </label>
-            <LocationAutocomplete
-              value={form.location}
-              onSelect={(place) => setForm((prev) => ({ ...prev, location: place }))}
-              onClear={() => setForm((prev) => ({ ...prev, location: null }))}
-            />
-            {form.location?.address && (
-              <p className="text-xs text-gray-500 mt-1 truncate">{form.location.address}</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-[#91BE4D]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="text-xs sm:text-sm font-semibold text-gray-700">Location</span>
+                <span className="text-xs text-gray-400 font-normal">(optional)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {locationOpen && form.location?.name && (
+                  <span className="text-xs font-semibold text-[#4a6e10] truncate max-w-[120px]">{form.location.name}</span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (locationOpen) setForm((prev) => ({ ...prev, location: null }));
+                    setLocationOpen((o) => !o);
+                  }}
+                  className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
+                    locationOpen
+                      ? 'border-red-200 text-red-500 bg-red-50 hover:bg-red-100'
+                      : 'border-[#91BE4D] text-[#4a6e10] bg-[#91BE4D]/10 hover:bg-[#91BE4D]/20'
+                  }`}
+                >
+                  {locationOpen ? 'Remove' : '+ Add'}
+                </button>
+              </div>
+            </div>
+            {locationOpen && (
+              <div className="mt-3">
+                <LocationAutocomplete
+                  value={form.location}
+                  onSelect={(place) => setForm((prev) => ({ ...prev, location: place }))}
+                  onClear={() => setForm((prev) => ({ ...prev, location: null }))}
+                />
+                {form.location?.address && (
+                  <p className="text-xs text-gray-500 mt-1 truncate">{form.location.address}</p>
+                )}
+              </div>
             )}
           </div>
 

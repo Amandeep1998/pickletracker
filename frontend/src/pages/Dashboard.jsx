@@ -238,7 +238,8 @@ export default function Dashboard() {
 
     const sessionCourtFees = filteredSessions.reduce((s, x) => s + (x.courtFee || 0), 0);
     const sessionTravel = filteredSessions.reduce((s, x) => s + (x.travelExpense?.total || 0), 0);
-    const sessionTotal = sessionCourtFees + sessionTravel;
+    const sessionCoachFees = filteredSessions.reduce((s, x) => s + (x.coachFee || 0), 0);
+    const sessionTotal = sessionCourtFees + sessionTravel + sessionCoachFees;
 
     const gearTotal = filteredExpenses
       .filter((e) => e.type === 'gear')
@@ -258,6 +259,7 @@ export default function Dashboard() {
       tournamentTotal,
       sessionCourtFees,
       sessionTravel,
+      sessionCoachFees,
       sessionTotal,
       gearTotal,
       totalSpent,
@@ -299,7 +301,7 @@ export default function Dashboard() {
         monthTournaments.reduce((s, t) => s + (t.totalExpenses || 0), 0) +
         monthExpenses.filter((e) => e.type === 'travel').reduce((s, e) => s + e.amount, 0);
       const sessionExp = monthSessions.reduce(
-        (s, x) => s + (x.courtFee || 0) + (x.travelExpense?.total || 0), 0
+        (s, x) => s + (x.courtFee || 0) + (x.travelExpense?.total || 0) + (x.coachFee || 0), 0
       );
       const gear = monthExpenses.filter((e) => e.type === 'gear').reduce((s, e) => s + e.amount, 0);
       const coachingGrossM = monthCoaching.reduce(
@@ -652,6 +654,15 @@ export default function Dashboard() {
                   </span>
                   <span className="text-xs font-semibold text-gray-700">{formatCurrency(totals.sessionTravel, currency)}</span>
                 </div>
+                {totals.sessionCoachFees > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-300 inline-block"></span>
+                      Coach fees
+                    </span>
+                    <span className="text-xs font-semibold text-gray-700">{formatCurrency(totals.sessionCoachFees, currency)}</span>
+                  </div>
+                )}
               </div>
             </div>
 

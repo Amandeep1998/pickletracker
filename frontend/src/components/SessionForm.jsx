@@ -85,8 +85,7 @@ const EMPTY = {
   // drill-only
   drillFocus: [],
   drillMode: null,
-  coached: false,
-  duration: '',
+  coachFee: '',
 };
 
 export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
@@ -129,8 +128,7 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
         wentWrong:  initial.wentWrong  || [],
         drillFocus: initial.drillFocus || [],
         drillMode:  initial.drillMode  || null,
-        coached:    initial.coached    || false,
-        duration:   initial.duration   || '',
+        coachFee:   initial.coachFee   || '',
       });
       const te = initial?.travelExpense;
       if (te && te.total > 0) {
@@ -226,9 +224,8 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
 
     if (isDrill) {
       payload.drillFocus = form.drillFocus;
-      payload.drillMode  = form.drillMode  || undefined;
-      payload.coached    = form.coached;
-      payload.duration   = form.duration ? Number(form.duration) : undefined;
+      payload.drillMode  = form.drillMode || undefined;
+      payload.coachFee   = form.coachFee !== '' ? Number(form.coachFee) : 0;
     }
 
     onSubmit(payload);
@@ -356,40 +353,20 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
             </div>
           </div>
 
-          {/* Coached + Duration */}
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Coached toggle */}
-            <div className="flex-1">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Coach-led?</p>
-              <button
-                type="button"
-                onClick={() => setForm((p) => ({ ...p, coached: !p.coached }))}
-                className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all ${
-                  form.coached
-                    ? 'border-[#91BE4D] bg-[#91BE4D]/8 text-[#4a6e10]'
-                    : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                }`}
-              >
-                <span className="text-lg">👨‍🏫</span>
-                {form.coached ? '✓ Yes, coached session' : 'No coach'}
-              </button>
-            </div>
-
-            {/* Duration */}
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Duration (mins) <span className="text-gray-400 font-normal normal-case">(optional)</span>
-              </label>
-              <input
-                type="number"
-                min="1"
-                step="5"
-                value={form.duration}
-                onChange={(e) => setForm((p) => ({ ...p, duration: e.target.value }))}
-                placeholder="e.g. 60"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
-              />
-            </div>
+          {/* Coach fees */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+              Coach Fees ({symbol}) <span className="text-gray-400 font-normal normal-case">(optional)</span>
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={form.coachFee}
+              onChange={(e) => setForm((p) => ({ ...p, coachFee: e.target.value }))}
+              placeholder="0"
+              className="w-full sm:w-40 border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
+            />
           </div>
         </>
       )}
@@ -559,16 +536,6 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
           </div>
         )}
       </div>
-
-      {/* Net expense pill — shown when court fee or travel is entered */}
-      {((Number(form.courtFee) || 0) + travelTotal) > 0 && (
-        <div className="flex items-center justify-between bg-orange-50 border border-orange-100 rounded-xl px-4 py-2.5">
-          <span className="text-xs font-semibold text-orange-700">Net Session Expense</span>
-          <span className="text-sm font-black text-orange-700">
-            {symbol}{(Number(form.courtFee) || 0) + travelTotal}
-          </span>
-        </div>
-      )}
 
       {/* ── Rating (shared, label differs by type) ── */}
       <div data-error-key="rating">

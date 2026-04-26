@@ -12,6 +12,7 @@ import useCurrency from '../hooks/useCurrency';
 import { getMapUrl } from '../utils/mapUrl';
 import PaddleLoader from '../components/PaddleLoader';
 import OnboardingWizard from '../components/OnboardingWizard';
+import { buildVideoUrl } from '../utils/pickleVideo';
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -76,6 +77,7 @@ export default function Calendar() {
   const [addSessionModal, setAddSessionModal] = useState({ open: false, date: null, sessionType: null });
   const [sessionFormLoading, setSessionFormLoading] = useState(false);
   const [sessionFormError, setSessionFormError] = useState('');
+  const [savedSessionResult, setSavedSessionResult] = useState(null);
 
   // Edit session modal — opened by tapping a session card in the day popup
   const [editSessionModal, setEditSessionModal] = useState({ open: false, session: null });
@@ -197,10 +199,11 @@ export default function Calendar() {
       sessionsByDate[s.date].push(s);
 
       const monthKey = s.date.slice(0, 7);
-      if (!monthSessionStats[monthKey]) monthSessionStats[monthKey] = { sessions: 0, courtFees: 0, travelExpenses: 0 };
+      if (!monthSessionStats[monthKey]) monthSessionStats[monthKey] = { sessions: 0, courtFees: 0, travelExpenses: 0, coachFees: 0 };
       monthSessionStats[monthKey].sessions += 1;
       monthSessionStats[monthKey].courtFees += (s.courtFee || 0);
       monthSessionStats[monthKey].travelExpenses += (s.travelExpense?.total || 0);
+      monthSessionStats[monthKey].coachFees += (s.coachFee || 0);
 
       if (s.date >= todayStr) {
         insertByDateLimit(upcomingEvents, { kind: 'session', date: s.date, data: s }, 5);
@@ -288,7 +291,7 @@ export default function Calendar() {
       .filter((e) => e.type === 'gear')
       .reduce((s, e) => s + (Number(e.amount) || 0), 0);
 
-    const sessionCosts = (sessionStats.courtFees || 0) + (sessionStats.travelExpenses || 0);
+    const sessionCosts = (sessionStats.courtFees || 0) + (sessionStats.travelExpenses || 0) + (sessionStats.coachFees || 0);
     const totalOut = tournamentFin.entryFees + tournamentTravel + sessionCosts + gearTotal;
     const totalIn = tournamentFin.prizeWon;
     const net = totalIn - totalOut;
@@ -507,7 +510,7 @@ export default function Calendar() {
     setSessionFormLoading(true);
     setSessionFormError('');
     try {
-      await api.createSession(data);
+      const res = await api.createSession(data);
       posthog.capture('session_logged', {
         type: data.type,
         has_rating: !!data.rating,
@@ -516,8 +519,22 @@ export default function Calendar() {
         went_wrong_count: data.wentWrong?.length ?? 0,
         has_notes: !!(data.notes?.trim()),
       });
-      setAddSessionModal({ open: false, date: null, sessionType: null });
+      const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const now = new Date();
+      const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const existingFee = sessions
+        .filter((s) => s.date?.startsWith(monthPrefix))
+        .reduce((sum, s) => sum + (s.courtFee || 0) + (s.coachFee || 0), 0);
+      const monthlyCourtFee = existingFee + (data.courtFee || 0) + (data.coachFee || 0);
+
       await fetchData();
+
+      const weaknesses = data.wentWrong?.length > 0 ? data.wentWrong : (data.drillFocus?.length > 0 ? data.drillFocus : []);
+      if (weaknesses.length > 0 || monthlyCourtFee > 0) {
+        setSavedSessionResult({ weaknesses, rating: data.rating, monthlyCourtFee, monthName: MONTHS[now.getMonth()] });
+      } else {
+        setAddSessionModal({ open: false, date: null, sessionType: null });
+      }
     } catch (err) {
       setSessionFormError(err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add session');
     } finally {
@@ -778,7 +795,7 @@ export default function Calendar() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0" />
-                <span className="text-xs text-gray-600">Sessions (court + travel)</span>
+                <span className="text-xs text-gray-600">Sessions (court + travel + coach)</span>
               </div>
               <span className="text-xs font-semibold text-gray-700 tabular-nums">
                 {monthStats.sessionCosts > 0 ? `- ${formatCurrency(monthStats.sessionCosts, currency)}` : '—'}
@@ -1251,7 +1268,7 @@ export default function Calendar() {
                 )}
               </div>
               <button
-                onClick={() => { setAddSessionModal({ open: false, date: null, sessionType: null }); setSessionFormError(''); }}
+                onClick={() => { setSavedSessionResult(null); setAddSessionModal({ open: false, date: null, sessionType: null }); setSessionFormError(''); }}
                 className="text-gray-400 hover:text-gray-600 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1261,15 +1278,57 @@ export default function Calendar() {
             </div>
             {/* Scrollable body */}
             <div className="overflow-y-auto flex-1 px-4 sm:px-6 pb-4 sm:pb-6">
-              {sessionFormError && (
-                <div className="mb-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{sessionFormError}</div>
+              {savedSessionResult ? (
+                <div className="py-4 space-y-3">
+                  {savedSessionResult.monthlyCourtFee > 0 && (
+                    <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: '#fff8ec', border: '1px solid #f5d9a0' }}>
+                      <span className="text-xl">🏟️</span>
+                      <p className="text-sm text-orange-800">
+                        You've spent <span className="font-bold">{formatCurrency(savedSessionResult.monthlyCourtFee, currency)}</span> on court fees in {savedSessionResult.monthName}
+                      </p>
+                    </div>
+                  )}
+                  {savedSessionResult.weaknesses.length > 0 && (
+                    <div className="rounded-xl px-4 py-3 space-y-2" style={{ background: '#f0f8e8', border: '1px solid #d4e8b0' }}>
+                      <p className="text-xs font-bold text-[#2d5a05] uppercase tracking-wide">Watch & improve</p>
+                      {savedSessionResult.weaknesses.map((skill) => (
+                        <a
+                          key={skill}
+                          href={buildVideoUrl(skill, savedSessionResult.rating)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-sm text-red-600 hover:text-red-800 font-medium"
+                        >
+                          <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                          </svg>
+                          <span className="text-gray-700 font-semibold">{skill}</span>
+                          <span className="text-xs text-gray-400">· Watch on YouTube</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  <button
+                    onClick={() => { setSavedSessionResult(null); setAddSessionModal({ open: false, date: null, sessionType: null }); }}
+                    className="w-full text-white font-bold py-3 rounded-xl text-sm tracking-wide hover:opacity-90 transition-opacity"
+                    style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {sessionFormError && (
+                    <div className="mb-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{sessionFormError}</div>
+                  )}
+                  <SessionForm
+                    initial={sessionAddInitial}
+                    onSubmit={handleAddSession}
+                    onCancel={() => { setSavedSessionResult(null); setAddSessionModal({ open: false, date: null, sessionType: null }); setSessionFormError(''); }}
+                    loading={sessionFormLoading}
+                  />
+                </>
               )}
-              <SessionForm
-                initial={sessionAddInitial}
-                onSubmit={handleAddSession}
-                onCancel={() => { setAddSessionModal({ open: false, date: null, sessionType: null }); setSessionFormError(''); }}
-                loading={sessionFormLoading}
-              />
             </div>
           </div>
         </div>
@@ -1300,60 +1359,28 @@ export default function Calendar() {
               {sessionFormError && (
                 <div className="mb-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{sessionFormError}</div>
               )}
-              {/* Net expense summary — shown when session has any expense recorded */}
               {(() => {
                 const s = editSessionModal.session;
-                const courtFee = s?.courtFee || 0;
-                const te = s?.travelExpense;
-                const travelTotal = te?.total || 0;
-                if (courtFee + travelTotal === 0) return null;
-                const travelRows = [
-                  { label: 'Transport',           value: te?.transport },
-                  { label: 'Local Commute',        value: te?.localCommute },
-                  { label: 'Accommodation',        value: te?.accommodation },
-                  { label: 'Food',                 value: te?.food },
-                  { label: 'Equipment & Baggage',  value: te?.equipment },
-                  { label: 'Others',               value: te?.others },
-                  { label: 'Visa & Docs',          value: te?.visaDocs },
-                  { label: 'Travel Insurance',     value: te?.travelInsurance },
-                ].filter((r) => r.value > 0);
+                const skills = s?.wentWrong?.length > 0 ? s.wentWrong : (s?.drillFocus?.length > 0 ? s.drillFocus : []);
+                if (skills.length === 0) return null;
                 return (
-                  <div className="mb-4 space-y-2">
-                    {courtFee > 0 && (
-                      <div className="flex items-center justify-between bg-orange-50 border border-orange-100 rounded-xl px-4 py-2.5">
-                        <span className="text-xs font-semibold text-orange-700">Court Fee</span>
-                        <span className="text-sm font-bold text-orange-700">{formatCurrency(courtFee, currency)}</span>
-                      </div>
-                    )}
-                    {travelTotal > 0 && (
-                      <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-                        <div className="flex items-center gap-1.5 mb-2">
-                          <svg className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                          </svg>
-                          <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wide">Travel Expenses</span>
-                          {(te?.fromCity || te?.toCity) && (
-                            <span className="text-[10px] text-blue-500 ml-auto">{[te.fromCity, te.toCity].filter(Boolean).join(' → ')}</span>
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          {travelRows.map((r) => (
-                            <div key={r.label} className="flex justify-between text-xs text-blue-800">
-                              <span className="text-blue-600">{r.label}</span>
-                              <span className="font-medium">{formatCurrency(r.value, currency)}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex justify-between text-xs font-semibold text-blue-900 border-t border-blue-200 pt-1.5 mt-1.5">
-                          <span>Travel Total</span>
-                          <span>{formatCurrency(travelTotal, currency)}</span>
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-xl px-4 py-2.5">
-                      <span className="text-xs font-bold text-orange-800">Net Session Expense</span>
-                      <span className="text-sm font-black text-orange-800">{formatCurrency(courtFee + travelTotal, currency)}</span>
-                    </div>
+                  <div className="mb-4 rounded-xl px-4 py-3 space-y-2" style={{ background: '#f0f8e8', border: '1px solid #d4e8b0' }}>
+                    <p className="text-xs font-bold text-[#2d5a05] uppercase tracking-wide">Watch & improve</p>
+                    {skills.map((skill) => (
+                      <a
+                        key={skill}
+                        href={buildVideoUrl(skill, s.rating)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-red-600 hover:text-red-800 font-medium"
+                      >
+                        <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                        </svg>
+                        <span className="text-gray-700 font-semibold">{skill}</span>
+                        <span className="text-xs text-gray-400">· Watch on YouTube</span>
+                      </a>
+                    ))}
                   </div>
                 );
               })()}
