@@ -112,6 +112,23 @@ export const createCoachingIncome = (data) => api.post('/coaching-income', data)
 export const updateCoachingIncome = (id, data) => api.put(`/coaching-income/${id}`, data);
 export const deleteCoachingIncome = (id) => api.delete(`/coaching-income/${id}`);
 
+// Coach Schedule Slots
+export const getCoachScheduleSlots = (month) => api.get('/coach-schedule', { params: month ? { month } : {} });
+export const createCoachScheduleSlot = (data) => api.post('/coach-schedule', data);
+export const updateCoachScheduleSlot = (id, data) => api.put(`/coach-schedule/${id}`, data);
+export const deleteCoachScheduleSlot = (id) => api.delete(`/coach-schedule/${id}`);
+
+// Coach Overhead Expenses
+export const getCoachOverheads = (month) => api.get('/coach-overhead', { params: month ? { month } : {} });
+export const createCoachOverhead = (data) => api.post('/coach-overhead', data);
+export const updateCoachOverhead = (id, data) => api.put(`/coach-overhead/${id}`, data);
+export const deleteCoachOverhead = (id) => api.delete(`/coach-overhead/${id}`);
+
+// Coach Students
+export const getCoachStudents = () => api.get('/coach-students');
+export const upsertCoachStudents = (names) => api.post('/coach-students/upsert', { names });
+export const deleteCoachStudent = (id) => api.delete(`/coach-students/${id}`);
+
 // AI — document (URL or file)
 export const parseFromFile = (file, currentForm) => {
   const formData = new FormData();

@@ -696,60 +696,25 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Coaching — teaching income + costs, and/or what you paid as a student */}
-            {(totals.coachingGross > 0 ||
-              totals.coachingSessionCosts > 0 ||
-              totals.playerCoachingSpend > 0) && (
-              <div className="rounded-xl border border-teal-100 overflow-hidden">
-                <div className="flex items-center justify-between bg-teal-50 px-3 py-2">
+            {/* Coaching — headline card linking to Coach Hub */}
+            {(totals.coachingGross > 0 || totals.coachingSessionCosts > 0 || totals.playerCoachingSpend > 0) && (
+              <a href="/coach-hub" className="rounded-xl border border-teal-100 overflow-hidden block hover:border-teal-300 transition-colors">
+                <div className="flex items-center justify-between bg-teal-50 px-3 py-2.5">
                   <div className="flex items-center gap-2">
                     <span className="text-base">👨‍🏫</span>
-                    <span className="text-sm font-bold text-teal-800">Coaching</span>
+                    <div>
+                      <p className="text-sm font-bold text-teal-800 leading-tight">Coaching</p>
+                      <p className="text-[10px] text-teal-600/80">View Coach Hub →</p>
+                    </div>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-extrabold text-teal-700 leading-tight">
-                      {formatCurrency(
-                        Math.max(0, totals.coachingGross - totals.coachingSessionCosts),
-                        currency
-                      )}
+                      {formatCurrency(Math.max(0, totals.coachingGross - totals.coachingSessionCosts), currency)}
                     </p>
-                    <p className="text-[9px] font-semibold text-teal-600/80">Coach net</p>
+                    <p className="text-[9px] font-semibold text-teal-600/80">net this period</p>
                   </div>
                 </div>
-                <div className="px-3 py-2 space-y-1.5 bg-white">
-                  {totals.coachingGross > 0 && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-500 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-teal-300 inline-block"></span>
-                        Gross earned (teaching)
-                      </span>
-                      <span className="text-xs font-semibold text-gray-700">{formatCurrency(totals.coachingGross, currency)}</span>
-                    </div>
-                  )}
-                  {totals.coachingSessionCosts > 0 && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-500 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-300 inline-block"></span>
-                        Costs running lessons
-                      </span>
-                      <span className="text-xs font-semibold text-red-500">
-                        -{formatCurrency(totals.coachingSessionCosts, currency)}
-                      </span>
-                    </div>
-                  )}
-                  {totals.playerCoachingSpend > 0 && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-500 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block"></span>
-                        Paid for your lessons
-                      </span>
-                      <span className="text-xs font-semibold text-rose-600">
-                        -{formatCurrency(totals.playerCoachingSpend, currency)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
+              </a>
             )}
           </div>
 

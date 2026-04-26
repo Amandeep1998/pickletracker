@@ -96,16 +96,17 @@ export default function MobileMenu({ onOpenLocationModal }) {
             <NavLink to="/calendar"    className={navLinkClass} onClick={() => setIsOpen(false)}>Calendar</NavLink>
             <NavLink to="/players"     className={navLinkClass} onClick={() => setIsOpen(false)}>Nearby Players</NavLink>
             <NavLink to="/sessions"    className={navLinkClass} onClick={() => setIsOpen(false)}>Performance Journal</NavLink>
-            <NavLink to="/coach" onClick={() => setIsOpen(false)} className={({ isActive }) =>
+            <NavLink to="/coach-hub" onClick={() => setIsOpen(false)} className={({ isActive }) =>
               `flex items-center justify-between px-5 py-3 text-sm font-medium transition-colors border-l-4 ${
                 isActive
                   ? 'text-[#91BE4D] bg-[#91BE4D]/8 border-[#91BE4D]'
                   : 'text-[#272702]/70 hover:bg-gray-50 hover:text-[#91BE4D] border-transparent'
               }`}>
-              <span>AI Coach</span>
+              <span>Coach Hub</span>
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded text-white leading-none"
                 style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}>NEW</span>
             </NavLink>
+            <NavLink to="/coach"       className={navLinkClass} onClick={() => setIsOpen(false)}>AI Coach</NavLink>
             <NavLink to="/expenses"    className={navLinkClass} onClick={() => setIsOpen(false)}>Gear</NavLink>
             <NavLink to="/profile"     className={navLinkClass} onClick={() => setIsOpen(false)}>Profile</NavLink>
             {isAdmin && (
