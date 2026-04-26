@@ -32,15 +32,6 @@ function fmt12(t) {
 const today = new Date();
 const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
 
-const OVERHEAD_LABELS = {
-  venue_court: 'Venue / Court',
-  travel: 'Travel',
-  materials: 'Materials',
-  software: 'Software',
-  food: 'Food',
-  other: 'Other',
-};
-
 const EXPENSE_CATS = [
   { value: 'travel', label: 'Travel' },
   { value: 'venue_court', label: 'Venue / Court' },
@@ -365,67 +356,6 @@ function SlotDetail({ slot, onDelete, onEdit, onClose, symbol }) {
   );
 }
 
-// ── Overhead Form ─────────────────────────────────────────────────────────────
-function OverheadForm({ yearMonth, onSubmit, onCancel, loading }) {
-  const currency = useCurrency();
-  const symbol = getCurrencySymbol(currency);
-  const [form, setForm] = useState({ category: 'venue_court', amount: '', note: '' });
-  const [errors, setErrors] = useState({});
-  const set = (f, v) => { setForm((p) => ({ ...p, [f]: v })); setErrors((p) => ({ ...p, [f]: '' })); };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const amt = Math.floor(Number(form.amount) || 0);
-    if (amt < 1) { setErrors({ amount: 'Enter a valid amount' }); return; }
-    onSubmit({ yearMonth, category: form.category, amount: amt, note: form.note.trim() });
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Category</label>
-        <div className="grid grid-cols-3 gap-2">
-          {Object.entries(OVERHEAD_LABELS).map(([v, l]) => (
-            <button key={v} type="button" onClick={() => set('category', v)}
-              className={`py-2 px-2 rounded-xl border-2 text-center text-xs font-semibold transition-all ${form.category === v ? 'border-[#91BE4D] bg-[#91BE4D]/8 text-[#4a6e10]' : 'border-gray-200 text-gray-700 hover:border-gray-300'}`}>
-              {l}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Amount</label>
-        <div className="flex items-center border border-gray-300 rounded-lg px-3 py-2 bg-white w-full sm:w-40">
-          <span className="text-gray-500 font-bold mr-1">{symbol}</span>
-          <input type="text" inputMode="numeric" pattern="[0-9]*" value={form.amount}
-            onChange={(e) => set('amount', e.target.value.replace(/[^0-9]/g, ''))}
-            placeholder="0" className="w-full text-sm font-bold text-gray-900 focus:outline-none" />
-        </div>
-        {errors.amount && <p className="text-red-500 text-xs mt-1">{errors.amount}</p>}
-      </div>
-      <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Note (optional)</label>
-        <input type="text" value={form.note} onChange={(e) => set('note', e.target.value)}
-          placeholder="e.g. Monthly court slot" maxLength={300}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
-      </div>
-      <div className="flex gap-2 pt-1 pb-2">
-        <button type="submit" disabled={loading}
-          className="flex-1 disabled:opacity-60 hover:opacity-90 text-white font-bold py-3 rounded-lg text-sm tracking-wide transition-opacity"
-          style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}>
-          {loading ? 'Saving…' : 'Add overhead'}
-        </button>
-        {onCancel && (
-          <button type="button" onClick={onCancel}
-            className="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold py-3 rounded-lg text-sm">
-            Cancel
-          </button>
-        )}
-      </div>
-    </form>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const TABS = ['Schedule', 'Students', 'Financials'];
 
@@ -440,7 +370,6 @@ export default function CoachHub() {
 
   const [slots, setSlots] = useState([]);
   const [coachingIncomes, setCoachingIncomes] = useState([]);
-  const [overheads, setOverheads] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -455,23 +384,19 @@ export default function CoachHub() {
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
 
-  const [overheadModal, setOverheadModal] = useState(false);
-  const [overheadLoading, setOverheadLoading] = useState(false);
 
   // Load data
   const loadData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const [sRes, cRes, oRes, stuRes] = await Promise.allSettled([
+      const [sRes, cRes, stuRes] = await Promise.allSettled([
         api.getCoachScheduleSlots(yearMonth),
         api.getCoachingIncomes(),
-        api.getCoachOverheads(yearMonth),
         api.getCoachStudents(),
       ]);
       setSlots(sRes.status === 'fulfilled' ? (sRes.value.data.data || []) : []);
       setCoachingIncomes(cRes.status === 'fulfilled' ? (cRes.value.data.data || []) : []);
-      setOverheads(oRes.status === 'fulfilled' ? (oRes.value.data.data || []) : []);
       setStudents(stuRes.status === 'fulfilled' ? (stuRes.value.data.data || []) : []);
     } catch {
       setError('Failed to load data.');
@@ -503,9 +428,8 @@ export default function CoachHub() {
     const coachEntries = monthIncomes.filter((c) => c.entryRole !== 'player');
     const grossIncome = coachEntries.reduce((s, c) => s + (c.totalEarned || 0), 0);
     const sessionCosts = coachEntries.reduce((s, c) => s + (c.expensesTotal || 0), 0);
-    const overheadTotal = overheads.reduce((s, o) => s + (o.amount || 0), 0);
-    return { grossIncome, sessionCosts, overheadTotal, netIncome: grossIncome - sessionCosts - overheadTotal };
-  }, [monthIncomes, overheads]);
+    return { grossIncome, sessionCosts, netIncome: grossIncome - sessionCosts };
+  }, [monthIncomes]);
 
   // Per-student session stats computed from all loaded slots (all months)
   const studentStats = useMemo(() => {
@@ -659,23 +583,6 @@ export default function CoachHub() {
     try {
       await api.deleteCoachingIncome(id);
       setCoachingIncomes((prev) => prev.filter((c) => c._id !== id));
-    } catch { /* ignore */ }
-  };
-
-  const handleOverheadSubmit = async (data) => {
-    setOverheadLoading(true);
-    try {
-      const res = await api.createCoachOverhead(data);
-      setOverheads((prev) => [res.data.data, ...prev]);
-      setOverheadModal(false);
-    } catch { /* ignore */ } finally { setOverheadLoading(false); }
-  };
-
-  const handleDeleteOverhead = async (id) => {
-    if (!window.confirm('Delete this overhead expense?')) return;
-    try {
-      await api.deleteCoachOverhead(id);
-      setOverheads((prev) => prev.filter((o) => o._id !== id));
     } catch { /* ignore */ }
   };
 
@@ -875,11 +782,10 @@ export default function CoachHub() {
             {/* Net summary */}
             <div className={`rounded-2xl border-2 p-4 ${financials.netIncome >= 0 ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50'}`}>
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Monthly summary</p>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="grid grid-cols-3 gap-3">
                 {[
                   ['Gross income', financials.grossIncome, 'text-emerald-800'],
                   ['Session costs', financials.sessionCosts, 'text-rose-700'],
-                  ['Overhead', financials.overheadTotal, 'text-rose-700'],
                   ['Net take-home', financials.netIncome, financials.netIncome >= 0 ? 'text-emerald-900' : 'text-amber-900'],
                 ].map(([label, val, cls]) => (
                   <div key={label}>
@@ -917,39 +823,6 @@ export default function CoachHub() {
               )}
             </div>
 
-            {/* Overhead expenses */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h3 className="font-bold text-gray-800 text-sm">Overhead expenses</h3>
-                  <p className="text-[11px] text-gray-400">Monthly fixed costs — venue rent, food, etc.</p>
-                </div>
-                <button onClick={() => setOverheadModal(true)}
-                  className="text-xs font-bold border border-[#91BE4D]/50 text-[#4a6e10] px-3 py-1.5 rounded-lg hover:bg-[#f4f8e8]">
-                  + Add
-                </button>
-              </div>
-              {overheads.length === 0 ? (
-                <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-                  <p className="text-sm text-gray-400">No overhead for {monthLabel}.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {overheads.map((o) => (
-                    <div key={o._id} className="bg-white rounded-xl border border-gray-200 p-3 flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-gray-900">−{symbol}{o.amount.toLocaleString()}</span>
-                          <span className="text-[10px] font-semibold bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded-full">{OVERHEAD_LABELS[o.category] || o.category}</span>
-                        </div>
-                        {o.note && <p className="text-xs text-gray-500 mt-0.5">{o.note}</p>}
-                      </div>
-                      <button onClick={() => handleDeleteOverhead(o._id)} className="text-xs text-red-400 hover:text-red-600 font-bold flex-shrink-0">✕</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         )}
       </div>
@@ -996,17 +869,6 @@ export default function CoachHub() {
         </Modal>
       )}
 
-      {/* ── Overhead Modal ─────────────────────────────────────────────────── */}
-      {overheadModal && (
-        <Modal isOpen onClose={() => setOverheadModal(false)} title="Add overhead expense">
-          <OverheadForm
-            yearMonth={yearMonth}
-            onSubmit={handleOverheadSubmit}
-            onCancel={() => setOverheadModal(false)}
-            loading={overheadLoading}
-          />
-        </Modal>
-      )}
     </div>
   );
 }
