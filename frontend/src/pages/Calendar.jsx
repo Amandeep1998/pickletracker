@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import TournamentForm from '../components/TournamentForm';
 import SessionForm from '../components/SessionForm';
 import TournamentShareModal from '../components/TournamentShareModal';
-import PushPermissionPrompt from '../components/PushPermissionPrompt';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { formatCurrency, getCurrencySymbol } from '../utils/format';
 import useCurrency from '../hooks/useCurrency';
@@ -96,7 +95,6 @@ export default function Calendar() {
 
   // Push notifications
   const { permission: pushPermission, subscribed: pushSubscribed, isSupported: pushSupported, requestAndSubscribe, silentSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
-  const [pushPrompt, setPushPrompt] = useState({ open: false, name: '' });
   const [pushLoading, setPushLoading] = useState(false);
   const isReminderOn = pushSubscribed;
 
@@ -441,13 +439,7 @@ export default function Calendar() {
     const today = new Date().toISOString().slice(0, 10);
     const hasFuture = categories?.some((c) => c.date >= today);
     if (!hasFuture) return;
-    if (pushPermission === 'granted') {
-      silentSubscribe();
-    } else if (pushPermission === 'default') {
-      setPushPrompt({ open: true, name: tournamentName, blocked: false });
-    } else if (pushPermission === 'denied') {
-      setPushPrompt({ open: true, name: tournamentName, blocked: true });
-    }
+    if (pushPermission === 'granted') silentSubscribe();
   };
 
   const handleAddTournament = async (data) => {
@@ -612,18 +604,7 @@ export default function Calendar() {
         />
       )}
 
-      {/* Push permission prompt — shown after saving a future tournament */}
-      {pushPrompt.open && (
-        <PushPermissionPrompt
-          tournamentName={pushPrompt.name}
-          blocked={pushPrompt.blocked}
-          onAccept={async () => {
-            setPushPrompt({ open: false, name: '', blocked: false });
-            await requestAndSubscribe();
-          }}
-          onDismiss={() => setPushPrompt({ open: false, name: '', blocked: false })}
-        />
-      )}
+
 
       {/* Pending tournament saved toast */}
       {pendingToast && (
