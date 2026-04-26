@@ -1639,7 +1639,7 @@ export default function Calendar() {
 
       {/* ── Floating Action Button (speed-dial) ──
           Hidden whenever a modal/popup is open so it doesn't overlap forms. */}
-      {!dayPopup.open && !addModal.open && !addSessionModal.open && !editSessionModal.open && !selectedTournament && (
+      {!showOnboarding && !dayPopup.open && !addModal.open && !addSessionModal.open && !editSessionModal.open && !selectedTournament && (
       <>
       {fabOpen && (
         <div

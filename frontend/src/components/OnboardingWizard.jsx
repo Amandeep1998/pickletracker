@@ -45,7 +45,7 @@ export default function OnboardingWizard({ onDismiss, onConfirm }) {
   /* ── Step 1: choose path ─────────────────────────────────────────── */
   if (step === 1) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.65)' }}>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.65)' }}>
         <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
           <div className="px-6 pt-8 pb-5 text-center border-b border-gray-100">
             <div className="text-5xl mb-3">👋</div>
@@ -109,7 +109,7 @@ export default function OnboardingWizard({ onDismiss, onConfirm }) {
   const needs = isUpcoming ? UPCOMING_NEEDS : PAST_NEEDS;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.65)' }}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" style={{ backgroundColor: 'rgba(0,0,0,0.65)' }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden max-h-[90vh] flex flex-col">
         <div
           className="px-6 pt-6 pb-4 text-center flex-shrink-0"
