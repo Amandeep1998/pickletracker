@@ -512,8 +512,9 @@ export default function Calendar() {
         has_notes: !!(data.notes?.trim()),
       });
       const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-      const now = new Date();
-      const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const sessionDate = data.date || new Date().toISOString().slice(0, 10);
+      const monthPrefix = sessionDate.slice(0, 7);
+      const monthName = MONTHS[parseInt(sessionDate.slice(5, 7), 10) - 1];
       const existingFee = sessions
         .filter((s) => s.date?.startsWith(monthPrefix))
         .reduce((sum, s) => sum + (s.courtFee || 0) + (s.coachFee || 0), 0);
@@ -523,7 +524,7 @@ export default function Calendar() {
 
       const weaknesses = data.wentWrong?.length > 0 ? data.wentWrong : (data.drillFocus?.length > 0 ? data.drillFocus : []);
       if (weaknesses.length > 0 || monthlyCourtFee > 0) {
-        setSavedSessionResult({ weaknesses, rating: data.rating, monthlyCourtFee, monthName: MONTHS[now.getMonth()] });
+        setSavedSessionResult({ weaknesses, rating: data.rating, monthlyCourtFee, monthName });
       } else {
         setAddSessionModal({ open: false, date: null, sessionType: null });
       }

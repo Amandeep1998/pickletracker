@@ -108,7 +108,7 @@ export default function Sessions() {
     const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     const monthlyCourtFee = sessions
       .filter((s) => s.date?.startsWith(monthPrefix))
-      .reduce((sum, s) => sum + (s.courtFee || 0), 0);
+      .reduce((sum, s) => sum + (s.courtFee || 0) + (s.coachFee || 0), 0);
 
     return { weaknesses, strengths, avgRating, sessionsThisWeek: recent7.length, improving, monthlyCourtFee, monthName: MONTHS[now.getMonth()] };
   }, [sessions]);
