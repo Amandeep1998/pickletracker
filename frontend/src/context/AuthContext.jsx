@@ -10,6 +10,10 @@ import {
 } from '../services/firebase';
 import { isStandaloneDisplay } from '../utils/displayMode';
 import { getBrowserIanaTimeZone } from '../utils/browserTimeZone';
+import {
+  inferCurrencyFromIanaTimeZone,
+  tryUpdateCurrencyFromAutoTimeZone,
+} from '../utils/currencyFromTimeZone';
 
 const SUPPORTED_CURRENCIES = ['INR', 'USD', 'AUD', 'EUR', 'GBP', 'CAD', 'SGD', 'MYR', 'PHP'];
 
@@ -88,8 +92,13 @@ export const AuthProvider = ({ children }) => {
     identifyUser(userData);
     posthog.capture(userData.isNewUser ? 'user_signed_up' : 'user_logged_in', { method: 'google' });
     setUser(userData);
-    void syncDeviceTimeZoneAfterAuth(userData);
-    autoDetectCurrency(userData);
+    await syncDeviceTimeZoneAfterAuth(userData);
+    try {
+      const raw = localStorage.getItem('user');
+      autoDetectCurrency(raw ? JSON.parse(raw) : userData);
+    } catch {
+      autoDetectCurrency(userData);
+    }
   };
 
   // Validate cached token/user at app bootstrap so deleted DB users are logged out
@@ -109,6 +118,12 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('user', JSON.stringify(userData));
           setUser(userData);
           await syncDeviceTimeZoneAfterAuth(userData);
+          try {
+            const raw = localStorage.getItem('user');
+            autoDetectCurrency(raw ? JSON.parse(raw) : userData);
+          } catch {
+            autoDetectCurrency(userData);
+          }
         }
       } catch {
         await clearStoredSession();
@@ -204,6 +219,24 @@ export const AuthProvider = ({ children }) => {
   const autoDetectCurrency = async (userData) => {
     const userId = userData.id || userData._id;
     if (!userId) return;
+
+    let latest = { ...userData };
+    try {
+      const raw = localStorage.getItem('user');
+      if (raw) Object.assign(latest, JSON.parse(raw));
+    } catch {}
+
+    // Prefer currency inferred from profile time zone (auto mode) over IP — matches laptop TZ changes.
+    const fromTz = await tryUpdateCurrencyFromAutoTimeZone(latest);
+    if (fromTz) {
+      localStorage.setItem('user', JSON.stringify(fromTz));
+      setUser(fromTz);
+      return;
+    }
+    if (inferCurrencyFromIanaTimeZone(latest.timeZone) && latest.timeZoneSource !== 'manual') {
+      return; // already matches inferred TZ currency; skip IP (IP can disagree when travelling / VPN)
+    }
+
     const flagKey = `pt_cur_det_${userId}`;
     if (localStorage.getItem(flagKey)) return;
     localStorage.setItem(flagKey, '1'); // mark immediately to prevent parallel calls
@@ -215,9 +248,9 @@ export const AuthProvider = ({ children }) => {
       if (!res.ok) return;
       const code = (await res.text()).trim().toUpperCase();
       if (!SUPPORTED_CURRENCIES.includes(code)) return;
-      if (userData.currency === code) return; // already correct, skip the update
+      if (latest.currency === code) return;
       await api.updateProfile({ currency: code });
-      const updated = { ...userData, currency: code };
+      const updated = { ...latest, currency: code };
       localStorage.setItem('user', JSON.stringify(updated));
       setUser(updated);
     } catch {} // fail silently — currency detection is best-effort
@@ -238,8 +271,13 @@ export const AuthProvider = ({ children }) => {
         identifyUser(userData);
         posthog.capture('user_signed_up', { method: 'email' });
         setUser(userData);
-        void syncDeviceTimeZoneAfterAuth(userData);
-        autoDetectCurrency(userData);
+        await syncDeviceTimeZoneAfterAuth(userData);
+        try {
+          const raw = localStorage.getItem('user');
+          autoDetectCurrency(raw ? JSON.parse(raw) : userData);
+        } catch {
+          autoDetectCurrency(userData);
+        }
         return { success: true, autoLoggedIn: true };
       }
       posthog.capture('user_signed_up', { method: 'email' });
@@ -264,8 +302,13 @@ export const AuthProvider = ({ children }) => {
       identifyUser(userData);
       posthog.capture('user_logged_in', { method: 'email' });
       setUser(userData);
-      void syncDeviceTimeZoneAfterAuth(userData);
-      autoDetectCurrency(userData);
+      await syncDeviceTimeZoneAfterAuth(userData);
+      try {
+        const raw = localStorage.getItem('user');
+        autoDetectCurrency(raw ? JSON.parse(raw) : userData);
+      } catch {
+        autoDetectCurrency(userData);
+      }
       return { success: true };
     } catch (err) {
       const msg =

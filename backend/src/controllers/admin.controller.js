@@ -480,6 +480,9 @@ const getUsers = async (req, res, next) => {
         lastSeenPlatform: user.lastSeenPlatform || null,
         platformsUsed: user.platformsUsed || [],
         hasPushSubscription: pushSubscriberIds.has(uid),
+        currency: user.currency || 'INR',
+        timeZone: user.timeZone || 'UTC',
+        timeZoneSource: user.timeZoneSource ?? null,
       };
     });
 

@@ -5,6 +5,7 @@ import * as api from '../services/api';
 import CITIES_BY_STATE from '../data/indianCities';
 import { COMMON_TIME_ZONES } from '../data/commonTimeZones';
 import { getBrowserIanaTimeZone } from '../utils/browserTimeZone';
+import { tryUpdateCurrencyFromAutoTimeZone } from '../utils/currencyFromTimeZone';
 import { CURRENCIES } from '../utils/format';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import PaddleLoader from '../components/PaddleLoader';
@@ -184,7 +185,15 @@ export default function Profile() {
     setTimeZoneSaved(false);
     try {
       const res = await api.updateProfile({ timeZone: tz });
-      refreshUser(res.data.data);
+      let next = res.data.data;
+      refreshUser(next);
+      const curUpdated = await tryUpdateCurrencyFromAutoTimeZone(next);
+      if (curUpdated) {
+        refreshUser(curUpdated);
+        if (curUpdated.currency) setCurrency(curUpdated.currency);
+        setCurrencySaved(true);
+        setTimeout(() => setCurrencySaved(false), 3000);
+      }
       setTimeZoneSaved(true);
       setTimeout(() => setTimeZoneSaved(false), 3000);
     } catch {
@@ -204,7 +213,15 @@ export default function Profile() {
     setSaveError('');
     try {
       const res = await api.updateProfile({ timeZone: tz, timeZoneSource: 'auto' });
-      refreshUser(res.data.data);
+      let next = res.data.data;
+      refreshUser(next);
+      const curUpdated = await tryUpdateCurrencyFromAutoTimeZone(next);
+      if (curUpdated) {
+        refreshUser(curUpdated);
+        if (curUpdated.currency) setCurrency(curUpdated.currency);
+        setCurrencySaved(true);
+        setTimeout(() => setCurrencySaved(false), 3000);
+      }
       setTimeZone(tz);
       setTimeZoneSaved(true);
       setTimeout(() => setTimeZoneSaved(false), 3000);
@@ -465,7 +482,7 @@ export default function Profile() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5 mt-5">
             <p className="text-sm font-bold text-gray-900 mb-0.5">Currency</p>
             <p className="text-xs text-gray-400 mb-4">
-              All money amounts across the app will be shown in your chosen currency.
+              All money amounts use your chosen currency. With time zone on &quot;auto&quot;, we also suggest a matching currency when you reload or sign in (America → USD, India → INR, etc.). Your network location is only used if the time zone does not imply a currency.
             </p>
             <div className="grid grid-cols-3 gap-2">
               {CURRENCIES.map((c) => (

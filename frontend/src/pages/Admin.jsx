@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
-import { formatCurrency } from '../utils/format';
+import { formatCurrency, CURRENCIES } from '../utils/format';
 import useCurrency from '../hooks/useCurrency';
 import { deleteAdminUser, broadcastEmail as apiBroadcastEmail } from '../services/api';
 import AdminUserCalendar from '../components/AdminUserCalendar';
@@ -139,6 +139,20 @@ const PRODUCT_CONTEXT_ITEMS = [
       '1) Make logging fast on mobile. 2) Keep reminders useful without spam. 3) Help users understand true P&L. 4) Improve retention through streak-like habit loops (calendar, nudges, summary views). 5) Reduce confusion with clear UI actions.',
   },
 ];
+
+/** Each user's stored amounts are in their profile currency — not the admin viewer's. */
+function adminUserCurrency(u) {
+  const code = u?.currency;
+  if (code && CURRENCIES.some((c) => c.code === code)) return code;
+  return 'INR';
+}
+
+function timeZoneSourceLabel(src, ianaTz) {
+  if (src === 'manual') return 'Manual';
+  if (src === 'auto') return 'Device';
+  if (ianaTz && ianaTz !== 'UTC') return 'Profile (legacy)';
+  return 'Default';
+}
 
 function timeAgo(date) {
   const diff = Math.floor((Date.now() - new Date(date)) / 1000);
@@ -439,12 +453,13 @@ export default function Admin() {
           label="Revenue"
           value={formatCurrency(stats.totalRevenueTracked, currency)}
           color="text-green-700"
+          sub="sum of raw amounts · mixed currencies"
         />
       </div>
       <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3">
         <StatCard label="Sessions" value={stats.totalSessions} color="text-blue-600" sub="all users" />
-        <StatCard label="Gear Spend" value={formatCurrency(stats.totalGearSpend, currency)} color="text-purple-600" sub="all gear" />
-        <StatCard label="Travel" value={formatCurrency(stats.totalTravelSpend, currency)} color="text-orange-600" sub="all travel" />
+        <StatCard label="Gear Spend" value={formatCurrency(stats.totalGearSpend, currency)} color="text-purple-600" sub="all users · mixed currencies" />
+        <StatCard label="Travel" value={formatCurrency(stats.totalTravelSpend, currency)} color="text-orange-600" sub="all users · mixed currencies" />
       </div>
 
       {/* Platform breakdown */}
@@ -754,7 +769,7 @@ export default function Admin() {
                   <div className="flex items-center gap-3 mt-0.5 sm:hidden">
                     <span className="text-xs text-gray-500">{u.tournamentCount} events</span>
                     <span className={`text-xs font-semibold ${u.totalProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                      {formatCurrency(u.totalProfit, currency)}
+                      {formatCurrency(u.totalProfit, adminUserCurrency(u))}
                     </span>
                     <span className={`flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${st.badge}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
@@ -782,10 +797,13 @@ export default function Admin() {
                 </div>
 
                 {/* Profit — hidden on mobile */}
-                <div className="hidden sm:block text-xs text-right flex-shrink-0 w-20">
+                <div className="hidden sm:block text-xs text-right flex-shrink-0 w-24">
                   <p className="text-gray-500 font-medium">Net Profit</p>
                   <p className={`font-bold ${u.totalProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                    {formatCurrency(u.totalProfit, currency)}
+                    {formatCurrency(u.totalProfit, adminUserCurrency(u))}
+                  </p>
+                  <p className="text-[10px] text-gray-400 truncate max-w-[5.5rem] ml-auto" title={`${u.timeZone || 'UTC'} · ${timeZoneSourceLabel(u.timeZoneSource, u.timeZone)}`}>
+                    {adminUserCurrency(u)}
                   </p>
                 </div>
 
@@ -825,6 +843,28 @@ export default function Admin() {
               {/* Expanded detail */}
               {isExpanded && (
                 <div className="border-t border-gray-100 px-4 py-4 bg-gray-50">
+                  <div className="mb-4 rounded-xl border border-gray-200 bg-white px-3 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">Time zone</p>
+                      <p className="font-mono text-gray-900 truncate" title={u.timeZone || 'UTC'}>{u.timeZone || 'UTC'}</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Source: <span className="font-medium text-gray-700">{timeZoneSourceLabel(u.timeZoneSource, u.timeZone)}</span>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 sm:flex-shrink-0">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide sm:hidden">Currency</p>
+                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1.5">
+                        <span className="text-lg leading-none">{CURRENCIES.find((c) => c.code === adminUserCurrency(u))?.flag || '💱'}</span>
+                        <span>
+                          <span className="font-bold text-gray-900">{adminUserCurrency(u)}</span>
+                          <span className="text-gray-500 hidden sm:inline">
+                            {' · '}{CURRENCIES.find((c) => c.code === adminUserCurrency(u))?.label || 'Display'}
+                          </span>
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
                     {/* Col 1: Activity */}
@@ -905,7 +945,7 @@ export default function Admin() {
                         {u.totalCourtFees > 0 && (
                           <div className="flex justify-between">
                             <span>Court fees</span>
-                            <span className="font-medium text-red-500">{formatCurrency(u.totalCourtFees, currency)}</span>
+                            <span className="font-medium text-red-500">{formatCurrency(u.totalCourtFees, adminUserCurrency(u))}</span>
                           </div>
                         )}
                         {u.topSkills?.length > 0 && (
@@ -923,20 +963,21 @@ export default function Admin() {
 
                     {/* Col 2: Financials + Expenses */}
                     <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Financials</p>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-0.5">Financials</p>
+                      <p className="text-[10px] text-gray-400 mb-2">All amounts in {adminUserCurrency(u)}</p>
                       <div className="space-y-1.5 text-xs text-gray-600">
                         <div className="flex justify-between">
                           <span>Total earnings</span>
-                          <span className="font-medium text-green-600">{formatCurrency(u.totalEarnings, currency)}</span>
+                          <span className="font-medium text-green-600">{formatCurrency(u.totalEarnings, adminUserCurrency(u))}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Entry fees</span>
-                          <span className="font-medium text-red-500">{formatCurrency(u.totalExpenses, currency)}</span>
+                          <span className="font-medium text-red-500">{formatCurrency(u.totalExpenses, adminUserCurrency(u))}</span>
                         </div>
                         <div className="flex justify-between">
                           <span>Net profit</span>
                           <span className={`font-bold ${u.totalProfit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                            {formatCurrency(u.totalProfit, currency)}
+                            {formatCurrency(u.totalProfit, adminUserCurrency(u))}
                           </span>
                         </div>
                       </div>
@@ -949,7 +990,7 @@ export default function Admin() {
                         </div>
                         <div className="flex justify-between">
                           <span>Total spent</span>
-                          <span className="font-medium text-purple-600">{formatCurrency(u.totalGearSpend ?? 0, currency)}</span>
+                          <span className="font-medium text-purple-600">{formatCurrency(u.totalGearSpend ?? 0, adminUserCurrency(u))}</span>
                         </div>
                       </div>
 
@@ -961,7 +1002,7 @@ export default function Admin() {
                         </div>
                         <div className="flex justify-between">
                           <span>Total spent</span>
-                          <span className="font-medium text-orange-600">{formatCurrency(u.totalTravelSpend ?? 0, currency)}</span>
+                          <span className="font-medium text-orange-600">{formatCurrency(u.totalTravelSpend ?? 0, adminUserCurrency(u))}</span>
                         </div>
                         {(u.internationalTripCount ?? 0) > 0 && (
                           <div className="flex justify-between">
@@ -1005,7 +1046,7 @@ export default function Admin() {
                                 <p className="text-xs text-gray-400">{t.categoryCount} {t.categoryCount === 1 ? 'cat' : 'cats'}</p>
                               </div>
                               <span className={`text-xs font-semibold flex-shrink-0 ml-2 ${t.profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                {t.profit >= 0 ? '+' : ''}{formatCurrency(t.profit, currency)}
+                                {t.profit >= 0 ? '+' : ''}{formatCurrency(t.profit, adminUserCurrency(u))}
                               </span>
                             </div>
                           ))}

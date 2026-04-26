@@ -1,7 +1,11 @@
 import { Link, Navigate } from 'react-router-dom';
+import { useMemo } from 'react';
 import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import LandingTournamentForm from '../components/LandingTournamentForm';
+import { getBrowserIanaTimeZone } from '../utils/browserTimeZone';
+import { inferCurrencyFromIanaTimeZone, isSupportedCurrency } from '../utils/currencyFromTimeZone';
+import { formatCurrency } from '../utils/format';
 
 /* ─── Icons ──────────────────────────────────────────────────── */
 const IconChart = () => (
@@ -53,12 +57,19 @@ const ArrowRight = () => (
   </svg>
 );
 
+/** Sample amounts for the hero mockup; currency comes from browser TZ when inferable (else USD). */
+function landingDemoCurrencyCode() {
+  const inferred = inferCurrencyFromIanaTimeZone(getBrowserIanaTimeZone());
+  return isSupportedCurrency(inferred) ? inferred : 'USD';
+}
+
 /* ─── App Dashboard Mockup ───────────────────────────────────── */
-const AppMockup = () => {
+const AppMockup = ({ currency }) => {
+  const fmt = (amount) => formatCurrency(amount, currency);
   const tournaments = [
-    { name: 'City Open', cat: "Men's Singles", profit: '+₹2,000', pos: true },
-    { name: 'Club Championship', cat: 'Mixed Doubles', profit: '+₹1,200', pos: true },
-    { name: 'Weekend Cup', cat: "Men's Doubles", profit: '−₹500', pos: false },
+    { name: 'City Open', cat: "Men's Singles", profit: 2000, pos: true },
+    { name: 'Club Championship', cat: 'Mixed Doubles', profit: 1200, pos: true },
+    { name: 'Weekend Cup', cat: "Men's Doubles", profit: -500, pos: false },
   ];
 
   return (
@@ -79,7 +90,7 @@ const AppMockup = () => {
         <div className="bg-[#1c350a] rounded-xl p-4 mb-3 relative overflow-hidden">
           <div className="absolute -right-4 -top-4 w-16 h-16 bg-[#91BE4D] opacity-10 rounded-full" />
           <p className="text-[11px] text-[#91BE4D] font-semibold mb-0.5">Net Profit — This Month</p>
-          <p className="text-[2rem] font-black text-white leading-none">+₹4,200</p>
+          <p className="text-[2rem] font-black text-white leading-none">+{fmt(4200)}</p>
           <div className="flex items-center gap-1 mt-1.5">
             <svg className="w-3 h-3 text-[#91BE4D]" fill="none" viewBox="0 0 12 12">
               <path d="M2 8l4-4 4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -91,8 +102,8 @@ const AppMockup = () => {
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-2 mb-3">
           {[
-            { label: 'Entry paid', value: '₹1,500', color: 'text-gray-700' },
-            { label: 'Prizes won', value: '₹5,700', color: 'text-green-600' },
+            { label: 'Entry paid', value: fmt(1500), color: 'text-gray-700' },
+            { label: 'Prizes won', value: fmt(5700), color: 'text-green-600' },
             { label: 'Played', value: '3', color: 'text-gray-700' },
           ].map(s => (
             <div key={s.label} className="bg-gray-50 rounded-lg p-2 text-center">
@@ -112,7 +123,7 @@ const AppMockup = () => {
                 <p className="text-[10px] text-gray-400">{t.cat}</p>
               </div>
               <span className={`text-[11px] font-bold flex-shrink-0 ${t.pos ? 'text-green-600' : 'text-red-500'}`}>
-                {t.profit}
+                {t.profit >= 0 ? '+' : '−'}{fmt(Math.abs(t.profit))}
               </span>
             </div>
           ))}
@@ -141,6 +152,7 @@ const PainCard = ({ number, question, detail }) => (
 /* ─── Landing Page ─────────────────────────────────────────── */
 export default function Landing() {
   const { user, authInitializing } = useAuth();
+  const demoCurrency = useMemo(() => landingDemoCurrencyCode(), []);
   const year = new Date().getFullYear();
   const supportEmail = 'pickletracker.app@gmail.com';
   const instagramUrl = 'https://www.instagram.com/pickletracker/';
@@ -229,7 +241,7 @@ export default function Landing() {
 
               {/* App mockup */}
               <div className="hidden lg:flex flex-shrink-0">
-                <AppMockup />
+                <AppMockup currency={demoCurrency} />
               </div>
 
             </div>
