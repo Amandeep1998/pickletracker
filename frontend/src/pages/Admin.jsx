@@ -40,34 +40,58 @@ const STORY_TYPE_STYLES = {
 
 const AUTOMATION_ROWS = [
   {
-    type: 'Email reminder',
-    trigger: 'Daily at 08:00 IST',
-    purpose: 'Tournament reminder for upcoming events',
-    source: 'node-cron',
+    type: 'Email',
+    badge: 'Reminder',
+    badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
+    trigger: 'Daily · ~08:00 user local time',
+    purpose: 'Tournament reminder — upcoming events within the next few days',
+    job: 'morningEmailJobs',
+    channel: 'Resend',
   },
   {
-    type: 'Email reminder',
-    trigger: 'Daily at 08:00 IST',
-    purpose: 'Result nudge to fill medals/results for played events',
-    source: 'node-cron',
+    type: 'Email',
+    badge: 'Nudge',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+    trigger: 'Daily · ~08:00 user local time',
+    purpose: 'Result nudge — prompts user to fill in medals/results for past events',
+    job: 'morningEmailJobs',
+    channel: 'Resend',
   },
   {
-    type: 'Email digest',
-    trigger: 'Weekly at 08:00 IST (Monday)',
-    purpose: 'Weekly summary of activity and finances',
-    source: 'node-cron',
+    type: 'Email',
+    badge: 'Nudge',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+    trigger: 'Daily · 10:00 IST',
+    purpose: 'Inactive user nudge — re-engages users with no activity in 3 or 7 days',
+    job: 'inactiveUserNudge',
+    channel: 'Resend',
   },
   {
-    type: 'Email digest',
-    trigger: 'Monthly at 08:00 IST (1st day)',
-    purpose: 'Monthly P&L report and tracking summary',
-    source: 'node-cron',
+    type: 'Email',
+    badge: 'Digest',
+    badgeColor: 'bg-violet-50 text-violet-700 border-violet-200',
+    trigger: 'Every Monday · 08:00 IST',
+    purpose: 'Weekly summary — activity recap and net P&L for the past 7 days',
+    job: 'weeklySummary',
+    channel: 'Resend',
   },
   {
-    type: 'Push notification',
-    trigger: 'Daily around 19:00 IST',
-    purpose: 'Evening engagement reminder for subscribed devices',
-    source: 'push scheduler',
+    type: 'Email',
+    badge: 'Digest',
+    badgeColor: 'bg-violet-50 text-violet-700 border-violet-200',
+    trigger: '1st of month · 08:00 IST',
+    purpose: 'Monthly P&L report — full financial summary for the previous month',
+    job: 'monthlyPnl',
+    channel: 'Resend',
+  },
+  {
+    type: 'Push',
+    badge: 'Notification',
+    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    trigger: 'Daily · 19:00 & 23:30 user local time',
+    purpose: 'Evening engagement — reminder for subscribed PWA devices',
+    job: 'pushReminder',
+    channel: 'Web Push',
   },
 ];
 
@@ -1238,25 +1262,37 @@ export default function Admin() {
               {ideasTab === 'automations' && (
                 <div className="space-y-3">
                   <p className="text-sm text-gray-600">
-                    Quick reference of currently configured reminders/notifications so planning stays aligned.
+                    All active automated jobs — {AUTOMATION_ROWS.length} configured. Times marked "user local" fire per-user timezone; others are fixed IST.
                   </p>
                   <div className="overflow-x-auto border border-gray-200 rounded-xl">
                     <table className="min-w-full divide-y divide-gray-200 text-sm">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Type</th>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Trigger Time</th>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Purpose</th>
-                          <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide">Source</th>
+                          <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Channel</th>
+                          <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Kind</th>
+                          <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Trigger</th>
+                          <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide">Purpose</th>
+                          <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Job file</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 bg-white">
                         {AUTOMATION_ROWS.map((row) => (
-                          <tr key={`${row.type}-${row.trigger}-${row.purpose}`}>
-                            <td className="px-3 py-2 text-gray-900">{row.type}</td>
-                            <td className="px-3 py-2 text-gray-700">{row.trigger}</td>
-                            <td className="px-3 py-2 text-gray-700">{row.purpose}</td>
-                            <td className="px-3 py-2 text-gray-500">{row.source}</td>
+                          <tr key={`${row.job}-${row.badge}`} className="hover:bg-gray-50/60">
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full border ${row.type === 'Push' ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-sky-50 text-sky-700 border-sky-200'}`}>
+                                {row.type === 'Push' ? '📲' : '✉️'} {row.channel}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${row.badgeColor}`}>
+                                {row.badge}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">{row.trigger}</td>
+                            <td className="px-4 py-3 text-xs text-gray-700">{row.purpose}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <code className="text-[11px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-mono">{row.job}</code>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
