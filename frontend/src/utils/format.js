@@ -36,6 +36,13 @@ export const CATEGORIES = [
   "Women's Doubles",
   "Mixed Doubles",
 
+  // ── Pro ───────────────────────────────────────────────────────────────────
+  "Pro Men's Singles",
+  "Pro Women's Singles",
+  "Pro Men's Doubles",
+  "Pro Women's Doubles",
+  "Pro Mixed Doubles",
+
   // ── Beginner ──────────────────────────────────────────────────────────────
   "Beginner Singles",
   "Beginner Men's Singles",

@@ -3,6 +3,7 @@ const pdfParse = require('pdf-parse');
 
 const CATEGORIES = [
   "Men's Singles Open", "Women's Singles", "Men's Doubles Open", "Women's Doubles", "Mixed Doubles",
+  "Pro Men's Singles", "Pro Women's Singles", "Pro Men's Doubles", "Pro Women's Doubles", "Pro Mixed Doubles",
   "Beginner Singles", "Beginner Men's Singles", "Beginner Women's Singles",
   "Beginner Doubles", "Beginner Men's Doubles", "Beginner Women's Doubles", "Beginner Mixed Doubles",
   "Intermediate Singles", "Intermediate Men's Singles", "Intermediate Women's Singles",
@@ -57,6 +58,7 @@ LOCATION:
 CATEGORIES (one entry per ticket/registration line):
 - categoryName: Map the ticket description to the closest valid category name.
   Common mappings: "Mens Doubles" → "Men's Doubles Open", "Intermediate Mens Doubles" → "Intermediate Men's Doubles",
+  "Pro Mens Singles" → "Pro Men's Singles", "Pro Mixed" → "Pro Mixed Doubles",
   "MD" → "Men's Doubles Open", "WD" → "Women's Doubles", "MXD" → "Mixed Doubles".
   If ambiguous, set null and add an ambiguity entry.
 - date: Use the event date (not invoice date unless that's all that's available). Format: YYYY-MM-DD.

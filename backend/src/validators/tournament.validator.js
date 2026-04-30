@@ -3,6 +3,8 @@ const Joi = require('joi');
 const CATEGORIES = [
   // Open
   "Men's Singles Open", "Women's Singles", "Men's Doubles Open", "Women's Doubles", "Mixed Doubles",
+  // Pro
+  "Pro Men's Singles", "Pro Women's Singles", "Pro Men's Doubles", "Pro Women's Doubles", "Pro Mixed Doubles",
   // Beginner
   "Beginner Singles", "Beginner Men's Singles", "Beginner Women's Singles",
   "Beginner Doubles", "Beginner Men's Doubles", "Beginner Women's Doubles", "Beginner Mixed Doubles",

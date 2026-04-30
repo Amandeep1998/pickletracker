@@ -3,6 +3,8 @@ const OpenAI = require('openai');
 const CATEGORIES = [
   // Open
   "Men's Singles Open", "Women's Singles", "Men's Doubles Open", "Women's Doubles", "Mixed Doubles",
+  // Pro
+  "Pro Men's Singles", "Pro Women's Singles", "Pro Men's Doubles", "Pro Women's Doubles", "Pro Mixed Doubles",
   // Beginner
   "Beginner Singles", "Beginner Men's Singles", "Beginner Women's Singles",
   "Beginner Doubles", "Beginner Men's Doubles", "Beginner Women's Doubles", "Beginner Mixed Doubles",
@@ -111,6 +113,11 @@ The user may describe one or more categories they played in. For each, extract:
    - "advanced men's doubles" / "advanced doubles men" → "Advanced Men's Doubles"
    - "advanced women's doubles" / "advanced doubles women" → "Advanced Women's Doubles"
    - "advanced mixed" / "advanced mixed doubles" → "Advanced Mixed Doubles"
+   - "pro men's singles" / "pro men singles" → "Pro Men's Singles"
+   - "pro women's singles" / "pro women singles" → "Pro Women's Singles"
+   - "pro men's doubles" / "pro men doubles" → "Pro Men's Doubles"
+   - "pro women's doubles" / "pro women doubles" → "Pro Women's Doubles"
+   - "pro mixed" / "pro mixed doubles" → "Pro Mixed Doubles"
    - "men's singles" / "open singles" / "men's singles open" → "Men's Singles Open"
    - "men's doubles" / "open doubles" / "men's doubles open" → "Men's Doubles Open"
    - "women's singles" (no age) → "Women's Singles"
