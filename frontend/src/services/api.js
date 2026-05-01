@@ -87,6 +87,17 @@ export const createSession = (data) => api.post('/sessions', data);
 export const updateSession = (id, data) => api.put(`/sessions/${id}`, data);
 export const deleteSession = (id) => api.delete(`/sessions/${id}`);
 
+// Community Feed
+export const getFeed = () => api.get('/feed');
+export const toggleFeedLike = (tournamentId) => api.post(`/feed/${tournamentId}/like`);
+export const getFeedComments = (tournamentId) => api.get(`/feed/${tournamentId}/comments`);
+export const addFeedComment = (tournamentId, text) => api.post(`/feed/${tournamentId}/comments`, { text });
+export const deleteFeedComment = (tournamentId, commentId) => api.delete(`/feed/${tournamentId}/comments/${commentId}`);
+
+// Feed notifications
+export const getFeedNotifications = () => api.get('/feed/notifications');
+export const markFeedNotificationsRead = () => api.put('/feed/notifications/read-all');
+
 // Players / Community
 export const getPlayers = (params) => api.get('/players', { params });
 export const getPlayer = (id) => api.get(`/players/${id}`);

@@ -96,7 +96,7 @@ export default function Landing() {
     );
   }
 
-  if (user) return <Navigate to="/calendar" replace />;
+  if (user) return <Navigate to="/home" replace />;
 
   return (
     <div className="min-h-screen flex flex-col bg-white" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>

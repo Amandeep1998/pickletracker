@@ -19,7 +19,7 @@ export default function Login() {
   const [forgotMsg, setForgotMsg] = useState('');
 
   useEffect(() => {
-    if (user) navigate('/calendar', { replace: true });
+    if (user) navigate('/home', { replace: true });
   }, [user, navigate]);
 
   const handleChange = (e) => {
@@ -48,7 +48,7 @@ export default function Login() {
     clearError();
     const result = await handleLogin(form);
     if (result.success) {
-      navigate('/calendar');
+      navigate('/home');
     } else {
       setError(result.message);
     }
@@ -88,7 +88,7 @@ export default function Login() {
               <div className="border-2 border-[#91BE4D]/40 rounded-xl pt-4 pb-2 px-2 bg-[#f4f8e8]/50">
                 <GoogleSignInButton
                   onBegin={() => { setError(''); clearError(); }}
-                  onSuccess={() => navigate('/calendar')}
+                  onSuccess={() => navigate('/home')}
                 />
               </div>
             </div>

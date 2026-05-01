@@ -91,6 +91,7 @@ export default function MobileMenu({ onOpenLocationModal }) {
         {/* Nav Links — scrollable, with fade hint at bottom */}
         <div className="relative flex-1 min-h-0">
           <nav className="h-full overflow-y-auto pt-2 pb-2 space-y-0.5">
+            <NavLink to="/home"        className={navLinkClass} onClick={() => setIsOpen(false)}>Home</NavLink>
             <NavLink to="/dashboard"   className={navLinkClass} onClick={() => setIsOpen(false)}>Dashboard</NavLink>
             <NavLink to="/tournaments" className={navLinkClass} onClick={() => setIsOpen(false)}>Tournaments</NavLink>
             <NavLink to="/calendar"    className={navLinkClass} onClick={() => setIsOpen(false)}>Calendar</NavLink>

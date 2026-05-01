@@ -59,7 +59,7 @@ export default function Signup() {
   const strength = useMemo(() => evaluatePasswordStrength(form.password), [form.password]);
 
   useEffect(() => {
-    if (user) navigate('/calendar', { replace: true });
+    if (user) navigate('/home', { replace: true });
   }, [user, navigate]);
 
   const handleChange = (e) => {
@@ -75,8 +75,8 @@ export default function Signup() {
     const result = await handleSignup(form);
     if (result.success) {
       if (result.autoLoggedIn) {
-        // Context has set `user`; the effect above will navigate to /calendar.
-        setSuccess('Welcome! Taking you to your calendar…');
+        // Context has set `user`; the effect above will navigate to /home.
+        setSuccess('Welcome! Taking you to your feed…');
       } else {
         // Legacy fallback: backend didn't auto-login, send them to /login.
         setSuccess('Account created! Redirecting to login…');
@@ -129,7 +129,7 @@ export default function Signup() {
                     setError('');
                     clearError();
                   }}
-                  onSuccess={() => navigate('/calendar')}
+                  onSuccess={() => navigate('/home')}
                 />
               </div>
             </div>

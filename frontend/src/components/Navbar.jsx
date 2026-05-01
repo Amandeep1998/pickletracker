@@ -6,6 +6,7 @@ import MobileMenu from './MobileMenu';
 import BrandLogo from './BrandLogo';
 import LocationModal from './LocationModal';
 import InstallAppButton from './InstallAppButton';
+import NotificationBell from './NotificationBell';
 
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAIL || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
 
@@ -38,13 +39,14 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between">
 
         {/* Brand */}
-        <NavLink to="/dashboard" className="flex-shrink-0">
+        <NavLink to="/home" className="flex-shrink-0">
           <span className="sm:hidden"><BrandLogo size="md" /></span>
           <span className="hidden sm:inline"><BrandLogo size="lg" /></span>
         </NavLink>
 
         {/* Desktop Links */}
         <div className="hidden md:flex items-center gap-3 lg:gap-5 ml-6 lg:ml-10">
+          <NavLink to="/home"        className={linkClass}>Home</NavLink>
           <NavLink to="/dashboard"   className={linkClass}>Dashboard</NavLink>
           <NavLink to="/tournaments" className={linkClass}>Tournaments</NavLink>
           <NavLink to="/calendar"    className={linkClass}>Calendar</NavLink>
@@ -87,6 +89,7 @@ export default function Navbar() {
             </svg>
           </button>
 
+          <NotificationBell />
           <InstallAppButton />
           <NavLink
             to="/profile"
@@ -113,8 +116,9 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Mobile: avatar + hamburger */}
+        {/* Mobile: avatar + bell + hamburger */}
         <div className="md:hidden flex items-center gap-2">
+          <NotificationBell />
           <NavLink to="/profile" className="flex-shrink-0">
             {user?.profilePhoto
               ? <img src={user.profilePhoto} alt={user.name} className="w-8 h-8 rounded-full object-cover ring-2 ring-[#91BE4D]/40" />

@@ -175,6 +175,26 @@ const runPushResultReminders = async () => {
   return sent;
 };
 
+// ── Shared utility: send push to a single user ───────────────────────────────
+
+const sendPushToUser = async (userId, payload) => {
+  const subs = await PushSubscription.find({ userId }).lean();
+  for (const sub of subs) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: sub.keys },
+        JSON.stringify(payload)
+      );
+    } catch (err) {
+      if (err.statusCode === 410 || err.statusCode === 404) {
+        await PushSubscription.deleteOne({ _id: sub._id }).catch(() => {});
+      }
+    }
+  }
+};
+
+exports.sendPushToUser = sendPushToUser;
+
 exports.runPushReminders = runPushReminders;
 exports.runPushResultReminders = runPushResultReminders;
 
