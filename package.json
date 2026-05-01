@@ -1,0 +1,9 @@
+{
+  "name": "pickletracker",
+  "private": true,
+  "description": "Monorepo root. Render: from repo root use npm run render:install:backend then npm run render:start:backend. If Root Directory is backend/, use: node ../scripts/render-npm-ci-backend.cjs and npm start.",
+  "scripts": {
+    "render:install:backend": "node scripts/render-npm-ci-backend.cjs",
+    "render:start:backend": "npm start --prefix backend"
+  }
+}
