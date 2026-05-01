@@ -12,6 +12,8 @@ import { getMapUrl } from '../utils/mapUrl';
 import PaddleLoader from '../components/PaddleLoader';
 import OnboardingWizard from '../components/OnboardingWizard';
 import { buildVideoUrl } from '../utils/pickleVideo';
+import Modal from '../components/Modal';
+import { deleteTournamentFromCalendar, isCalendarConnected } from '../services/googleCalendar';
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -80,6 +82,8 @@ export default function Calendar() {
 
   // Edit session modal — opened by tapping a session card in the day popup
   const [editSessionModal, setEditSessionModal] = useState({ open: false, session: null });
+  const [deleteTournamentConfirmOpen, setDeleteTournamentConfirmOpen] = useState(false);
+  const [deleteSessionConfirmOpen, setDeleteSessionConfirmOpen] = useState(false);
 
   // Floating action button (speed-dial) state
   const [fabOpen, setFabOpen] = useState(false);
@@ -497,6 +501,26 @@ export default function Calendar() {
     }
   };
 
+  const confirmDeleteTournament = async () => {
+    if (!selectedTournament?._id) return;
+    setFormLoading(true);
+    setFormError('');
+    try {
+      if (isCalendarConnected()) {
+        await deleteTournamentFromCalendar(selectedTournament).catch(() => {});
+      }
+      await api.deleteTournament(selectedTournament._id);
+      setDeleteTournamentConfirmOpen(false);
+      setIsEditing(false);
+      setSelectedTournament(null);
+      await fetchTournaments();
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'Failed to delete tournament');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   // ── Session CRUD ──
   const handleAddSession = async (data) => {
     setSessionFormLoading(true);
@@ -550,15 +574,14 @@ export default function Calendar() {
     }
   };
 
-  const handleDeleteSession = async () => {
+  const executeDeleteSession = async () => {
     const id = editSessionModal.session?._id;
     if (!id) return;
-    const ok = typeof window !== 'undefined' ? window.confirm('Delete this session? This cannot be undone.') : true;
-    if (!ok) return;
     setSessionFormLoading(true);
     setSessionFormError('');
     try {
       await api.deleteSession(id);
+      setDeleteSessionConfirmOpen(false);
       setEditSessionModal({ open: false, session: null });
       await fetchData();
     } catch (err) {
@@ -1375,7 +1398,7 @@ export default function Calendar() {
               <div className="mt-4 pt-4 border-t border-gray-100">
                 <button
                   type="button"
-                  onClick={handleDeleteSession}
+                  onClick={() => setDeleteSessionConfirmOpen(true)}
                   disabled={sessionFormLoading}
                   className="w-full text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 rounded-xl py-2.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -1640,6 +1663,10 @@ export default function Calendar() {
                 onSubmit={handleEditTournament}
                 onCancel={() => setIsEditing(false)}
                 loading={formLoading}
+                onDelete={() => {
+                  setFormError('');
+                  setDeleteTournamentConfirmOpen(true);
+                }}
               />
             </div>
           </div>
@@ -1719,6 +1746,71 @@ export default function Calendar() {
           onClose={() => setShareModalOpen(false)}
         />
       )}
+
+      <Modal
+        isOpen={deleteTournamentConfirmOpen}
+        onClose={() => !formLoading && setDeleteTournamentConfirmOpen(false)}
+        title="Delete tournament"
+      >
+        <div className="py-2">
+          <p className="text-sm text-gray-700 mb-1">
+            Permanently delete{' '}
+            <span className="font-semibold text-gray-900">{selectedTournament?.name || 'this tournament'}</span>
+            ? This cannot be undone.
+          </p>
+          {formError && (
+            <p className="text-sm text-red-600 mt-2">{formError}</p>
+          )}
+          <div className="flex gap-3 justify-end mt-6">
+            <button
+              type="button"
+              onClick={() => setDeleteTournamentConfirmOpen(false)}
+              disabled={formLoading}
+              className="text-sm text-gray-600 hover:text-gray-800 font-medium px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteTournament}
+              disabled={formLoading}
+              className="text-sm bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition disabled:opacity-60"
+            >
+              {formLoading ? 'Deleting…' : 'Delete tournament'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={deleteSessionConfirmOpen}
+        onClose={() => !sessionFormLoading && setDeleteSessionConfirmOpen(false)}
+        title="Delete session"
+      >
+        <div className="py-2">
+          <p className="text-sm text-gray-700 mb-1">
+            Delete this session from your calendar? This cannot be undone.
+          </p>
+          <div className="flex gap-3 justify-end mt-6">
+            <button
+              type="button"
+              onClick={() => setDeleteSessionConfirmOpen(false)}
+              disabled={sessionFormLoading}
+              className="text-sm text-gray-600 hover:text-gray-800 font-medium px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={executeDeleteSession}
+              disabled={sessionFormLoading}
+              className="text-sm bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition disabled:opacity-60"
+            >
+              {sessionFormLoading ? 'Deleting…' : 'Delete session'}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
     </div>
   );

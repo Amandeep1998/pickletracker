@@ -892,6 +892,7 @@ export default function Players() {
           playerId={selectedId}
           onClose={() => setSelectedId(null)}
           onSendFriendRequest={handleSendFriendRequest}
+          onRemoveFriend={handleRemoveFriend}
           friendState={friendStatusByUserId[String(selectedId)] || 'none'}
           currentUserId={user?.id}
         />

@@ -89,7 +89,7 @@ function toInputDateStr(value) {
   return s.length >= 10 ? s.slice(0, 10) : s;
 }
 
-export default function TournamentForm({ initial, onSubmit, onCancel, loading }) {
+export default function TournamentForm({ initial, onSubmit, onCancel, loading, onDelete }) {
   const currency = useCurrency();
   const symbol = getCurrencySymbol(currency);
   const [form, setForm] = useState(() => getEmptyForm());
@@ -742,10 +742,10 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
         <div className="space-y-5">
           <div>
             <h3 className="text-sm font-bold text-gray-800">Extras</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Optional — location and travel costs</p>
+            <p className="text-xs text-gray-500 mt-0.5">Optional — court location and travel costs</p>
           </div>
 
-          {/* Location */}
+          {/* Court location */}
           <div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -753,7 +753,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span className="text-xs sm:text-sm font-semibold text-gray-700">Location</span>
+                <span className="text-xs sm:text-sm font-semibold text-gray-700">Court location</span>
                 <span className="text-xs text-gray-400 font-normal">(optional)</span>
               </div>
               <div className="flex items-center gap-2">
@@ -973,6 +973,16 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading })
             className="w-full text-xs text-gray-400 hover:text-gray-600 py-1 transition-colors"
           >
             Cancel
+          </button>
+        )}
+
+        {initial?._id && onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="w-full mt-1 text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 rounded-xl py-2.5 transition-colors"
+          >
+            Delete tournament
           </button>
         )}
       </div>

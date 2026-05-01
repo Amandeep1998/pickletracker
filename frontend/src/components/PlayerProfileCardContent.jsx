@@ -58,18 +58,23 @@ export default function PlayerProfileCardContent({
   friendState = 'none',
   sending = false,
   onFriendClick,
+  onRemoveFriend,
   onOpenFriendCalendar,
   showCloseButton = false,
   onClose,
   isOwnProfile = false,
+  forExport = false,
+  /** Shown to the right of the player name (e.g. Share in profile modal). Hidden when forExport. */
+  nameAction = null,
 }) {
   const historyRows = useMemo(() => {
     if (!player?.achievements?.length) return [];
-    return [...player.achievements]
+    const sorted = [...player.achievements]
       .filter((a) => a.medal && a.medal !== 'None')
-      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
-      .slice(0, 18);
-  }, [player]);
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    if (forExport) return sorted;
+    return sorted.slice(0, 18);
+  }, [player, forExport]);
 
   const bannerTitle = profileBannerTitle(player?.totalMedals || 0);
   const firstName = (player?.name || 'Player').split(' ')[0];
@@ -77,8 +82,16 @@ export default function PlayerProfileCardContent({
   if (!player) return null;
 
   return (
-    <div className="flex flex-col min-h-0 h-full min-w-0 overflow-x-hidden">
-      <div className="relative shrink-0 bg-[#1e3a5f] text-white text-center py-2.5 sm:py-3.5 px-10 sm:px-12 shadow-md">
+    <div
+      className={`flex flex-col min-w-0 overflow-x-hidden ${forExport ? '' : 'min-h-0 h-full'}`}
+    >
+      <div
+        className={
+          forExport
+            ? 'relative shrink-0 bg-[#1e3a5f] text-white text-center py-1.5 px-6 shadow-md'
+            : 'relative shrink-0 bg-[#1e3a5f] text-white text-center py-2.5 sm:py-3.5 px-10 sm:px-12 shadow-md'
+        }
+      >
         {showCloseButton && onClose && (
           <button
             type="button"
@@ -91,19 +104,51 @@ export default function PlayerProfileCardContent({
             </svg>
           </button>
         )}
-        <p className="text-[11px] sm:text-xs font-black tracking-[0.22em] uppercase leading-snug">{bannerTitle}</p>
+        <p
+          className={
+            forExport
+              ? 'text-[9px] font-black tracking-[0.18em] uppercase leading-snug px-8'
+              : 'text-[11px] sm:text-xs font-black tracking-[0.22em] uppercase leading-snug'
+          }
+        >
+          {bannerTitle}
+        </p>
       </div>
 
-      <div className="overflow-y-auto flex-1 min-h-0">
-        <div className="bg-white border-b border-gray-200 px-3 py-2.5 sm:px-4 sm:py-4 min-w-0">
-          <div className="flex gap-2.5 sm:gap-4 min-w-0">
-            {/* Narrower / shorter on mobile so tournament history sits higher in the modal */}
-            <div className="w-[72px] h-[96px] sm:w-[34%] sm:max-w-[130px] sm:h-auto shrink-0">
-              <div className="h-full w-full sm:aspect-[3/4] rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shadow-inner">
+      <div className={forExport ? 'overflow-visible' : 'overflow-y-auto flex-1 min-h-0'}>
+        <div
+          className={
+            forExport
+              ? 'bg-white border-b border-gray-200 px-2 py-2 min-w-0'
+              : 'bg-white border-b border-gray-200 px-3 py-2.5 sm:px-4 sm:py-4 min-w-0'
+          }
+        >
+          <div className={forExport ? 'flex gap-2 min-w-0' : 'flex gap-2.5 sm:gap-4 min-w-0'}>
+            {/* Narrower / shorter on mobile so tournament history sits higher in the modal — extra small photo for share PNG */}
+            <div
+              className={
+                forExport
+                  ? 'w-[52px] h-[68px] shrink-0'
+                  : 'w-[72px] h-[96px] sm:w-[34%] sm:max-w-[130px] sm:h-auto shrink-0'
+              }
+            >
+              <div
+                className={
+                  forExport
+                    ? 'h-full w-full rounded-md overflow-hidden bg-slate-100 border border-slate-200 shadow-inner'
+                    : 'h-full w-full sm:aspect-[3/4] rounded-lg overflow-hidden bg-slate-100 border border-slate-200 shadow-inner'
+                }
+              >
                 {player.profilePhoto ? (
                   <img src={player.profilePhoto} alt="" className="w-full h-full object-cover object-top" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1e3a5f] to-[#2d5a87] text-white text-lg sm:text-2xl font-black">
+                  <div
+                    className={
+                      forExport
+                        ? 'w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1e3a5f] to-[#2d5a87] text-white text-sm font-black'
+                        : 'w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1e3a5f] to-[#2d5a87] text-white text-lg sm:text-2xl font-black'
+                    }
+                  >
                     {(player.name || '?')
                       .split(' ')
                       .map((w) => w[0])
@@ -116,39 +161,77 @@ export default function PlayerProfileCardContent({
             </div>
 
             <div className="flex-1 min-w-0 pt-0">
-              <h2 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 leading-tight tracking-tight break-words">{player.name}</h2>
-                    <p className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
-                      {player.city?.trim()
-                        ? player.city.trim()
-                        : player.playingSince
-                          ? `Playing since ${player.playingSince}`
-                          : 'PickleTracker member'}
+              <div className="flex items-start justify-between gap-2 min-w-0">
+                <h2
+                  className={
+                    forExport
+                      ? 'text-sm font-bold text-gray-900 leading-snug tracking-tight break-words flex-1 min-w-0'
+                      : 'text-base sm:text-lg md:text-xl font-bold text-gray-900 leading-tight tracking-tight break-words flex-1 min-w-0'
+                  }
+                >
+                  {player.name}
+                </h2>
+                {nameAction && !forExport ? (
+                  <div className="flex-shrink-0 self-start pt-0.5">{nameAction}</div>
+                ) : null}
+              </div>
+                    <p
+                      className={
+                        forExport
+                          ? 'text-[10px] text-gray-600 mt-0.5 leading-snug'
+                          : 'text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1'
+                      }
+                    >
+                      {forExport && player.city?.trim() && player.playingSince ? (
+                        <>
+                          <span className="block">{player.city.trim()}</span>
+                          <span className="block mt-0.5">Playing since {player.playingSince}</span>
+                        </>
+                      ) : player.city?.trim() ? (
+                        player.city.trim()
+                      ) : player.playingSince ? (
+                        `Playing since ${player.playingSince}`
+                      ) : (
+                        'PickleTracker member'
+                      )}
                     </p>
 
-              <hr className="my-2 sm:my-3 border-gray-200" />
+              <hr className={forExport ? 'my-1.5 border-gray-200' : 'my-2 sm:my-3 border-gray-200'} />
 
-              <div className="space-y-1 text-xs sm:text-sm text-gray-800">
+              <div
+                className={
+                  forExport ? 'space-y-0.5 text-[9px] text-gray-800' : 'space-y-1 text-xs sm:text-sm text-gray-800'
+                }
+              >
                 {(() => {
                   const s = player.duprSingles ?? null;
                   const d = player.duprDoubles ?? null;
                   const legacy = player.duprRating ?? null;
                   if (s != null && d != null) {
                     return (
-                      <p className="leading-snug text-[11px] sm:text-xs md:text-sm">
-                        <span className="font-bold text-[#1e3a5f]">DUPR</span>
-                        <span className="text-gray-500 font-medium"> — Singles </span>
-                        <span className="tabular-nums font-semibold text-gray-900">{s}</span>
-                        <span className="text-gray-300 mx-1 sm:mx-1.5" aria-hidden>
-                          ·
-                        </span>
-                        <span className="text-gray-500 font-medium">Doubles </span>
-                        <span className="tabular-nums font-semibold text-gray-900">{d}</span>
-                      </p>
+                      <div
+                        className={
+                          forExport
+                            ? 'space-y-0 leading-tight text-[9px]'
+                            : 'space-y-0.5 leading-snug text-[11px] sm:text-xs md:text-sm'
+                        }
+                      >
+                        <p className="m-0">
+                          <span className="font-bold text-[#1e3a5f]">DUPR</span>
+                          <span className="text-gray-500 font-medium"> — Singles </span>
+                          <span className="tabular-nums font-semibold text-gray-900">{s}</span>
+                        </p>
+                        <p className="m-0">
+                          <span className="font-bold text-[#1e3a5f]">DUPR</span>
+                          <span className="text-gray-500 font-medium"> — Doubles </span>
+                          <span className="tabular-nums font-semibold text-gray-900">{d}</span>
+                        </p>
+                      </div>
                     );
                   }
                   if (s != null) {
                     return (
-                      <p>
+                      <p className={forExport ? 'm-0 leading-snug' : ''}>
                         <span className="font-bold text-[#1e3a5f]">DUPR — Singles:</span>{' '}
                         <span className="tabular-nums">{s}</span>
                       </p>
@@ -156,7 +239,7 @@ export default function PlayerProfileCardContent({
                   }
                   if (d != null) {
                     return (
-                      <p>
+                      <p className={forExport ? 'm-0 leading-snug' : ''}>
                         <span className="font-bold text-[#1e3a5f]">DUPR — Doubles:</span>{' '}
                         <span className="tabular-nums">{d}</span>
                       </p>
@@ -164,7 +247,7 @@ export default function PlayerProfileCardContent({
                   }
                   if (legacy != null) {
                     return (
-                      <p>
+                      <p className={forExport ? 'm-0 leading-snug' : ''}>
                         <span className="font-bold text-[#1e3a5f]">DUPR rating:</span>{' '}
                         <span className="tabular-nums">{legacy}</span>
                       </p>
@@ -174,26 +257,84 @@ export default function PlayerProfileCardContent({
                 })()}
               </div>
 
-              <p className="text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-1.5 mb-0.5 sm:mt-2 sm:mb-1">Career medal tally</p>
+              <p
+                className={
+                  forExport
+                    ? 'text-[8px] font-bold text-gray-500 uppercase tracking-wider mt-1 mb-0'
+                    : 'text-[9px] sm:text-[10px] font-bold text-gray-500 uppercase tracking-wider mt-1.5 mb-0.5 sm:mt-2 sm:mb-1'
+                }
+              >
+                Career medal tally
+              </p>
               {/* Single compact row — much shorter than 2×2 grid on mobile */}
-              <div className="grid grid-cols-4 gap-px rounded-lg border border-gray-200 bg-gray-200 overflow-hidden shadow-sm text-center">
+              <div
+                className={
+                  forExport
+                    ? 'grid grid-cols-4 gap-px rounded-md border border-gray-200 bg-gray-200 overflow-hidden shadow-sm text-center'
+                    : 'grid grid-cols-4 gap-px rounded-lg border border-gray-200 bg-gray-200 overflow-hidden shadow-sm text-center'
+                }
+              >
                 {['Gold', 'Silver', 'Bronze'].map((m) => (
                   <div
                     key={m}
-                    className="bg-slate-50 py-1 sm:py-1.5 px-0.5 sm:px-1 flex flex-col items-center justify-center min-w-0 leading-none"
+                    className={
+                      forExport
+                        ? 'bg-slate-50 py-0.5 px-0.5 flex flex-col items-center justify-center min-w-0 leading-none'
+                        : 'bg-slate-50 py-1 sm:py-1.5 px-0.5 sm:px-1 flex flex-col items-center justify-center min-w-0 leading-none'
+                    }
                   >
                     <div className="flex items-center justify-center gap-0.5">
-                      <span className="text-[11px] sm:text-sm leading-none">{MEDAL_EMOJI[m]}</span>
-                      <span className="text-xs sm:text-sm font-black text-gray-900 tabular-nums">{player.medals?.[m] ?? 0}</span>
+                      <span
+                        className={
+                          forExport ? 'text-[10px] leading-none' : 'text-[11px] sm:text-sm leading-none'
+                        }
+                      >
+                        {MEDAL_EMOJI[m]}
+                      </span>
+                      <span
+                        className={
+                          forExport
+                            ? 'text-[10px] font-black text-gray-900 tabular-nums'
+                            : 'text-xs sm:text-sm font-black text-gray-900 tabular-nums'
+                        }
+                      >
+                        {player.medals?.[m] ?? 0}
+                      </span>
                     </div>
-                    <span className="text-[7px] sm:text-[8px] text-gray-500 font-medium mt-0.5 leading-none">{m}</span>
+                    <span
+                      className={
+                        forExport
+                          ? 'text-[6px] text-gray-500 font-medium mt-0.5 leading-none'
+                          : 'text-[7px] sm:text-[8px] text-gray-500 font-medium mt-0.5 leading-none'
+                      }
+                    >
+                      {m}
+                    </span>
                   </div>
                 ))}
-                <div className="bg-[#1e3a5f]/[0.07] py-1 sm:py-1.5 px-0.5 sm:px-1 flex flex-col items-center justify-center min-w-0 border-l border-[#1e3a5f]/10">
-                  <span className="text-[7px] sm:text-[8px] font-bold text-[#1e3a5f] uppercase tracking-wide leading-none">
+                <div
+                  className={
+                    forExport
+                      ? 'bg-[#1e3a5f]/[0.07] py-0.5 px-0.5 flex flex-col items-center justify-center min-w-0 border-l border-[#1e3a5f]/10'
+                      : 'bg-[#1e3a5f]/[0.07] py-1 sm:py-1.5 px-0.5 sm:px-1 flex flex-col items-center justify-center min-w-0 border-l border-[#1e3a5f]/10'
+                  }
+                >
+                  <span
+                    className={
+                      forExport
+                        ? 'text-[6px] font-bold text-[#1e3a5f] uppercase tracking-wide leading-none'
+                        : 'text-[7px] sm:text-[8px] font-bold text-[#1e3a5f] uppercase tracking-wide leading-none'
+                    }
+                  >
                     Total
                   </span>
-                  <span className="text-xs sm:text-sm font-black text-[#1e3a5f] tabular-nums leading-none mt-0.5">
+                  <span
+                    className={
+                      forExport
+                        ? 'text-[10px] font-black text-[#1e3a5f] tabular-nums leading-none mt-0.5'
+                        : 'text-xs sm:text-sm font-black text-[#1e3a5f] tabular-nums leading-none mt-0.5'
+                    }
+                  >
                     {player.totalMedals ?? 0}
                   </span>
                 </div>
@@ -202,7 +343,7 @@ export default function PlayerProfileCardContent({
           </div>
         </div>
 
-        {currentUserId && String(player.id) !== String(currentUserId) && (
+        {currentUserId && String(player.id) !== String(currentUserId) && !forExport && (
           <div className="px-4 py-2 sm:py-2.5 bg-[#f8fafc] border-b border-gray-200 space-y-1.5 sm:space-y-2">
             {friendState === 'friend' ? (
               <div className="space-y-2">
@@ -230,6 +371,15 @@ export default function PlayerProfileCardContent({
                   </svg>
                   View calendar
                 </button>
+                {onRemoveFriend && (
+                  <button
+                    type="button"
+                    onClick={onRemoveFriend}
+                    className="w-full text-xs font-semibold text-red-600 border border-red-200 hover:bg-red-50 rounded-xl py-2.5 transition-colors"
+                  >
+                    Remove friend
+                  </button>
+                )}
               </div>
             ) : (
               <>
@@ -276,13 +426,56 @@ export default function PlayerProfileCardContent({
           </div>
         )}
 
-        <div className="px-3 py-3 sm:px-4 sm:py-4">
+        <div className={forExport ? 'px-2 py-2' : 'px-3 py-3 sm:px-4 sm:py-4'}>
           <div className="rounded-lg border border-gray-200 overflow-hidden bg-white shadow-sm">
-            <div className="bg-gray-100 px-3 py-1.5 sm:py-2.5 text-center border-b border-gray-200">
-              <span className="text-xs font-bold text-[#1e3a5f] uppercase tracking-[0.12em]">Tournament history</span>
+            <div
+              className={
+                forExport
+                  ? 'bg-gray-100 px-2 py-1 text-center border-b border-gray-200'
+                  : 'bg-gray-100 px-3 py-1.5 sm:py-2.5 text-center border-b border-gray-200'
+              }
+            >
+              <span
+                className={
+                  forExport
+                    ? 'text-[10px] font-bold text-[#1e3a5f] uppercase tracking-[0.12em]'
+                    : 'text-xs font-bold text-[#1e3a5f] uppercase tracking-[0.12em]'
+                }
+              >
+                Tournament history
+              </span>
             </div>
             {historyRows.length === 0 ? (
               <p className="text-sm text-gray-500 text-center py-8 px-4">No podium results logged yet.</p>
+            ) : forExport ? (
+              <ul className="divide-y divide-gray-100">
+                {historyRows.map((row, i) => (
+                  <li
+                    key={`exp-${row.tournamentName}-${row.date}-${row.categoryName}-${i}`}
+                    className={`px-2 py-1.5 ${i % 2 === 1 ? 'bg-slate-50/80' : 'bg-white'}`}
+                  >
+                    <p className="text-[10px] font-semibold text-gray-900 leading-snug break-words">
+                      {row.tournamentName || '—'}
+                    </p>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0 text-[9px] text-gray-600">
+                      <span className="font-medium text-gray-700">{row.categoryName || '—'}</span>
+                      <span className="text-gray-300 select-none" aria-hidden>
+                        ·
+                      </span>
+                      <span className="text-gray-500 tabular-nums">{formatHistoryDate(row.date)}</span>
+                    </div>
+                    <div className="mt-1">
+                      <span
+                        className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
+                          MEDAL_RESULT_CLASS[row.medal] || 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {row.medal}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             ) : (
               <>
                 {/* Mobile / narrow: stacked rows — no horizontal scroll */}
@@ -353,21 +546,45 @@ export default function PlayerProfileCardContent({
           </div>
         </div>
 
-        <div className="px-4 pb-2">
-          <h3 className="text-sm font-black text-gray-900 uppercase tracking-tight mb-2">
+        <div className={forExport ? 'px-3 pb-1.5' : 'px-4 pb-2'}>
+          <h3
+            className={
+              forExport
+                ? 'text-[10px] font-black text-gray-900 uppercase tracking-tight mb-1'
+                : 'text-sm font-black text-gray-900 uppercase tracking-tight mb-2'
+            }
+          >
             {isOwnProfile ? 'Your spotlight' : `Why follow ${firstName}?`}
           </h3>
-          <p className="text-sm text-gray-600 leading-relaxed">{draftPitch(player)}</p>
+          <p
+            className={
+              forExport ? 'text-[10px] text-gray-600 leading-snug' : 'text-sm text-gray-600 leading-relaxed'
+            }
+          >
+            {draftPitch(player)}
+          </p>
         </div>
 
         {player.topCategories?.length > 0 && (
-          <div className="px-4 pb-4">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Favorite categories</p>
-            <div className="flex flex-wrap gap-1.5">
+          <div className={forExport ? 'px-3 pb-3' : 'px-4 pb-4'}>
+            <p
+              className={
+                forExport
+                  ? 'text-[8px] font-bold text-gray-400 uppercase tracking-widest mb-1'
+                  : 'text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2'
+              }
+            >
+              Favorite categories
+            </p>
+            <div className={forExport ? 'flex flex-wrap gap-1' : 'flex flex-wrap gap-1.5'}>
               {player.topCategories.map((c) => (
                 <span
                   key={c.name}
-                  className="text-xs font-semibold bg-white text-[#1e3a5f] px-2.5 py-1 rounded-md border border-slate-200 shadow-sm"
+                  className={
+                    forExport
+                      ? 'text-[9px] font-semibold bg-white text-[#1e3a5f] px-2 py-0.5 rounded border border-slate-200 shadow-sm'
+                      : 'text-xs font-semibold bg-white text-[#1e3a5f] px-2.5 py-1 rounded-md border border-slate-200 shadow-sm'
+                  }
                 >
                   {c.name} <span className="text-slate-400">×{c.count}</span>
                 </span>
@@ -376,7 +593,13 @@ export default function PlayerProfileCardContent({
           </div>
         )}
 
-        <p className="text-[10px] text-gray-400 text-center px-4 pb-5">
+        <p
+          className={
+            forExport
+              ? 'text-[9px] text-gray-400 text-center px-3 pb-3'
+              : 'text-[10px] text-gray-400 text-center px-4 pb-5'
+          }
+        >
           Member since{' '}
           {player.memberSince
             ? new Date(player.memberSince).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })

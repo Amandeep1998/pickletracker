@@ -3,6 +3,7 @@ import * as api from '../services/api';
 import PaddleLoader from './PaddleLoader';
 import FriendCalendarModal from './FriendCalendarModal';
 import PlayerProfileCardContent from './PlayerProfileCardContent';
+import PlayerProfileShareModal from './PlayerProfileShareModal';
 
 /**
  * Full player profile modal — bio card, tournament table, friend actions (same calendar as Nearby Players).
@@ -13,15 +14,18 @@ export default function PlayerProfileModal({
   friendState,
   currentUserId,
   onSendFriendRequest,
+  onRemoveFriend,
 }) {
   const [player, setPlayer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const [calendarFriend, setCalendarFriend] = useState(null);
+  const [showShare, setShowShare] = useState(false);
 
   useEffect(() => {
     setCalendarFriend(null);
+    setShowShare(false);
   }, [playerId]);
 
   useEffect(() => {
@@ -76,10 +80,26 @@ export default function PlayerProfileModal({
                 friendState={friendState}
                 sending={sending}
                 onFriendClick={handleFriendClick}
+                onRemoveFriend={
+                  friendState === 'friend' && onRemoveFriend ? () => onRemoveFriend(player) : undefined
+                }
                 onOpenFriendCalendar={setCalendarFriend}
                 showCloseButton
                 onClose={handleCloseProfile}
                 isOwnProfile={Boolean(currentUserId && String(player.id) === String(currentUserId))}
+                nameAction={
+                  <button
+                    type="button"
+                    onClick={() => setShowShare(true)}
+                    className="inline-flex items-center justify-center gap-1 text-[11px] sm:text-xs font-bold py-1.5 px-2.5 sm:py-2 sm:px-3 rounded-lg sm:rounded-xl border-2 border-[#91BE4D]/50 text-[#4a6e10] bg-[#f4f8e8] hover:bg-[#eef6dc] transition-colors whitespace-nowrap"
+                    aria-label="Share player card"
+                  >
+                    <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    Share
+                  </button>
+                }
               />
             </div>
           ) : null}
@@ -87,6 +107,13 @@ export default function PlayerProfileModal({
       </div>
       {calendarFriend && (
         <FriendCalendarModal friend={calendarFriend} onClose={() => setCalendarFriend(null)} />
+      )}
+      {showShare && player && (
+        <PlayerProfileShareModal
+          player={player}
+          userId={currentUserId}
+          onClose={() => setShowShare(false)}
+        />
       )}
     </>
   );

@@ -2,12 +2,18 @@ import React, { useRef, useState, useCallback } from 'react';
 import { toPng } from 'html-to-image';
 import { useAuth } from '../context/AuthContext';
 
+const MEDAL_MARK = { Gold: '🥇', Silver: '🥈', Bronze: '🥉' };
+
 // ── The actual share card image (rendered off-screen, captured by html-to-image) ──
-export const ShareCard = React.forwardRef(function ShareCard({ items, userName }, ref) {
+export const ShareCard = React.forwardRef(function ShareCard({ items, userName, variant = 'upcoming' }, ref) {
   const firstName = userName?.split(' ')[0] || 'Player';
+  const isPlayed = variant === 'played';
 
   const formatDate = (dateStr) => {
-    const [y, m, d] = dateStr.split('-');
+    if (!dateStr || typeof dateStr !== 'string') return '—';
+    const parts = dateStr.split('-');
+    if (parts.length < 3) return '—';
+    const [y, m, d] = parts;
     return new Date(y, m - 1, d).toLocaleDateString(undefined, {
       day: 'numeric', month: 'short',
     });
@@ -53,13 +59,35 @@ export const ShareCard = React.forwardRef(function ShareCard({ items, userName }
       {(() => {
         const totalCats = items.reduce((s, i) => s + i.categories.length, 0);
         const multipleCats = totalCats > items.length;
+        if (isPlayed) {
+          return (
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+                {firstName}&apos;s tournament results
+              </p>
+              <p style={{ color: 'white', fontSize: 20, fontWeight: 900, lineHeight: 1.3, margin: 0 }}>
+                Wrapped up at{' '}
+                <span style={{ color: '#c8e875' }}>{items.length}</span>
+                {items.length === 1 ? ' tournament' : ' tournaments'}
+                {multipleCats && (
+                  <span>
+                    {' '}·{' '}
+                    <span style={{ color: '#ffd580' }}>{totalCats}</span>
+                    {' categories'}
+                  </span>
+                )}
+                {' '}🏆
+              </p>
+            </div>
+          );
+        }
         return (
           <div style={{ marginBottom: 20 }}>
             <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
-              {firstName}'s upcoming tournaments
+              {firstName}&apos;s upcoming tournaments
             </p>
             <p style={{ color: 'white', fontSize: 20, fontWeight: 900, lineHeight: 1.3, margin: 0 }}>
-              I'm playing{' '}
+              I&apos;m playing{' '}
               <span style={{ color: '#c8e875' }}>{items.length}</span>
               {items.length === 1 ? ' tournament' : ' tournaments'}
               {multipleCats && (
@@ -104,7 +132,7 @@ export const ShareCard = React.forwardRef(function ShareCard({ items, userName }
                   {item.tournament.name}
                 </p>
                 <span style={{ background: 'rgba(145,190,77,0.22)', color: '#c8e875', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  {getDaysUntil(item.earliestDate)}
+                  {isPlayed ? formatDate(item.earliestDate) : getDaysUntil(item.earliestDate)}
                 </span>
               </div>
 
@@ -115,26 +143,45 @@ export const ShareCard = React.forwardRef(function ShareCard({ items, userName }
                 </p>
               )}
 
-              {/* Categories — with date if they span multiple days */}
+              {/* Categories — with date if they span multiple days (upcoming); per-row medals when played */}
               <div style={{ marginTop: 5, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {showDatePerCat
-                  ? sortedDates.map((d) => (
-                      <div key={d} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, margin: 0 }}>
-                          {dateGroups[d].join(' · ')}
-                        </p>
-                        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10 }}>{formatDate(d)}</span>
-                      </div>
-                    ))
-                  : (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, margin: 0 }}>
-                        {item.categories.map((c) => c.categoryName).join(' · ')}
-                      </p>
-                      <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10 }}>{formatDate(item.earliestDate)}</span>
-                    </div>
-                  )
-                }
+                {isPlayed
+                  ? item.categories.map((c, ci) => {
+                      const m = c.medal && c.medal !== 'None' ? c.medal : null;
+                      return (
+                        <div
+                          key={`${c.categoryName}-${c.date}-${ci}`}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
+                        >
+                          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {c.categoryName}
+                            {m && (
+                              <span style={{ fontWeight: 700, color: '#ffd580', marginLeft: 6 }}>
+                                {MEDAL_MARK[m]} {m}
+                              </span>
+                            )}
+                          </p>
+                          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10, flexShrink: 0 }}>{formatDate(c.date)}</span>
+                        </div>
+                      );
+                    })
+                  : showDatePerCat
+                    ? sortedDates.map((d) => (
+                        <div key={d} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, margin: 0 }}>
+                            {dateGroups[d].join(' · ')}
+                          </p>
+                          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10 }}>{formatDate(d)}</span>
+                        </div>
+                      ))
+                    : (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, margin: 0 }}>
+                            {item.categories.map((c) => c.categoryName).join(' · ')}
+                          </p>
+                          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 10 }}>{formatDate(item.earliestDate)}</span>
+                        </div>
+                      )}
               </div>
             </div>
           );

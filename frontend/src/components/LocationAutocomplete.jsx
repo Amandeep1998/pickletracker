@@ -8,7 +8,6 @@ export default function LocationAutocomplete({ value, onSelect, onClear, voiceQu
   const [inputValue, setInputValue] = useState(value?.name || '');
   const [predictions, setPredictions] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [userLocation, setUserLocation] = useState(null);
   // Flip the suggestion list above the input when the on-screen keyboard would
   // otherwise eat the dropdown. Recomputed every time the dropdown opens or the
   // visual viewport changes (e.g. keyboard slides in/out on mobile).
@@ -35,15 +34,6 @@ export default function LocationAutocomplete({ value, onSelect, onClear, voiceQu
     placesDiv.current = document.createElement('div');
     placesService.current = new window.google.maps.places.PlacesService(placesDiv.current);
   }, [isLoaded]);
-
-  // Get user's location once for search biasing — fail silently
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => {}
-    );
-  }, []);
 
   // Sync display value when parent resets/pre-fills (modal open, clear, etc.)
   // Reset isUserTyping so pre-fill never triggers the autocomplete API
@@ -73,10 +63,6 @@ export default function LocationAutocomplete({ value, onSelect, onClear, voiceQu
     }
 
     const request = { input: debouncedQuery };
-    if (userLocation) {
-      request.location = new window.google.maps.LatLng(userLocation.lat, userLocation.lng);
-      request.radius = 50000;
-    }
     autocompleteService.current.getPlacePredictions(
       request,
       (results, status) => {
@@ -89,7 +75,7 @@ export default function LocationAutocomplete({ value, onSelect, onClear, voiceQu
         }
       }
     );
-  }, [debouncedQuery, isLoaded, userLocation]);
+  }, [debouncedQuery, isLoaded]);
 
   // Close dropdown on outside click
   useEffect(() => {

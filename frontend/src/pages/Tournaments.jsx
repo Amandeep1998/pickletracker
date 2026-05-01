@@ -21,6 +21,7 @@ export default function Tournaments() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [deleteAllLoading, setDeleteAllLoading] = useState(false);
+  const [showEditDeleteConfirm, setShowEditDeleteConfirm] = useState(false);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -77,6 +78,7 @@ export default function Tournaments() {
     setModalOpen(false);
     setSelectedTournament(null);
     setApiError('');
+    setShowEditDeleteConfirm(false);
   };
 
   const handleAdd = async (data) => {
@@ -242,6 +244,25 @@ export default function Tournaments() {
       setApiError('Failed to delete all tournaments');
     } finally {
       setDeleteAllLoading(false);
+    }
+  };
+
+  const confirmDeleteFromEdit = async () => {
+    if (!selectedTournament?._id) return;
+    setDeleteLoading(true);
+    setApiError('');
+    try {
+      if (isCalendarConnected()) {
+        await deleteTournamentFromCalendar(selectedTournament).catch(() => {});
+      }
+      await api.deleteTournament(selectedTournament._id);
+      setShowEditDeleteConfirm(false);
+      closeModal();
+      fetchTournaments();
+    } catch {
+      setApiError('Failed to delete tournament');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -657,6 +678,39 @@ export default function Tournaments() {
         </div>
       </Modal>
 
+      {/* Delete from Edit Tournament modal */}
+      <Modal
+        isOpen={showEditDeleteConfirm}
+        onClose={() => !deleteLoading && setShowEditDeleteConfirm(false)}
+        title="Delete tournament"
+      >
+        <div className="py-2">
+          <p className="text-sm text-gray-700 mb-1">
+            Permanently delete{' '}
+            <span className="font-semibold text-gray-900">{selectedTournament?.name || 'this tournament'}</span>
+            ? This cannot be undone.
+          </p>
+          <div className="flex gap-3 justify-end mt-6">
+            <button
+              type="button"
+              onClick={() => setShowEditDeleteConfirm(false)}
+              disabled={deleteLoading}
+              className="text-sm text-gray-600 hover:text-gray-800 font-medium px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteFromEdit}
+              disabled={deleteLoading}
+              className="text-sm bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-lg transition disabled:opacity-60"
+            >
+              {deleteLoading ? 'Deleting…' : 'Delete tournament'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Add / Edit Modal */}
       <Modal
         isOpen={modalOpen}
@@ -673,6 +727,7 @@ export default function Tournaments() {
           onSubmit={mode === 'add' ? handleAdd : handleEdit}
           onCancel={closeModal}
           loading={formLoading}
+          onDelete={mode === 'edit' ? () => setShowEditDeleteConfirm(true) : undefined}
         />
       </Modal>
     </div>

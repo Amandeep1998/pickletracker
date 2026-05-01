@@ -5,6 +5,7 @@ import * as api from '../services/api';
 import CityAutocomplete from '../components/CityAutocomplete';
 import EditCommunityPlayerCardModal from '../components/EditCommunityPlayerCardModal';
 import PlayerProfileCardContent from '../components/PlayerProfileCardContent';
+import PlayerProfileShareModal from '../components/PlayerProfileShareModal';
 import { computeProfileStrength } from '../utils/profileCompletion';
 import { COMMON_TIME_ZONES } from '../data/commonTimeZones';
 import { getBrowserIanaTimeZone } from '../utils/browserTimeZone';
@@ -67,6 +68,7 @@ export default function Profile() {
 
   const [loading, setLoading] = useState(true);
   const [showEditPlayerCard, setShowEditPlayerCard] = useState(false);
+  const [showSharePlayerCard, setShowSharePlayerCard] = useState(false);
   const [publicCardPlayer, setPublicCardPlayer] = useState(null);
   const [cardLoading, setCardLoading] = useState(false);
 
@@ -415,17 +417,31 @@ export default function Profile() {
               What others see when they open your profile from the feed or Nearby Players. Email and phone are never shown here.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowEditPlayerCard(true)}
-            className="flex-shrink-0 inline-flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 px-4 rounded-xl text-white hover:opacity-95 transition-opacity shadow-sm whitespace-nowrap"
-            style={{ background: 'linear-gradient(to right, #1e3a5f, #2563ab)' }}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-            Edit player card
-          </button>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            {publicCardPlayer && (
+              <button
+                type="button"
+                onClick={() => setShowSharePlayerCard(true)}
+                className="inline-flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 px-4 rounded-xl border-2 border-[#91BE4D]/50 text-[#4a6e10] bg-[#f4f8e8] hover:bg-[#eef6dc] transition-colors whitespace-nowrap"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Share
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowEditPlayerCard(true)}
+              className="inline-flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 px-4 rounded-xl text-white hover:opacity-95 transition-opacity shadow-sm whitespace-nowrap"
+              style={{ background: 'linear-gradient(to right, #1e3a5f, #2563ab)' }}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              Edit player card
+            </button>
+          </div>
         </div>
         <div className="rounded-xl border border-gray-200 overflow-hidden bg-[#f1f5f9] flex flex-col max-h-[min(70vh,560px)] min-h-[200px]">
           {cardLoading ? (
@@ -458,6 +474,13 @@ export default function Profile() {
               await loadPublicCardPreview();
             }
           }}
+        />
+      )}
+      {showSharePlayerCard && publicCardPlayer && (
+        <PlayerProfileShareModal
+          player={publicCardPlayer}
+          userId={user?.id}
+          onClose={() => setShowSharePlayerCard(false)}
         />
       )}
       {loading ? (

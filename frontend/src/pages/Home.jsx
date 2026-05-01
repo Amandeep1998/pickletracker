@@ -7,6 +7,7 @@ import LocationModal from '../components/LocationModal';
 import PlayerProfileModal from '../components/PlayerProfileModal';
 import EditCommunityPlayerCardModal from '../components/EditCommunityPlayerCardModal';
 import PlayerProfileCardContent from '../components/PlayerProfileCardContent';
+import PlayerProfileShareModal from '../components/PlayerProfileShareModal';
 import PaddleLoader from '../components/PaddleLoader';
 import HomeFeedVirtualList from '../components/HomeFeedVirtualList';
 
@@ -75,7 +76,13 @@ function HomeLogTournamentBanner({ onLogTournament }) {
 }
 
 /** Public player card preview — inserted mid-feed after activity */
-function HomeMidFeedPlayerCardPromo({ cardLoading, publicCardPlayer, currentUserId, onEditPlayerCard }) {
+function HomeMidFeedPlayerCardPromo({
+  cardLoading,
+  publicCardPlayer,
+  currentUserId,
+  onEditPlayerCard,
+  onSharePlayerCard,
+}) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4 sm:px-5">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
@@ -86,6 +93,18 @@ function HomeMidFeedPlayerCardPromo({ cardLoading, publicCardPlayer, currentUser
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {publicCardPlayer && (
+            <button
+              type="button"
+              onClick={onSharePlayerCard}
+              className="inline-flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 px-4 rounded-xl border-2 border-[#91BE4D]/50 text-[#4a6e10] bg-[#f4f8e8] hover:bg-[#eef6dc] transition-colors whitespace-nowrap"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              Share
+            </button>
+          )}
           <button
             type="button"
             onClick={onEditPlayerCard}
@@ -150,6 +169,7 @@ export default function Home() {
   const [friends, setFriends] = useState([]);
   const [pendingFriendIds, setPendingFriendIds] = useState(() => new Set());
   const [showEditPlayerCard, setShowEditPlayerCard] = useState(false);
+  const [showSharePlayerCard, setShowSharePlayerCard] = useState(false);
   const [publicCardPlayer, setPublicCardPlayer] = useState(null);
   const [cardLoading, setCardLoading] = useState(false);
 
@@ -234,6 +254,23 @@ export default function Home() {
         next.delete(String(playerId));
         return next;
       });
+    }
+  };
+
+  const handleRemoveFriend = async (friend) => {
+    const ok =
+      typeof window !== 'undefined'
+        ? window.confirm(
+            `Remove ${friend.name} from friends? You will no longer share schedule access.`,
+          )
+        : true;
+    if (!ok) return;
+    try {
+      await api.removeFriend(friend.id);
+      await fetchFriendData();
+      setProfilePlayerId(null);
+    } catch {
+      /* optional: silent fail */
     }
   };
 
@@ -323,6 +360,7 @@ export default function Home() {
         publicCardPlayer={publicCardPlayer}
         currentUserId={user?.id}
         onEditPlayerCard={() => setShowEditPlayerCard(true)}
+        onSharePlayerCard={() => setShowSharePlayerCard(true)}
       />
     ),
     [cardLoading, publicCardPlayer, user?.id]
@@ -458,6 +496,7 @@ export default function Home() {
             friendState={friendStatusByUserId[String(profilePlayerId)] || 'none'}
             currentUserId={user?.id}
             onSendFriendRequest={handleSendFriendRequest}
+            onRemoveFriend={handleRemoveFriend}
           />
         )}
 
@@ -473,6 +512,14 @@ export default function Home() {
               }
               await loadPublicCardPreview();
             }}
+          />
+        )}
+
+        {showSharePlayerCard && publicCardPlayer && (
+          <PlayerProfileShareModal
+            player={publicCardPlayer}
+            userId={user?.id}
+            onClose={() => setShowSharePlayerCard(false)}
           />
         )}
 

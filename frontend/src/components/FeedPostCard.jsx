@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, memo } from 'react';
 import * as api from '../services/api';
+import FeedTournamentShareModal from './FeedTournamentShareModal';
 
 const MEDAL_EMOJI = { Gold: '🥇', Silver: '🥈', Bronze: '🥉' };
 
@@ -85,9 +86,18 @@ function FeedCardComponent({ item, currentUserId, onViewProfile, expandCommentsF
 
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const inputRef = useRef(null);
 
   const tournamentId = String(item.tournament.id);
+
+  const isOwnTournament = Boolean(
+    currentUserId != null && item.user?.id != null && String(currentUserId) === String(item.user.id),
+  );
+
+  useEffect(() => {
+    if (!isOwnTournament) setShareOpen(false);
+  }, [isOwnTournament]);
 
   const expandedFromLinkRef = useRef(false);
   useEffect(() => {
@@ -212,37 +222,55 @@ function FeedCardComponent({ item, currentUserId, onViewProfile, expandCommentsF
         <div className="flex items-start gap-3 mb-3">
           <Avatar user={item.user} />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-semibold text-[#272702] text-sm">{item.user.name}</span>
-              {item.user.city && (
-                <span className="text-xs text-gray-400 flex items-center gap-0.5">
-                  <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {item.user.city}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <span className="font-semibold text-[#272702] text-sm">{item.user.name}</span>
+                  {item.user?.id && onViewProfile && (
+                    <button
+                      type="button"
+                      onClick={() => onViewProfile(item.user.id)}
+                      className="inline-flex items-center gap-1 text-xs font-bold text-[#4a6e10] bg-[#f4f8e8] hover:bg-[#eaf4d4] px-2 py-0.5 rounded-full border border-[#91BE4D]/35 transition-colors shadow-sm shrink-0"
+                    >
+                      <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      View profile
+                    </button>
+                  )}
+                </div>
+                {item.user.city && (
+                  <div className="flex items-center gap-0.5 text-xs text-gray-400 mt-0.5">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {item.user.city}
+                  </div>
+                )}
+                <p className="text-xs text-gray-400 mt-0.5">{timeAgo(item.createdAt)}</p>
+              </div>
+              <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                <span
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${isUpcoming ? 'bg-blue-50 text-blue-600' : 'bg-[#f4f8e8] text-[#4a6e10]'}`}
+                >
+                  {isUpcoming ? 'Upcoming' : 'Played'}
                 </span>
-              )}
+                {isOwnTournament && (
+                <button
+                  type="button"
+                  onClick={() => setShareOpen(true)}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-[#4a6e10] bg-[#f4f8e8] hover:bg-[#eaf4d4] px-2 py-1 rounded-lg border border-[#91BE4D]/35 transition-colors shadow-sm"
+                >
+                  <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  Share
+                </button>
+                )}
+              </div>
             </div>
-            <p className="text-xs text-gray-400 mt-0.5">{timeAgo(item.createdAt)}</p>
-            {item.user?.id && onViewProfile && (
-              <button
-                type="button"
-                onClick={() => onViewProfile(item.user.id)}
-                className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-[#4a6e10] bg-[#f4f8e8] hover:bg-[#eaf4d4] px-3 py-1.5 rounded-full border border-[#91BE4D]/35 transition-colors shadow-sm"
-              >
-                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                View profile
-              </button>
-            )}
           </div>
-          <span
-            className={`flex-shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${isUpcoming ? 'bg-blue-50 text-blue-600' : 'bg-[#f4f8e8] text-[#4a6e10]'}`}
-          >
-            {isUpcoming ? 'Upcoming' : 'Played'}
-          </span>
         </div>
 
         <div className="mb-3">
@@ -291,7 +319,7 @@ function FeedCardComponent({ item, currentUserId, onViewProfile, expandCommentsF
           </div>
         )}
 
-        <div className="flex items-center gap-1 pt-1 border-t border-gray-50">
+        <div className="flex items-center gap-1 pt-1 border-t border-gray-50 flex-wrap">
           <button
             type="button"
             onClick={handleLike}
@@ -320,6 +348,10 @@ function FeedCardComponent({ item, currentUserId, onViewProfile, expandCommentsF
           </button>
         </div>
       </div>
+
+      {shareOpen && isOwnTournament && (
+        <FeedTournamentShareModal item={item} onClose={() => setShareOpen(false)} />
+      )}
 
       {commentsOpen && (
         <div className="border-t border-gray-100 bg-gray-50/60 px-4 pt-3 pb-4 space-y-3">
