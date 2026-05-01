@@ -2,10 +2,19 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Unique per production build so PWA purge + console logging work even without Vercel env (CI, previews).
+const GIT_OR_CI_SHA =
+  process.env.VERCEL_GIT_COMMIT_SHA ||
+  process.env.GITHUB_SHA ||
+  process.env.CF_PAGES_COMMIT_SHA ||
+  process.env.CI_COMMIT_SHA ||
+  '';
+const VITE_COMMIT_VALUE = GIT_OR_CI_SHA || `build-${Date.now()}`;
+
 export default defineConfig({
   define: {
-    // Set on Vercel builds so you can confirm which revision the tab is running (DevTools console).
-    'import.meta.env.VITE_COMMIT': JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA || ''),
+    // Build fingerprint: git SHA when available, else timestamp at `vite build` time.
+    'import.meta.env.VITE_COMMIT': JSON.stringify(VITE_COMMIT_VALUE),
   },
   plugins: [
     react(),
@@ -16,7 +25,15 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         importScripts: ['sw-push.js'],
+        // Do not precache HTML: Workbox's default SPA NavigationRoute serves precached
+        // index.html for every navigation, which overrides NetworkFirst and keeps users
+        // on an old app shell after deploys.
+        globPatterns: ['**/*.{js,css,woff2,ico,png,svg,jpg,jpeg,gif,webp,json,webmanifest}'],
+        // Disable default SPA fallback (NavigationRoute → precached index.html); combined
+        // with navigate NetworkFirst below, document loads come from the network when online.
+        navigateFallback: null,
         // Always fetch fresh HTML from the network so every deployment reaches
         // users on their next visit — even if their SW is from an older build.
         // Falls back to the cached response only when the network is unavailable.

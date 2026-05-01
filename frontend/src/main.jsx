@@ -10,7 +10,7 @@ import App from './App';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 
-// Keyed to the Vercel git commit SHA — auto-bumps on every deploy, no manual change needed.
+// Keyed to build fingerprint (vite.config define): git SHA on Vercel/GitHub, else unique per `vite build`.
 const PWA_CACHE_PURGE_VERSION = import.meta.env.VITE_COMMIT || 'dev-build';
 const PWA_CACHE_PURGE_KEY = `pt-pwa-purge-${PWA_CACHE_PURGE_VERSION}`;
 
@@ -65,10 +65,21 @@ async function bootstrap() {
   }
 
   if (import.meta.env.PROD && import.meta.env.VITE_COMMIT) {
-    console.info('[PickleTracker] deployment', import.meta.env.VITE_COMMIT.slice(0, 7));
+    console.info('[PickleTracker] build', import.meta.env.VITE_COMMIT.slice(0, 7));
   }
 
-  registerSW({ immediate: true });
+  let reloadingForNewVersion = false;
+  function scheduleReloadForNewVersion() {
+    if (reloadingForNewVersion) return;
+    reloadingForNewVersion = true;
+    window.location.reload();
+  }
+
+  registerSW({
+    immediate: true,
+    // Extra safety when the plugin detects a waiting worker (pairs with autoUpdate).
+    onNeedRefresh: scheduleReloadForNewVersion,
+  });
 
   /**
    * With registerType: 'autoUpdate' + skipWaiting + clientsClaim, a new SW activates silently
@@ -77,11 +88,8 @@ async function bootstrap() {
    * so installed PWAs (especially on mobile home screens) always show the latest UI.
    */
   if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-    let reloadingForNewServiceWorker = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (reloadingForNewServiceWorker) return;
-      reloadingForNewServiceWorker = true;
-      window.location.reload();
+      scheduleReloadForNewVersion();
     });
   }
 
