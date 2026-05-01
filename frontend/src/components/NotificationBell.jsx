@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import * as api from '../services/api';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
@@ -28,10 +29,10 @@ function NotificationItem({ notif }) {
       </span>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-[#272702] leading-snug">
+        <p className="text-sm text-[#272702] leading-snug break-words">
           <span className="font-semibold">{notif.actorName}</span>
           {isComment ? ' commented on ' : ' liked '}
-          <span className="font-medium text-[#4a6e10]">{notif.tournamentName}</span>
+          <span className="font-medium text-[#4a6e10] break-words">{notif.tournamentName}</span>
         </p>
         {isComment && notif.commentText && (
           <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
@@ -51,16 +52,21 @@ function NotificationItem({ notif }) {
 
 function PushPrompt({ onEnable, enabling }) {
   return (
-    <div className="mx-4 my-3 rounded-xl border border-[#91BE4D]/30 bg-[#f4f8e8] p-3 flex items-center gap-3">
-      <span className="text-xl flex-shrink-0">🔔</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-[#272702]">Enable push notifications</p>
-        <p className="text-[11px] text-gray-500 mt-0.5">Get notified when someone comments and for tournament reminders</p>
+    <div className="mx-3 sm:mx-4 my-3 rounded-xl border border-[#91BE4D]/30 bg-[#f4f8e8] p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3 min-w-0">
+      <div className="flex gap-3 items-start min-w-0 flex-1">
+        <span className="text-xl flex-shrink-0 leading-none pt-0.5">🔔</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-[#272702]">Enable push notifications</p>
+          <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+            Get notified when someone comments and for tournament reminders
+          </p>
+        </div>
       </div>
       <button
+        type="button"
         onClick={onEnable}
         disabled={enabling}
-        className="flex-shrink-0 text-xs font-bold text-white px-3 py-1.5 rounded-lg disabled:opacity-60 transition-opacity"
+        className="w-full sm:w-auto shrink-0 text-xs font-bold text-white px-3 py-2.5 sm:py-1.5 rounded-lg disabled:opacity-60 transition-opacity text-center"
         style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}
       >
         {enabling ? '…' : 'Allow'}
@@ -71,9 +77,9 @@ function PushPrompt({ onEnable, enabling }) {
 
 function PushDeniedBanner() {
   return (
-    <div className="mx-4 my-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 flex items-center gap-2">
-      <span className="text-base flex-shrink-0">🔕</span>
-      <p className="text-[11px] text-gray-500">
+    <div className="mx-3 sm:mx-4 my-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 flex items-start gap-2 min-w-0">
+      <span className="text-base flex-shrink-0 leading-none mt-0.5">🔕</span>
+      <p className="text-[11px] text-gray-500 leading-snug min-w-0 flex-1 break-words">
         Notifications blocked — enable them in your browser settings to get live updates.
       </p>
     </div>
@@ -82,7 +88,11 @@ function PushDeniedBanner() {
 
 export default function NotificationBell() {
   const containerRef = useRef(null);
+  const panelRef = useRef(null);
   const [open, setOpen] = useState(false);
+  const [isMobileLayout, setIsMobileLayout] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches
+  );
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -104,13 +114,21 @@ export default function NotificationBell() {
     return () => clearInterval(interval);
   }, [fetchUnreadCount]);
 
-  // Close on outside click
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const sync = () => setIsMobileLayout(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
+  // Close on outside click (panel may be portaled outside the bell wrapper on mobile)
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setOpen(false);
-      }
+      if (containerRef.current?.contains(e.target)) return;
+      if (panelRef.current?.contains(e.target)) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -153,15 +171,71 @@ export default function NotificationBell() {
   // Show at least "1" while push permission hasn't been resolved — draws user to the prompt
   const badgeCount = showPushPrompt ? Math.max(1, unreadCount) : unreadCount;
 
+  const dropdownBody = (
+    <>
+      <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
+        <h3 className="font-semibold text-sm text-[#272702] truncate">Notifications</h3>
+        {unreadCount === 0 && notifications.length > 0 && (
+          <span className="text-[11px] text-gray-400 shrink-0">All caught up</span>
+        )}
+      </div>
+
+      {showPushPrompt && <PushPrompt onEnable={handleEnablePush} enabling={enabling} />}
+      {showPushDenied && <PushDeniedBanner />}
+
+      <div className="max-h-[min(360px,50dvh)] sm:max-h-[360px] overflow-y-auto overflow-x-hidden min-h-0">
+        {loading && (
+          <div className="space-y-0 divide-y divide-gray-50">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-start gap-3 px-4 py-3 animate-pulse">
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0" />
+                <div className="flex-1 space-y-1.5 pt-1 min-w-0">
+                  <div className="h-3 bg-gray-200 rounded w-3/4" />
+                  <div className="h-2.5 bg-gray-100 rounded w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!loading && notifications.length === 0 && (
+          <div className="text-center py-10 px-3">
+            <p className="text-2xl mb-2">🔔</p>
+            <p className="text-sm font-medium text-gray-500">No notifications yet</p>
+            <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+              When someone likes or comments on your tournaments, you'll see it here
+            </p>
+          </div>
+        )}
+
+        {!loading && notifications.length > 0 && (
+          <div className="divide-y divide-gray-50">
+            {notifications.map((n) => (
+              <NotificationItem key={String(n.id)} notif={n} />
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  const desktopPanelClass =
+    'absolute right-0 mt-2 w-80 max-w-[calc(100vw-1.5rem)] bg-white rounded-2xl shadow-xl border border-gray-100 z-[100] overflow-hidden flex flex-col min-w-0';
+
+  const mobilePanelClass =
+    'fixed z-[200] top-[calc(4rem+env(safe-area-inset-top,0px))] max-h-[min(85dvh,640px)] flex flex-col min-w-0 overflow-hidden bg-white rounded-2xl shadow-xl border border-gray-100 ' +
+    'left-[max(0.75rem,env(safe-area-inset-left,0px))] right-[max(0.75rem,env(safe-area-inset-right,0px))]';
+
   return (
     <div ref={containerRef} className="relative">
-      {/* Bell button */}
       <button
+        type="button"
         onClick={handleOpen}
         className={`relative p-2 rounded-lg transition-colors ${
           open ? 'bg-[#f4f8e8] text-[#4a6e10]' : 'text-gray-400 hover:text-[#4a6e10] hover:bg-[#f4f8e8]'
         }`}
         aria-label="Notifications"
+        aria-expanded={open}
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -173,57 +247,21 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {/* Dropdown */}
-      {open && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <h3 className="font-semibold text-sm text-[#272702]">Notifications</h3>
-            {unreadCount === 0 && notifications.length > 0 && (
-              <span className="text-[11px] text-gray-400">All caught up</span>
-            )}
-          </div>
-
-          {/* Push prompt / denied banner */}
-          {showPushPrompt && <PushPrompt onEnable={handleEnablePush} enabling={enabling} />}
-          {showPushDenied && <PushDeniedBanner />}
-
-          {/* Notifications list */}
-          <div className="max-h-[360px] overflow-y-auto">
-            {loading && (
-              <div className="space-y-0 divide-y divide-gray-50">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-start gap-3 px-4 py-3 animate-pulse">
-                    <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0" />
-                    <div className="flex-1 space-y-1.5 pt-1">
-                      <div className="h-3 bg-gray-200 rounded w-3/4" />
-                      <div className="h-2.5 bg-gray-100 rounded w-1/2" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {!loading && notifications.length === 0 && (
-              <div className="text-center py-10">
-                <p className="text-2xl mb-2">🔔</p>
-                <p className="text-sm font-medium text-gray-500">No notifications yet</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  When someone likes or comments on your tournaments, you'll see it here
-                </p>
-              </div>
-            )}
-
-            {!loading && notifications.length > 0 && (
-              <div className="divide-y divide-gray-50">
-                {notifications.map((n) => (
-                  <NotificationItem key={String(n.id)} notif={n} />
-                ))}
-              </div>
-            )}
-          </div>
+      {open && !isMobileLayout && (
+        <div ref={panelRef} className={desktopPanelClass}>
+          {dropdownBody}
         </div>
       )}
+
+      {open &&
+        isMobileLayout &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div ref={panelRef} className={mobilePanelClass} role="dialog" aria-label="Notifications">
+            {dropdownBody}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
