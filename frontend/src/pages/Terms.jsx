@@ -17,7 +17,7 @@ export default function Terms() {
       {/* Content */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Terms of Service</h1>
-        <p className="text-sm text-gray-500 mb-10">Last updated: April 2026</p>
+        <p className="text-sm text-gray-500 mb-10">Last updated: 25 April 2026</p>
 
         <div className="space-y-8 text-sm sm:text-base text-gray-700 leading-relaxed">
 
@@ -34,21 +34,27 @@ export default function Terms() {
           <section>
             <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">2. Description of the Service</h2>
             <p>
-              PickleTracker is a personal sports management application for pickleball players. The Service
-              allows users to:
+              PickleTracker is a sports management and community application for pickleball players (and optional coach-
+              oriented tools). Depending on how you use it, the Service may include:
             </p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
-              <li>Log and track tournament entries, results, medals, entry fees, and prize money</li>
-              <li>Record practice sessions, casual play, and training drills</li>
-              <li>Track gear purchases and travel expenses linked to tournaments</li>
-              <li>View financial summaries including earnings, expenses, and net profit</li>
-              <li>Monitor performance trends and skill development over time</li>
-              <li>Connect with other players through a friends feature</li>
-              <li>Optionally receive tournament reminders via WhatsApp</li>
+              <li>Logging tournament entries, results, medals, entry fees, and prize money</li>
+              <li>Recording practice sessions, casual play, and training drills</li>
+              <li>Tracking gear purchases and travel expenses linked to tournaments</li>
+              <li>Viewing financial summaries including earnings, expenses, and net profit</li>
+              <li>Using Coach Hub to record coaching income and related expense lines when you choose that workflow</li>
+              <li>Browsing a Home activity feed, reacting with likes, posting comments, and receiving in-app notifications about activity on your posts</li>
+              <li>Sending and accepting friend requests separately from general activity notifications</li>
+              <li>Discovering players and viewing profiles according to the visibility rules in the product</li>
+              <li>An in-app calendar for tournaments and sessions, with optional email and push reminders based on your settings and time zone</li>
+              <li>Optional email reminders and browser (web push) notifications for tournaments and selected alerts</li>
+              <li>Optional WhatsApp reminders where you opt in</li>
+              <li>Optional AI Coach chat that processes your messages via our servers</li>
+              <li>Installing or using the app as a Progressive Web App (PWA)</li>
             </ul>
             <p className="mt-3">
-              PickleTracker is a personal tracking tool. It is not a tournament registration platform,
-              financial advisory service, or official record-keeping system.
+              PickleTracker is a personal tracking and community tool. It is not a tournament registration platform,
+              financial advisory service, certified coaching programme, or official record-keeping system.
             </p>
           </section>
 
@@ -75,12 +81,13 @@ export default function Terms() {
             <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">4. User Content &amp; Accuracy</h2>
             <p>
               You retain ownership of all data you enter into PickleTracker — tournament records, session
-              notes, expense figures, and personal reflections. By entering data, you grant us a limited
-              licence to store and process it solely to provide the Service to you.
+              notes, expense figures, coaching income entries, comments on the feed, and personal reflections.
+              By entering data or posting comments, you grant us a limited licence to store, display where the
+              product provides (for example on the activity feed), and process it solely to provide the Service.
             </p>
             <p className="mt-2">
-              You are solely responsible for the accuracy of the information you enter. PickleTracker does
-              not verify tournament results, entry fees, prize amounts, or any other data you record.
+              You are solely responsible for the accuracy of the information you enter and for comment content you post.
+              PickleTracker does not verify tournament results, entry fees, prize amounts, or any other data you record.
               Financial summaries displayed in the app are derived entirely from the figures you input and
               should not be used as official financial records, tax documentation, or evidence of earnings.
             </p>
@@ -96,7 +103,8 @@ export default function Terms() {
               <li>Misrepresent your identity or impersonate another person</li>
               <li>Scrape, crawl, or systematically extract data from the Service without permission</li>
               <li>Use automated tools to access the Service in a way that places unreasonable load on our servers</li>
-              <li>Use the friends feature to harass, spam, or send unsolicited communications to other users</li>
+              <li>Use the friends feature, comments, or notifications to harass, spam, bully, or send unsolicited communications to other users</li>
+              <li>Post unlawful, hateful, sexually explicit, or otherwise abusive material in comments or other user-visible areas</li>
             </ul>
             <p className="mt-2">
               We reserve the right to suspend or terminate accounts that violate these acceptable use
@@ -116,7 +124,26 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">7. No Financial Advice</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">7. Browser Push &amp; Email Reminders</h2>
+            <p>
+              Browser push notifications and email reminders are optional. If you enable push notifications,
+              your browser or operating system may show alerts based on preferences you set in the Service.
+              You can revoke permission in your browser or turn off notifications in the app. Email reminders
+              can be disabled from your profile where offered. Message timing may depend on your saved time zone.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">8. AI-Assisted Features</h2>
+            <p>
+              Optional AI Coach chat uses artificial intelligence to respond to your messages. Replies may be inaccurate or
+              incomplete. This does not replace qualified coaching, medical advice, or professional judgement. You are
+              responsible for reviewing anything you rely on before acting on it.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">9. No Financial Advice</h2>
             <p>
               PickleTracker displays financial summaries based on data you enter. This information is
               provided purely for personal tracking and informational purposes. Nothing in the Service
@@ -126,7 +153,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">8. Intellectual Property</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">10. Intellectual Property</h2>
             <p>
               All content, design, code, branding, and materials that form PickleTracker (excluding
               user-entered data) are owned by or licensed to us. You may not copy, reproduce, distribute,
@@ -136,7 +163,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">9. Disclaimers</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">11. Disclaimers</h2>
             <p>
               PickleTracker is provided "as is" and "as available" without warranties of any kind, either
               express or implied. We do not warrant that:
@@ -153,7 +180,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">10. Limitation of Liability</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">12. Limitation of Liability</h2>
             <p>
               To the fullest extent permitted by applicable law, PickleTracker and its operators shall not
               be liable for any indirect, incidental, special, consequential, or punitive damages, including
@@ -165,7 +192,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">11. Indemnification</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">13. Indemnification</h2>
             <p>
               You agree to indemnify and hold harmless PickleTracker and its operators from any claims,
               damages, losses, or expenses (including reasonable legal fees) arising from your use of the
@@ -174,7 +201,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">12. Termination</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">14. Termination</h2>
             <p>
               You may stop using the Service at any time. You may also request deletion of your account and
               all associated data by contacting us at{' '}
@@ -191,7 +218,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">13. Service Modifications</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">15. Service Modifications</h2>
             <p>
               We reserve the right to modify, suspend, or discontinue any part of the Service at any time.
               We will make reasonable efforts to provide advance notice of significant changes. We are not
@@ -200,7 +227,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">14. Governing Law</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">16. Governing Law</h2>
             <p>
               These Terms are governed by and construed in accordance with the laws of India. Any disputes
               arising under or in connection with these Terms shall be subject to the exclusive jurisdiction
@@ -210,7 +237,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">15. Changes to These Terms</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">17. Changes to These Terms</h2>
             <p>
               We may update these Terms of Service from time to time. When we do, we will update the
               "Last updated" date at the top of this page. For material changes, we will notify you via
@@ -220,7 +247,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">16. Contact Us</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">18. Contact Us</h2>
             <p>
               For any questions or concerns about these Terms of Service, please contact us at{' '}
               <a href="mailto:pickletracker.app@gmail.com" className="text-green-600 hover:underline">
