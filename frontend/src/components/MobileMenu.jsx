@@ -30,7 +30,7 @@ export default function MobileMenu({ onOpenLocationModal }) {
       {/* Hamburger */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden flex flex-col gap-1.5 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        className="lg:hidden flex flex-col gap-1.5 p-2 rounded-lg hover:bg-gray-100 transition-colors"
         aria-label="Toggle menu"
       >
         <span className={`h-0.5 w-6 bg-[#272702] rounded transition-all ${isOpen ? 'rotate-45 translate-y-2' : ''}`} />
@@ -41,14 +41,14 @@ export default function MobileMenu({ onOpenLocationModal }) {
       {/* Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 h-dvh w-64 bg-white shadow-xl z-50 transform transition-transform duration-300 md:hidden flex flex-col border-r border-gray-100 ${
+        className={`fixed inset-y-0 left-0 h-dvh w-64 max-w-[85vw] bg-white shadow-xl z-50 transform transition-transform duration-300 lg:hidden flex flex-col border-r border-gray-100 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -97,15 +97,8 @@ export default function MobileMenu({ onOpenLocationModal }) {
             <NavLink to="/calendar"    className={navLinkClass} onClick={() => setIsOpen(false)}>Calendar</NavLink>
             <NavLink to="/players"     className={navLinkClass} onClick={() => setIsOpen(false)}>Nearby Players</NavLink>
             <NavLink to="/sessions"    className={navLinkClass} onClick={() => setIsOpen(false)}>Performance Journal</NavLink>
-            <NavLink to="/coach-hub" onClick={() => setIsOpen(false)} className={({ isActive }) =>
-              `flex items-center justify-between px-5 py-3 text-sm font-medium transition-colors border-l-4 ${
-                isActive
-                  ? 'text-[#91BE4D] bg-[#91BE4D]/8 border-[#91BE4D]'
-                  : 'text-[#272702]/70 hover:bg-gray-50 hover:text-[#91BE4D] border-transparent'
-              }`}>
-              <span>Coach Hub</span>
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded text-white leading-none"
-                style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}>NEW</span>
+            <NavLink to="/coach-hub" className={navLinkClass} onClick={() => setIsOpen(false)}>
+              Coach Hub
             </NavLink>
             <NavLink to="/coach"       className={navLinkClass} onClick={() => setIsOpen(false)}>AI Coach</NavLink>
             <NavLink to="/expenses"    className={navLinkClass} onClick={() => setIsOpen(false)}>Gear</NavLink>

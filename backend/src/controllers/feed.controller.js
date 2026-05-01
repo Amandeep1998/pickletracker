@@ -9,6 +9,15 @@ const { sendPushToUser } = require('./push.controller');
 
 const LIKE_PUSH_DEBOUNCE_MS = 5 * 60 * 1000; // 5 minutes
 
+/** Same semantics as GET /api/players?city= — poster city contains viewer city (case-insensitive). */
+function posterCityMatchesViewer(posterCity, viewerCity) {
+  if (!viewerCity || !String(viewerCity).trim()) return false;
+  if (!posterCity || !String(posterCity).trim()) return false;
+  const raw = String(viewerCity).trim();
+  const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(escaped, 'i').test(String(posterCity).trim());
+}
+
 function formatLikePushBody(likerNames, totalCount, tournamentName) {
   let who;
   if (totalCount === 1)      who = likerNames[0];
@@ -24,6 +33,21 @@ function formatLikePushBody(likerNames, totalCount, tournamentName) {
 exports.getFeed = async (req, res, next) => {
   try {
     const currentUserId = new mongoose.Types.ObjectId(req.user.id);
+    const wantNearby = ['1', 'true', 'yes'].includes(String(req.query.nearby || '').toLowerCase());
+
+    let viewerCity = null;
+    if (wantNearby) {
+      const me = await User.findById(req.user.id).select('city').lean();
+      viewerCity = me?.city ? String(me.city).trim() : '';
+      if (!viewerCity) {
+        return res.status(400).json({
+          success: false,
+          code: 'NEEDS_CITY',
+          message: 'Add your city to see activity from picklers nearby.',
+        });
+      }
+    }
+
     const today = new Date().toISOString().slice(0, 10);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
       .toISOString()
@@ -156,7 +180,14 @@ exports.getFeed = async (req, res, next) => {
     }
 
     // ── Step 6: Sort ──────────────────────────────────────────────────────────
+    // Nearby mode: full community feed, but rows whose poster city matches the viewer come first.
     feedItems.sort((a, b) => {
+      if (wantNearby && viewerCity) {
+        const aNear = posterCityMatchesViewer(a.user?.city, viewerCity);
+        const bNear = posterCityMatchesViewer(b.user?.city, viewerCity);
+        if (aNear !== bNear) return aNear ? -1 : 1;
+      }
+
       if (a.type === 'upcoming' && b.type !== 'upcoming') return -1;
       if (a.type !== 'upcoming' && b.type === 'upcoming') return 1;
       if (a.type === 'upcoming') return (a.earliestDate || '') < (b.earliestDate || '') ? -1 : 1;

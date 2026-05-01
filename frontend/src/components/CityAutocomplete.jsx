@@ -5,7 +5,7 @@ import { useDebounce } from '../hooks/useDebounce';
 const LIBRARIES = ['places'];
 
 /**
- * City-only autocomplete restricted to India.
+ * City autocomplete via Google Places (worldwide — no country restriction).
  * onChange(cityName: string) — called on every keystroke and on selection.
  * value — used for initial value and external resets only.
  */
@@ -13,6 +13,8 @@ export default function CityAutocomplete({ value, onChange, placeholder = 'Searc
   const [inputValue, setInputValue] = useState(value || '');
   const [predictions, setPredictions] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  /** Only fetch / show suggestions after the user focuses or types — avoids opening on pre-filled profile city. */
+  const [userEngaged, setUserEngaged] = useState(false);
   const autocompleteService = useRef(null);
   const containerRef = useRef(null);
 
@@ -43,8 +45,9 @@ export default function CityAutocomplete({ value, onChange, placeholder = 'Searc
     setShowDropdown(false);
   }, [value]);
 
-  // Fire Places API whenever the debounced query changes
+  // Fire Places API whenever the debounced query changes (only after focus / typing)
   useEffect(() => {
+    if (!userEngaged) return;
     if (!isLoaded || !autocompleteService.current) return;
     const q = debouncedQuery.trim();
     if (q.length < 2) {
@@ -56,7 +59,6 @@ export default function CityAutocomplete({ value, onChange, placeholder = 'Searc
     autocompleteService.current.getPlacePredictions(
       {
         input: q,
-        componentRestrictions: { country: 'in' },
         types: ['(cities)'],
       },
       (results, status) => {
@@ -69,7 +71,7 @@ export default function CityAutocomplete({ value, onChange, placeholder = 'Searc
         }
       }
     );
-  }, [debouncedQuery, isLoaded]);
+  }, [debouncedQuery, isLoaded, userEngaged]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -92,10 +94,16 @@ export default function CityAutocomplete({ value, onChange, placeholder = 'Searc
   }, [onChange]);
 
   const handleChange = (e) => {
+    setUserEngaged(true);
     const val = e.target.value;
     lastUserInput.current = val;
     setInputValue(val);
     onChange(val);
+  };
+
+  const handleFocus = () => {
+    setUserEngaged(true);
+    if (predictions.length > 0) setShowDropdown(true);
   };
 
   if (loadError) {
@@ -127,7 +135,7 @@ export default function CityAutocomplete({ value, onChange, placeholder = 'Searc
         type="text"
         value={inputValue}
         onChange={handleChange}
-        onFocus={() => predictions.length > 0 && setShowDropdown(true)}
+        onFocus={handleFocus}
         placeholder={placeholder}
         className={`w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D] ${className}`}
         autoComplete="off"

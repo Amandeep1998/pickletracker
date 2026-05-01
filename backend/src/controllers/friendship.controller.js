@@ -5,6 +5,7 @@ const Tournament = require('../models/Tournament');
 const Session = require('../models/Session');
 const socketManager = require('../socket/socketManager');
 const { sendFriendRequestEmail } = require('../services/email.service');
+const { sendPushToUser } = require('./push.controller');
 
 function isObjectId(id) {
   return mongoose.Types.ObjectId.isValid(id);
@@ -62,6 +63,13 @@ const sendFriendRequest = async (req, res, next) => {
       await existing.save();
       socketManager.emitToUser(recipientId, 'friend:refresh', {});
       sendFriendRequestEmail({ toEmail: recipient.email, toName: recipient.name, fromName: requester?.name || 'A player' }).catch(() => {});
+      const fromName = requester?.name || 'A player';
+      sendPushToUser(recipientId, {
+        title: 'New friend request',
+        body: `${fromName} wants to connect on PickleTracker`,
+        url: '/players',
+        tag: 'friend-request',
+      }).catch(() => {});
       return res.status(200).json({ success: true, data: existing });
     }
 
@@ -70,6 +78,13 @@ const sendFriendRequest = async (req, res, next) => {
     socketManager.emitToUser(recipientId, 'friend:refresh', {});
     // Email notification — fire and forget, never blocks the response
     sendFriendRequestEmail({ toEmail: recipient.email, toName: recipient.name, fromName: requester?.name || 'A player' }).catch(() => {});
+    const fromName = requester?.name || 'A player';
+    sendPushToUser(recipientId, {
+      title: 'New friend request',
+      body: `${fromName} wants to connect on PickleTracker`,
+      url: '/players',
+      tag: 'friend-request',
+    }).catch(() => {});
     return res.status(201).json({ success: true, data: friendship });
   } catch (err) {
     next(err);
@@ -136,6 +151,14 @@ const acceptFriendRequest = async (req, res, next) => {
     await row.save();
     // Notify the original requester that their request was accepted
     socketManager.emitToUser(String(row.requesterId), 'friend:refresh', {});
+    const accepter = await User.findById(userId).select('name').lean();
+    const accepterName = accepter?.name || 'Someone';
+    sendPushToUser(String(row.requesterId), {
+      title: 'Friend request accepted',
+      body: `${accepterName} accepted your friend request`,
+      url: '/players',
+      tag: 'friend-accepted',
+    }).catch(() => {});
     res.json({ success: true, data: row });
   } catch (err) {
     next(err);

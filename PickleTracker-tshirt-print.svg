@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PickleTracker — T-shirt Print File
+  Format : SVG (vector, print-ready)
+  Artboard: 3600 × 900 px  ≈  12 × 3 inches @ 300 DPI
+  Background: transparent (prints over black T-shirt)
+  Gradient : deep green #2d7005 → brand green #91BE4D (45%) → saffron #ec9937
+  Font     : Barlow Condensed 800 (matches site wordmark)
+             ↳ If font is unavailable, open in Inkscape / Illustrator
+               and do: Text → Convert to Path  (embeds outlines)
+-->
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 3600 900"
+  width="3600"
+  height="900"
+  aria-label="PickleTracker logo for T-shirt print"
+>
+  <defs>
+    <!-- Brand gradient: deep green → lime green → saffron orange -->
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#2d7005"/>
+      <stop offset="45%"  stop-color="#91BE4D"/>
+      <stop offset="100%" stop-color="#ec9937"/>
+    </linearGradient>
+  </defs>
+
+  <!--
+    Google Fonts embed — ensures Barlow Condensed loads when SVG
+    is opened in a browser or Inkscape before outlining the text.
+  -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@800&amp;display=swap');
+  </style>
+
+  <text
+    x="1800"
+    y="680"
+    text-anchor="middle"
+    font-family="'Barlow Condensed', 'Arial Narrow', Impact, sans-serif"
+    font-weight="800"
+    font-size="580"
+    letter-spacing="-6"
+    fill="url(#brandGrad)"
+  >PickleTracker</text>
+</svg>

@@ -1,16 +1,17 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import posthog from 'posthog-js';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
-import CITIES_BY_STATE from '../data/indianCities';
+import CityAutocomplete from '../components/CityAutocomplete';
+import EditCommunityPlayerCardModal from '../components/EditCommunityPlayerCardModal';
+import PlayerProfileCardContent from '../components/PlayerProfileCardContent';
+import { computeProfileStrength } from '../utils/profileCompletion';
 import { COMMON_TIME_ZONES } from '../data/commonTimeZones';
 import { getBrowserIanaTimeZone } from '../utils/browserTimeZone';
 import { tryUpdateCurrencyFromAutoTimeZone } from '../utils/currencyFromTimeZone';
 import { CURRENCIES } from '../utils/format';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import PaddleLoader from '../components/PaddleLoader';
-
-const ALL_CITIES = [...new Set(Object.values(CITIES_BY_STATE).flat())].sort();
 
 const resizeImage = (file) =>
   new Promise((resolve) => {
@@ -61,14 +62,30 @@ export default function Profile() {
   // Location & contact (all optional)
   const [locPhone, setLocPhone] = useState('');
   const [locCity, setLocCity] = useState('');
-  const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
-  const cityDropdownRef = useRef(null);
   const [locSaving, setLocSaving] = useState(false);
   const [locSaved, setLocSaved] = useState(false);
 
   const [loading, setLoading] = useState(true);
+  const [showEditPlayerCard, setShowEditPlayerCard] = useState(false);
+  const [publicCardPlayer, setPublicCardPlayer] = useState(null);
+  const [cardLoading, setCardLoading] = useState(false);
 
-  // Export
+  const loadPublicCardPreview = useCallback(async () => {
+    if (!user?.id) return;
+    setCardLoading(true);
+    try {
+      const res = await api.getPlayer(user.id);
+      setPublicCardPlayer(res.data.data);
+    } catch {
+      setPublicCardPlayer(null);
+    } finally {
+      setCardLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadPublicCardPreview();
+  }, [loadPublicCardPreview]);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
 
@@ -91,17 +108,6 @@ export default function Profile() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Close city dropdown on outside click
-  useEffect(() => {
-    const handler = (e) => {
-      if (cityDropdownRef.current && !cityDropdownRef.current.contains(e.target)) {
-        setCityDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
   const handlePhotoChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -111,6 +117,7 @@ export default function Profile() {
       setProfilePhoto(dataUrl);
       const res = await api.updateProfile({ profilePhoto: dataUrl });
       refreshUser(res.data.data);
+      loadPublicCardPreview();
     } catch {
       // photo upload failed silently — preview still shows
     } finally {
@@ -124,6 +131,7 @@ export default function Profile() {
       const res = await api.updateProfile({ profilePhoto: null });
       refreshUser(res.data.data);
       setProfilePhoto(null);
+      loadPublicCardPreview();
     } finally {
       setPhotoSaving(false);
     }
@@ -139,6 +147,7 @@ export default function Profile() {
       const res = await api.updateProfile({ name: name.trim() });
       refreshUser(res.data.data);
       setSaveSuccess(true);
+      loadPublicCardPreview();
     } catch (err) {
       setSaveError(err.response?.data?.message || 'Failed to save');
     } finally {
@@ -159,6 +168,7 @@ export default function Profile() {
       const res = await api.updateProfile(payload);
       refreshUser(res.data.data);
       setLocSaved(true);
+      loadPublicCardPreview();
       setTimeout(() => setLocSaved(false), 3000);
     } finally {
       setLocSaving(false);
@@ -258,17 +268,30 @@ export default function Profile() {
   const initials = (user?.name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
   const displayPhoto = profilePhoto || user?.profilePhoto || null;
 
-  // Profile completion
-  const completionItems = [
-    { label: 'Name', done: !!name.trim() },
-    { label: 'City', done: !!locCity },
-    { label: 'Mobile', done: locPhone.length === 10 },
-  ];
-  const completedCount = completionItems.filter((i) => i.done).length;
-  const completionPct = Math.round((completedCount / completionItems.length) * 100);
+  const mergedForStrength = useMemo(() => {
+    const phoneDigits = locPhone.replace(/\D/g, '');
+    const whatsappMerged =
+      phoneDigits.length === 10 ? `91${phoneDigits}` : user?.whatsappPhone || null;
+    return {
+      ...user,
+      name: (name || '').trim() || user?.name,
+      city: locCity || user?.city,
+      profilePhoto: displayPhoto || user?.profilePhoto,
+      whatsappPhone: whatsappMerged,
+      email: user?.email,
+      duprSingles: user?.duprSingles,
+      duprDoubles: user?.duprDoubles,
+      duprRating: user?.duprRating,
+      playingSince: user?.playingSince,
+      manualAchievements: user?.manualAchievements,
+    };
+  }, [user, name, locCity, locPhone, displayPhoto]);
+
+  const profileStrength = useMemo(() => computeProfileStrength(mergedForStrength), [mergedForStrength]);
+  const achievementStepDone = profileStrength.steps.find((s) => s.id === 'achievements')?.done;
 
   return (
-    <div className="max-w-xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
 
       {/* Hero */}
       <div
@@ -303,7 +326,7 @@ export default function Profile() {
         <div className="relative flex-1 min-w-0">
           <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-0.5">Your profile</p>
           <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight truncate">{user?.name}</h1>
-          <p className="text-slate-400 text-xs mt-0.5 truncate">{user?.email}</p>
+          <p className="text-slate-400/90 text-[11px] mt-1">Account &amp; how others see you on PickleTracker</p>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -323,36 +346,120 @@ export default function Profile() {
         </div>
       </div>
 
-      {/* Completion bar */}
+      {/* Profile strength — weighted 1–100% (email & phone count, never shown on public card) */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-5">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-bold text-gray-800">Profile completion</p>
-          <p className="text-sm font-black" style={{ background: 'linear-gradient(to right, #2d7005, #ec9937)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            {completionPct}%
+        <div className="flex items-center justify-between mb-2 gap-2">
+          <p className="text-sm font-bold text-gray-800">Profile strength</p>
+          <p
+            className="text-sm font-black tabular-nums"
+            style={{
+              background: 'linear-gradient(to right, #2d7005, #ec9937)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+            }}
+          >
+            {profileStrength.percent}%
           </p>
         </div>
-        <div className="w-full bg-gray-100 rounded-full h-2 mb-3">
+        <p className="text-[11px] text-gray-500 mb-3 leading-snug">
+          Fill in more fields to reach 100%. Email and mobile count toward this score but are never shown on your public player card.
+        </p>
+        {!achievementStepDone && (
+          <div className="mb-3 rounded-xl border border-amber-200/90 bg-amber-50 px-3 py-2.5 text-[11px] text-amber-950 leading-snug">
+            <span className="font-bold">Recommended:</span> log at least one past podium result so your public card shows tournament history — open <strong>Edit player card</strong> below, use <strong>Past achievements</strong>, add a row with tournament, category, and medal, then save.
+          </div>
+        )}
+        <div className="w-full bg-gray-100 rounded-full h-2.5 mb-4 overflow-hidden">
           <div
-            className="h-2 rounded-full transition-all duration-500"
-            style={{ width: `${completionPct}%`, background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
+            className="h-2.5 rounded-full transition-all duration-500 min-w-[2px]"
+            style={{
+              width: `${Math.max(1, profileStrength.percent)}%`,
+              background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)',
+            }}
           />
         </div>
-        <div className="flex gap-4">
-          {completionItems.map((item) => (
-            <div key={item.label} className="flex items-center gap-1.5">
-              <span className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${item.done ? 'bg-[#91BE4D]' : 'bg-gray-200'}`}>
-                {item.done && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {profileStrength.steps.map((step) => (
+            <div
+              key={step.id}
+              className={`flex items-start gap-2 rounded-xl px-2.5 py-2 border text-left ${
+                step.done ? 'bg-[#f4f8e8]/80 border-[#91BE4D]/25' : 'bg-gray-50/80 border-gray-100'
+              }`}
+            >
+              <span
+                className={`mt-0.5 w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  step.done ? 'bg-[#91BE4D]' : 'bg-gray-200'
+                }`}
+              >
+                {step.done && (
                   <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 )}
               </span>
-              <span className={`text-xs font-medium ${item.done ? 'text-gray-600' : 'text-gray-400'}`}>{item.label}</span>
+              <span className={`text-[10px] leading-tight font-medium ${step.done ? 'text-gray-700' : 'text-gray-400'}`}>
+                {step.label}
+              </span>
             </div>
           ))}
         </div>
       </div>
 
+      {/* Public player card preview — same as feed / Nearby */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-5">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+          <div>
+            <p className="text-sm font-bold text-gray-900">Your public player card</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              What others see when they open your profile from the feed or Nearby Players. Email and phone are never shown here.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowEditPlayerCard(true)}
+            className="flex-shrink-0 inline-flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 px-4 rounded-xl text-white hover:opacity-95 transition-opacity shadow-sm whitespace-nowrap"
+            style={{ background: 'linear-gradient(to right, #1e3a5f, #2563ab)' }}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            Edit player card
+          </button>
+        </div>
+        <div className="rounded-xl border border-gray-200 overflow-hidden bg-[#f1f5f9] flex flex-col max-h-[min(70vh,560px)] min-h-[200px]">
+          {cardLoading ? (
+            <div className="py-16 flex justify-center">
+              <PaddleLoader label="Loading preview…" />
+            </div>
+          ) : publicCardPlayer ? (
+            <div className="overflow-y-auto min-h-0 flex-1">
+              <PlayerProfileCardContent
+                player={publicCardPlayer}
+                currentUserId={user?.id}
+                isOwnProfile
+              />
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500 text-center py-12 px-4">Could not load preview.</p>
+          )}
+        </div>
+      </div>
+
+      {showEditPlayerCard && (
+        <EditCommunityPlayerCardModal
+          onClose={() => setShowEditPlayerCard(false)}
+          onSaved={async () => {
+            try {
+              const res = await api.getProfile();
+              refreshUser(res.data.data);
+              await loadPublicCardPreview();
+            } catch {
+              await loadPublicCardPreview();
+            }
+          }}
+        />
+      )}
       {loading ? (
         <div className="py-10"><PaddleLoader label="Loading profile..." /></div>
       ) : (
@@ -427,37 +534,16 @@ export default function Profile() {
                   />
                 </div>
               </div>
-              <div ref={cityDropdownRef} className="relative">
+              <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
                   City <span className="text-gray-300 font-normal normal-case">(optional)</span>
                 </label>
-                <input
-                  type="text"
+                <CityAutocomplete
                   value={locCity}
-                  onChange={(e) => { setLocCity(e.target.value); setCityDropdownOpen(true); }}
-                  onFocus={() => setCityDropdownOpen(true)}
-                  placeholder="Search city…"
-                  autoComplete="off"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
+                  onChange={setLocCity}
+                  placeholder="Search any city worldwide…"
+                  className="rounded-lg px-3 py-2.5"
                 />
-                {cityDropdownOpen && locCity.trim().length >= 1 && (() => {
-                  const matches = ALL_CITIES.filter((c) =>
-                    c.toLowerCase().includes(locCity.trim().toLowerCase())
-                  );
-                  return matches.length > 0 ? (
-                    <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-52 overflow-y-auto">
-                      {matches.map((c) => (
-                        <li
-                          key={c}
-                          onMouseDown={() => { setLocCity(c); setCityDropdownOpen(false); }}
-                          className={`px-3 py-2 text-sm cursor-pointer transition-colors ${c === locCity ? 'bg-[#f4f8e8] text-[#4a6e10] font-semibold' : 'text-gray-700 hover:bg-[#f4f8e8]'}`}
-                        >
-                          {c}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null;
-                })()}
               </div>
               {locSaved && (
                 <div className="bg-[#f4f8e8] border border-[#91BE4D]/30 text-[#4a6e10] text-sm rounded-lg px-4 py-2.5 flex items-center gap-2">

@@ -1,7 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useNavigate, NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import * as api from '../services/api';
+import LocationModal from '../components/LocationModal';
+import PlayerProfileModal from '../components/PlayerProfileModal';
+import EditCommunityPlayerCardModal from '../components/EditCommunityPlayerCardModal';
+import PlayerProfileCardContent from '../components/PlayerProfileCardContent';
+import PaddleLoader from '../components/PaddleLoader';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -70,7 +76,7 @@ function Avatar({ user }) {
   );
 }
 
-function FeedCard({ item, currentUserId }) {
+function FeedCard({ item, currentUserId, onViewProfile }) {
   const isUpcoming = item.type === 'upcoming';
   const dates = item.categories.map((c) => c.date).filter(Boolean);
   const dateRange = formatDateRange(dates);
@@ -181,6 +187,18 @@ function FeedCard({ item, currentUserId }) {
               )}
             </div>
             <p className="text-xs text-gray-400 mt-0.5">{timeAgo(item.createdAt)}</p>
+            {item.user?.id && onViewProfile && (
+              <button
+                type="button"
+                onClick={() => onViewProfile(item.user.id)}
+                className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-[#4a6e10] bg-[#f4f8e8] hover:bg-[#eaf4d4] px-3 py-1.5 rounded-full border border-[#91BE4D]/35 transition-colors shadow-sm"
+              >
+                <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                View profile
+              </button>
+            )}
           </div>
           <span className={`flex-shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${isUpcoming ? 'bg-blue-50 text-blue-600' : 'bg-[#f4f8e8] text-[#4a6e10]'}`}>
             {isUpcoming ? 'Upcoming' : 'Played'}
@@ -363,38 +381,276 @@ function SkeletonCard() {
   );
 }
 
+/** Log tournament CTA — fixed at top of Home */
+function HomeLogTournamentBanner({ onLogTournament }) {
+  return (
+    <div
+      className="rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:opacity-95 transition-opacity"
+      style={{ background: 'linear-gradient(135deg, #2d7005 0%, #91BE4D 55%, #ec9937 100%)' }}
+      onClick={onLogTournament}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onLogTournament();
+      }}
+    >
+      <div>
+        <p className="text-white font-semibold text-sm">Playing a tournament?</p>
+        <p className="text-white/80 text-xs mt-0.5">
+          Log it and let your community know
+        </p>
+      </div>
+      <span className="flex-shrink-0 bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-white/30 whitespace-nowrap pointer-events-none">
+        Log Tournament →
+      </span>
+    </div>
+  );
+}
+
+/** Public player card preview — inserted mid-feed after activity */
+function HomeMidFeedPlayerCardPromo({ cardLoading, publicCardPlayer, currentUserId, onEditPlayerCard }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4 sm:px-5">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-gray-900">Your public player card</p>
+          <p className="text-xs text-gray-500 mt-0.5 leading-snug">
+            Preview how you appear when someone opens your profile from the feed or Nearby. Email and phone are never shown here.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={onEditPlayerCard}
+            className="inline-flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 px-4 rounded-xl text-white hover:opacity-95 transition-opacity shadow-sm whitespace-nowrap"
+            style={{ background: 'linear-gradient(to right, #1e3a5f, #2563ab)' }}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            Edit player card
+          </button>
+          <NavLink
+            to="/profile"
+            className="text-xs font-semibold text-[#4a6e10] hover:text-[#2d7005] hover:underline underline-offset-2 py-2"
+          >
+            All profile settings →
+          </NavLink>
+        </div>
+      </div>
+      <div className="rounded-xl border border-gray-200 overflow-hidden bg-[#f1f5f9] flex flex-col max-h-[min(65vh,520px)] min-h-[200px]">
+        {cardLoading ? (
+          <div className="py-14 flex justify-center">
+            <PaddleLoader label="Loading preview…" />
+          </div>
+        ) : publicCardPlayer ? (
+          <div className="overflow-y-auto min-h-0 flex-1">
+            <PlayerProfileCardContent
+              player={publicCardPlayer}
+              currentUserId={currentUserId}
+              isOwnProfile
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500 text-center py-12 px-4">Could not load preview.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 const FILTERS = [
-  { key: 'all',      label: 'All' },
+  { key: 'all', label: 'All' },
+  { key: 'friends', label: 'Friends' },
   { key: 'upcoming', label: 'Upcoming' },
-  { key: 'played',   label: 'Played' },
+  { key: 'played', label: 'Played' },
+  { key: 'nearby', label: 'Nearby' },
 ];
 
+/** Insert promo blocks after this many feed cards when enough activity exists */
+const FEED_ITEMS_BEFORE_PROMO = 3;
+
 export default function Home() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const socket = useSocket();
   const [feed, setFeed] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [profilePlayerId, setProfilePlayerId] = useState(null);
+  const [friendRequests, setFriendRequests] = useState({ incoming: [], outgoing: [] });
+  const [friends, setFriends] = useState([]);
+  const [pendingFriendIds, setPendingFriendIds] = useState(() => new Set());
+  const [showEditPlayerCard, setShowEditPlayerCard] = useState(false);
+  const [publicCardPlayer, setPublicCardPlayer] = useState(null);
+  const [cardLoading, setCardLoading] = useState(false);
+
+  const loadPublicCardPreview = useCallback(async () => {
+    if (!user?.id) return;
+    setCardLoading(true);
+    try {
+      const res = await api.getPlayer(user.id);
+      setPublicCardPlayer(res.data.data);
+    } catch {
+      setPublicCardPlayer(null);
+    } finally {
+      setCardLoading(false);
+    }
+  }, [user?.id]);
 
   useEffect(() => {
-    let mounted = true;
-    api.getFeed()
-      .then((res) => { if (mounted) setFeed(res.data.data || []); })
-      .catch(() => { if (mounted) setError('Could not load feed. Please try again.'); })
-      .finally(() => { if (mounted) setLoading(false); });
-    return () => { mounted = false; };
+    loadPublicCardPreview();
+  }, [loadPublicCardPreview]);
+
+  const fetchFriendData = useCallback(async () => {
+    try {
+      const [reqRes, friendsRes] = await Promise.all([api.getFriendRequests(), api.getFriends()]);
+      const data = reqRes.data.data || { incoming: [], outgoing: [] };
+      const friendsList = friendsRes.data.data || [];
+      setFriendRequests(data);
+      setFriends(friendsList);
+      const outgoingIds = new Set(data.outgoing.map((r) => String(r.user?.id)));
+      const friendIds = new Set(friendsList.map((f) => String(f.id)));
+      setPendingFriendIds((prev) => {
+        const next = new Set([...prev].filter((id) => outgoingIds.has(id) || friendIds.has(id)));
+        return next.size === prev.size ? prev : next;
+      });
+    } catch { /* feed stays usable */ }
   }, []);
 
-  const firstName = (user?.name || '').split(' ')[0];
+  useEffect(() => {
+    if (!user?.id) return;
+    fetchFriendData();
+  }, [user?.id, fetchFriendData]);
 
-  const visibleFeed = feed.filter((item) => {
-    if (filter === 'upcoming') return item.type === 'upcoming';
-    if (filter === 'played')   return item.type === 'recent';
-    return true;
-  });
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('friend:refresh', fetchFriendData);
+    socket.on('connect', fetchFriendData);
+    return () => {
+      socket.off('friend:refresh', fetchFriendData);
+      socket.off('connect', fetchFriendData);
+    };
+  }, [socket, fetchFriendData]);
+
+  const friendStatusByUserId = useMemo(() => {
+    const map = {};
+    friends.forEach((f) => {
+      map[String(f.id)] = 'friend';
+    });
+    (friendRequests.incoming || []).forEach((r) => {
+      map[String(r.user.id)] = 'incoming';
+    });
+    (friendRequests.outgoing || []).forEach((r) => {
+      map[String(r.user.id)] = 'pending';
+    });
+    pendingFriendIds.forEach((id) => {
+      if (!map[String(id)]) map[String(id)] = 'pending';
+    });
+    return map;
+  }, [friendRequests, friends, pendingFriendIds]);
+
+  const friendIdsSet = useMemo(
+    () => new Set(friends.map((f) => String(f.id))),
+    [friends]
+  );
+
+  const handleSendFriendRequest = async (playerId) => {
+    setPendingFriendIds((prev) => new Set(prev).add(String(playerId)));
+    try {
+      await api.sendFriendRequest(playerId);
+      await fetchFriendData();
+    } catch {
+      setPendingFriendIds((prev) => {
+        const next = new Set(prev);
+        next.delete(String(playerId));
+        return next;
+      });
+    }
+  };
+
+  useEffect(() => {
+    let cancelled = false;
+    const params = filter === 'nearby' ? { nearby: 1 } : {};
+
+    const run = async () => {
+      setError('');
+      setLoading(true);
+      try {
+        const res = await api.getFeed(params);
+        if (!cancelled) setFeed(res.data.data || []);
+      } catch (err) {
+        const code = err.response?.data?.code;
+        if (err.response?.status === 400 && code === 'NEEDS_CITY') {
+          if (!cancelled) {
+            setLocationOpen(true);
+            if (filter === 'nearby') setFilter('all');
+            setFeed([]);
+          }
+        } else if (!cancelled) {
+          setError('Could not load feed. Please try again.');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [filter]);
+
+  const firstName = (user?.name || '').split(' ')[0];
+  const hasCity = Boolean(String(user?.city || '').trim());
+
+  const selectFilter = (key) => {
+    if (key === 'nearby' && !hasCity) {
+      setLocationOpen(true);
+      return;
+    }
+    setFilter(key);
+  };
+
+  const retryFetch = () => {
+    const params = filter === 'nearby' ? { nearby: 1 } : {};
+    setError('');
+    setLoading(true);
+    api
+      .getFeed(params)
+      .then((res) => setFeed(res.data.data || []))
+      .catch(() => setError('Could not load feed. Please try again.'))
+      .finally(() => setLoading(false));
+  };
+
+  const handleLocationSave = async (city) => {
+    try {
+      const res = await api.updateProfile({ city });
+      refreshUser(res.data.data);
+      setLocationOpen(false);
+      setFilter('nearby');
+      loadPublicCardPreview();
+    } catch {
+      setError('Could not save your city. Please try again.');
+    }
+  };
+
+  const visibleFeed = useMemo(() => {
+    return feed.filter((item) => {
+      const posterId = item.user?.id != null ? String(item.user.id) : '';
+      if (filter === 'friends') {
+        return Boolean(posterId && friendIdsSet.has(posterId));
+      }
+      if (filter === 'nearby') return true;
+      if (filter === 'upcoming') return item.type === 'upcoming';
+      if (filter === 'played') return item.type === 'recent';
+      return true;
+    });
+  }, [feed, filter, friendIdsSet]);
 
   return (
     <div className="min-h-screen bg-[#f8faf3]">
@@ -406,34 +662,24 @@ export default function Home() {
             Hey {firstName} 👋
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            See what your fellow picklers are up to
+            {filter === 'nearby' && user?.city
+              ? `Full feed — activity from ${user.city} shown first`
+              : filter === 'friends'
+                ? 'Tournament activity from people you’re friends with'
+              : 'See what your fellow picklers are up to'}
           </p>
         </div>
 
-        {/* CTA card */}
-        <div
-          className="rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:opacity-95 transition-opacity"
-          style={{ background: 'linear-gradient(135deg, #2d7005 0%, #91BE4D 55%, #ec9937 100%)' }}
-          onClick={() => navigate('/calendar')}
-        >
-          <div>
-            <p className="text-white font-semibold text-sm">Playing a tournament?</p>
-            <p className="text-white/80 text-xs mt-0.5">
-              Log it and let your community know
-            </p>
-          </div>
-          <button className="flex-shrink-0 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-colors border border-white/30 whitespace-nowrap">
-            Log Tournament →
-          </button>
-        </div>
+        <HomeLogTournamentBanner onLogTournament={() => navigate('/calendar')} />
 
         {/* Toggle */}
-        <div className="flex bg-white rounded-xl border border-gray-100 shadow-sm p-1 gap-1">
+        <div className="flex flex-wrap bg-white rounded-xl border border-gray-100 shadow-sm p-1 gap-1">
           {FILTERS.map(({ key, label }) => (
             <button
+              type="button"
               key={key}
-              onClick={() => setFilter(key)}
-              className={`flex-1 py-1.5 text-sm font-semibold rounded-lg transition-colors ${
+              onClick={() => selectFilter(key)}
+              className={`flex-1 min-w-[4.5rem] py-1.5 px-1 text-xs sm:text-sm font-semibold rounded-lg transition-colors ${
                 filter === key
                   ? 'text-white shadow-sm'
                   : 'text-gray-400 hover:text-[#272702]'
@@ -448,7 +694,9 @@ export default function Home() {
         {/* Feed */}
         {loading && (
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
+            {[1, 2, 3].map((i) => (
+              <SkeletonCard key={i} />
+            ))}
           </div>
         )}
 
@@ -456,7 +704,8 @@ export default function Home() {
           <div className="text-center py-12">
             <p className="text-sm text-gray-400">{error}</p>
             <button
-              onClick={() => { setError(''); setLoading(true); api.getFeed().then((r) => setFeed(r.data.data || [])).catch(() => setError('Could not load feed.')).finally(() => setLoading(false)); }}
+              type="button"
+              onClick={retryFetch}
               className="mt-3 text-xs text-[#91BE4D] font-semibold hover:underline"
             >
               Try again
@@ -466,31 +715,136 @@ export default function Home() {
 
         {!loading && !error && visibleFeed.length === 0 && (
           <div className="text-center py-16">
-            <div className="text-5xl mb-4">🎾</div>
+            <div className="text-5xl mb-4">
+              {filter === 'nearby' ? '📍' : filter === 'friends' ? '👥' : '🎾'}
+            </div>
             <p className="font-semibold text-[#272702]">
-              {filter === 'upcoming' ? 'No upcoming tournaments' : filter === 'played' ? 'No recent results' : 'No activity yet'}
+              {filter === 'upcoming'
+                ? 'No upcoming tournaments'
+                : filter === 'played'
+                  ? 'No recent results'
+                  : filter === 'nearby'
+                    ? 'No activity yet'
+                    : filter === 'friends'
+                      ? friends.length === 0
+                        ? 'No friends yet'
+                        : 'No activity from friends'
+                      : 'No activity yet'}
             </p>
             <p className="text-sm text-gray-400 mt-1">
-              {filter === 'all' ? 'Be the first to log a tournament!' : 'Try switching to a different filter'}
+              {filter === 'nearby'
+                ? user?.city
+                  ? 'Nothing in the feed right now. Log a tournament or check back soon.'
+                  : 'Set your city to see activity near you.'
+                : filter === 'friends'
+                  ? friends.length === 0
+                    ? 'Add friends from Nearby Players — then their tournaments appear here.'
+                    : 'Nothing from friends in this feed window. Try All to see everyone, or check back after friends log events.'
+                  : filter === 'all'
+                    ? 'Be the first to log a tournament!'
+                    : 'Try switching to a different filter'}
             </p>
-            <button
-              onClick={() => navigate('/calendar')}
-              className="mt-4 text-sm font-semibold text-white px-5 py-2 rounded-xl hover:opacity-90 transition-opacity"
-              style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}
-            >
-              Log Tournament
-            </button>
+            {filter === 'friends' && friends.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => navigate('/players')}
+                className="mt-4 text-sm font-semibold text-white px-5 py-2 rounded-xl hover:opacity-90 transition-opacity"
+                style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}
+              >
+                Find players
+              </button>
+            ) : filter !== 'nearby' ? (
+              <button
+                type="button"
+                onClick={() => navigate('/calendar')}
+                className="mt-4 text-sm font-semibold text-white px-5 py-2 rounded-xl hover:opacity-90 transition-opacity"
+                style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}
+              >
+                Log Tournament
+              </button>
+            ) : null}
           </div>
         )}
 
         {!loading && !error && visibleFeed.length > 0 && (
           <div className="space-y-3">
-            {visibleFeed.map((item) => (
-              <FeedCard key={item.id} item={item} currentUserId={user?.id} />
-            ))}
+            {visibleFeed.length >= FEED_ITEMS_BEFORE_PROMO ? (
+              <>
+                {visibleFeed.slice(0, FEED_ITEMS_BEFORE_PROMO).map((item) => (
+                  <FeedCard
+                    key={item.id}
+                    item={item}
+                    currentUserId={user?.id}
+                    onViewProfile={setProfilePlayerId}
+                  />
+                ))}
+
+                <HomeMidFeedPlayerCardPromo
+                  cardLoading={cardLoading}
+                  publicCardPlayer={publicCardPlayer}
+                  currentUserId={user?.id}
+                  onEditPlayerCard={() => setShowEditPlayerCard(true)}
+                />
+
+                {visibleFeed.slice(FEED_ITEMS_BEFORE_PROMO).map((item) => (
+                  <FeedCard
+                    key={item.id}
+                    item={item}
+                    currentUserId={user?.id}
+                    onViewProfile={setProfilePlayerId}
+                  />
+                ))}
+              </>
+            ) : (
+              <>
+                {visibleFeed.map((item) => (
+                  <FeedCard
+                    key={item.id}
+                    item={item}
+                    currentUserId={user?.id}
+                    onViewProfile={setProfilePlayerId}
+                  />
+                ))}
+
+                <HomeMidFeedPlayerCardPromo
+                  cardLoading={cardLoading}
+                  publicCardPlayer={publicCardPlayer}
+                  currentUserId={user?.id}
+                  onEditPlayerCard={() => setShowEditPlayerCard(true)}
+                />
+              </>
+            )}
           </div>
         )}
 
+        {profilePlayerId && (
+          <PlayerProfileModal
+            playerId={profilePlayerId}
+            onClose={() => setProfilePlayerId(null)}
+            friendState={friendStatusByUserId[String(profilePlayerId)] || 'none'}
+            currentUserId={user?.id}
+            onSendFriendRequest={handleSendFriendRequest}
+          />
+        )}
+
+        {showEditPlayerCard && (
+          <EditCommunityPlayerCardModal
+            onClose={() => setShowEditPlayerCard(false)}
+            onSaved={async () => {
+              try {
+                const res = await api.getProfile();
+                refreshUser(res.data.data);
+              } catch {
+                /* modal already saved */
+              }
+              await loadPublicCardPreview();
+            }}
+          />
+        )}
+
+        {locationOpen && (
+          <LocationModal onSave={handleLocationSave} onSkip={() => setLocationOpen(false)} />
+        )}
       </div>
     </div>
   );

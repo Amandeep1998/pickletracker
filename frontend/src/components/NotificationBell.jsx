@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import * as api from '../services/api';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { useSocket } from '../context/SocketContext';
 
 function timeAgo(dateStr) {
   const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
@@ -12,6 +13,59 @@ function timeAgo(dateStr) {
   if (days === 1) return 'yesterday';
   if (days < 7) return `${days}d ago`;
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+function FriendRequestRow({ request, onAccept, onReject, busy }) {
+  const u = request.user;
+  const name = u?.name || 'Player';
+  const initials = name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+  return (
+    <div className="flex items-start gap-3 px-4 py-3 bg-[#f8fafc]">
+      {u?.profilePhoto ? (
+        <img src={u.profilePhoto} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0 mt-0.5 border border-gray-200" />
+      ) : (
+        <span
+          className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0 mt-0.5"
+          style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
+        >
+          {initials}
+        </span>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-[#272702] leading-snug">
+          <span className="font-semibold">{name}</span>
+          <span className="text-gray-600 font-normal"> wants to be friends</span>
+        </p>
+        {u?.city && <p className="text-[11px] text-gray-400 mt-0.5">{u.city}</p>}
+        <p className="text-[11px] text-gray-400 mt-1">{timeAgo(request.createdAt)}</p>
+        <div className="flex flex-wrap gap-2 mt-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onAccept(request.id)}
+            className="text-xs font-bold text-white px-3 py-1.5 rounded-lg disabled:opacity-50 transition-opacity"
+            style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}
+          >
+            Accept
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onReject(request.id)}
+            className="text-xs font-semibold text-gray-600 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50"
+          >
+            Decline
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function NotificationItem({ notif }) {
@@ -58,7 +112,7 @@ function PushPrompt({ onEnable, enabling }) {
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold text-[#272702]">Enable push notifications</p>
           <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
-            Get notified when someone comments and for tournament reminders
+            Get notified for comments, likes, friend requests, and tournament reminders
           </p>
         </div>
       </div>
@@ -89,30 +143,47 @@ function PushDeniedBanner() {
 export default function NotificationBell() {
   const containerRef = useRef(null);
   const panelRef = useRef(null);
+  const socket = useSocket();
   const [open, setOpen] = useState(false);
   const [isMobileLayout, setIsMobileLayout] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches
   );
   const [notifications, setNotifications] = useState([]);
+  const [incomingFriendRequests, setIncomingFriendRequests] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [enabling, setEnabling] = useState(false);
+  const [friendActionId, setFriendActionId] = useState(null);
 
   const { permission, subscribed, checking, isSupported, requestAndSubscribe } = usePushNotifications();
 
-  // Poll unread count every 60s while page is open
-  const fetchUnreadCount = useCallback(async () => {
+  const refreshBellData = useCallback(async () => {
     try {
-      const res = await api.getFeedNotifications();
-      setUnreadCount(res.data.unreadCount || 0);
-    } catch { /* silent */ }
+      const [notifRes, friendsRes] = await Promise.all([
+        api.getFeedNotifications(),
+        api.getFriendRequests(),
+      ]);
+      setUnreadCount(notifRes.data.unreadCount || 0);
+      setIncomingFriendRequests(friendsRes.data.data?.incoming || []);
+    } catch {
+      /* silent */
+    }
   }, []);
 
   useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 60_000);
+    refreshBellData();
+    const interval = setInterval(refreshBellData, 60_000);
     return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+  }, [refreshBellData]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const onFriendRefresh = () => {
+      refreshBellData();
+    };
+    socket.on('friend:refresh', onFriendRefresh);
+    return () => socket.off('friend:refresh', onFriendRefresh);
+  }, [socket, refreshBellData]);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 639px)');
@@ -135,22 +206,55 @@ export default function NotificationBell() {
   }, [open]);
 
   const handleOpen = async () => {
-    if (open) { setOpen(false); return; }
+    if (open) {
+      setOpen(false);
+      return;
+    }
     setOpen(true);
     setLoading(true);
     try {
-      const res = await api.getFeedNotifications();
-      setNotifications(res.data.data || []);
-      setUnreadCount(res.data.unreadCount || 0);
-      // Only mark read if push is already sorted out — keep the badge while the prompt is showing
+      const [notifRes, friendsRes] = await Promise.all([
+        api.getFeedNotifications(),
+        api.getFriendRequests(),
+      ]);
+      setNotifications(notifRes.data.data || []);
+      setUnreadCount(notifRes.data.unreadCount || 0);
+      setIncomingFriendRequests(friendsRes.data.data?.incoming || []);
       const pushPending = isSupported && !checking && permission !== 'denied' && !subscribed;
-      if (!pushPending && (res.data.unreadCount || 0) > 0) {
+      if (!pushPending && (notifRes.data.unreadCount || 0) > 0) {
         api.markFeedNotificationsRead().catch(() => {});
         setUnreadCount(0);
         setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       }
-    } catch { /* silent */ }
-    finally { setLoading(false); }
+    } catch {
+      /* silent */
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAcceptFriend = async (requestId) => {
+    setFriendActionId(requestId);
+    try {
+      await api.acceptFriendRequest(requestId);
+      setIncomingFriendRequests((prev) => prev.filter((r) => String(r.id) !== String(requestId)));
+    } catch {
+      /* silent */
+    } finally {
+      setFriendActionId(null);
+    }
+  };
+
+  const handleRejectFriend = async (requestId) => {
+    setFriendActionId(requestId);
+    try {
+      await api.rejectFriendRequest(requestId);
+      setIncomingFriendRequests((prev) => prev.filter((r) => String(r.id) !== String(requestId)));
+    } catch {
+      /* silent */
+    } finally {
+      setFriendActionId(null);
+    }
   };
 
   const handleEnablePush = async () => {
@@ -168,14 +272,17 @@ export default function NotificationBell() {
   const showPushPrompt = isSupported && !checking && permission !== 'denied' && !subscribed;
   const showPushDenied = isSupported && !checking && permission === 'denied';
 
+  const friendIncomingCount = incomingFriendRequests.length;
   // Show at least "1" while push permission hasn't been resolved — draws user to the prompt
-  const badgeCount = showPushPrompt ? Math.max(1, unreadCount) : unreadCount;
+  const badgeCount = showPushPrompt
+    ? Math.max(1, unreadCount + friendIncomingCount)
+    : unreadCount + friendIncomingCount;
 
   const dropdownBody = (
     <>
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
         <h3 className="font-semibold text-sm text-[#272702] truncate">Notifications</h3>
-        {unreadCount === 0 && notifications.length > 0 && (
+        {unreadCount === 0 && notifications.length > 0 && friendIncomingCount === 0 && (
           <span className="text-[11px] text-gray-400 shrink-0">All caught up</span>
         )}
       </div>
@@ -183,7 +290,26 @@ export default function NotificationBell() {
       {showPushPrompt && <PushPrompt onEnable={handleEnablePush} enabling={enabling} />}
       {showPushDenied && <PushDeniedBanner />}
 
-      <div className="max-h-[min(360px,50dvh)] sm:max-h-[360px] overflow-y-auto overflow-x-hidden min-h-0">
+      <div className="max-h-[min(420px,55dvh)] sm:max-h-[420px] overflow-y-auto overflow-x-hidden min-h-0">
+        {!loading && incomingFriendRequests.length > 0 && (
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide px-4 pt-3 pb-1 sticky top-0 bg-white z-[1]">
+              Friend requests
+            </p>
+            <div className="divide-y divide-gray-100 border-b border-gray-100">
+              {incomingFriendRequests.map((req) => (
+                <FriendRequestRow
+                  key={String(req.id)}
+                  request={req}
+                  onAccept={handleAcceptFriend}
+                  onReject={handleRejectFriend}
+                  busy={String(friendActionId) === String(req.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {loading && (
           <div className="space-y-0 divide-y divide-gray-50">
             {[1, 2, 3].map((i) => (
@@ -198,21 +324,28 @@ export default function NotificationBell() {
           </div>
         )}
 
-        {!loading && notifications.length === 0 && (
+        {!loading && notifications.length === 0 && incomingFriendRequests.length === 0 && (
           <div className="text-center py-10 px-3">
             <p className="text-2xl mb-2">🔔</p>
             <p className="text-sm font-medium text-gray-500">No notifications yet</p>
             <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-              When someone likes or comments on your tournaments, you'll see it here
+              When someone likes or comments on your tournaments or sends a friend request, you&apos;ll see it here
             </p>
           </div>
         )}
 
         {!loading && notifications.length > 0 && (
-          <div className="divide-y divide-gray-50">
-            {notifications.map((n) => (
-              <NotificationItem key={String(n.id)} notif={n} />
-            ))}
+          <div>
+            {incomingFriendRequests.length > 0 && (
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide px-4 pt-3 pb-1 border-t border-gray-100 bg-white">
+                Likes &amp; comments
+              </p>
+            )}
+            <div className="divide-y divide-gray-50">
+              {notifications.map((n) => (
+                <NotificationItem key={String(n.id)} notif={n} />
+              ))}
+            </div>
           </div>
         )}
       </div>

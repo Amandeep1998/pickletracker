@@ -4,10 +4,11 @@ import * as api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../context/SocketContext';
 import LocationModal from '../components/LocationModal';
-import SearchableSelect from '../components/SearchableSelect';
 import BannerMedalStrip from '../components/BannerMedalStrip';
-import { CATEGORIES } from '../utils/format';
 import PaddleLoader from '../components/PaddleLoader';
+import PlayerProfileModal from '../components/PlayerProfileModal';
+import EditCommunityPlayerCardModal from '../components/EditCommunityPlayerCardModal';
+import FriendCalendarModal from '../components/FriendCalendarModal';
 
 // ── Coordinates for major Indian cities (for distance sorting) ───────────────
 const CITY_COORDS = {
@@ -73,8 +74,6 @@ const SORT_OPTIONS = [
 ];
 
 const MEDAL_EMOJI = { Gold: '🥇', Silver: '🥈', Bronze: '🥉' };
-const CURRENT_YEAR = new Date().getFullYear();
-const YEARS = Array.from({ length: CURRENT_YEAR - 2018 }, (_, i) => CURRENT_YEAR - i);
 
 const resizeImage = (file) =>
   new Promise((resolve) => {
@@ -102,23 +101,6 @@ function rarityLabel(totalMedals) {
   return null;
 }
 
-// Calendar helpers for friend calendar modal
-function buildMonthGrid(year, month) {
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const cells = [];
-  for (let i = 0; i < firstDay; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  while (cells.length % 7 !== 0) cells.push(null);
-  return cells;
-}
-function toDateStr(year, month, day) {
-  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-
-
-// ── Toast notification ───────────────────────────────────────────────────────
 function Toast({ message, type = 'success', onDismiss }) {
   useEffect(() => {
     const t = setTimeout(onDismiss, 3500);
@@ -173,114 +155,6 @@ function ConsentModal({ request, onConfirm, onCancel, loading }) {
               : 'Accept & Connect'
             }
           </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Friend calendar modal ────────────────────────────────────────────────────
-const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-function FriendCalendarModal({ friend, onClose }) {
-  const today = new Date();
-  const todayStr = toDateStr(today.getFullYear(), today.getMonth(), today.getDate());
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
-
-  useEffect(() => {
-    api.getFriendSchedule(friend.id)
-      .then((res) => setEvents(res.data.data || []))
-      .catch(() => setError('Could not load schedule'))
-      .finally(() => setLoading(false));
-  }, [friend.id]);
-
-  const monthGrid = useMemo(() => buildMonthGrid(viewYear, viewMonth), [viewYear, viewMonth]);
-  const monthName = new Date(viewYear, viewMonth).toLocaleString(undefined, { month: 'long', year: 'numeric' });
-  const eventsByDate = useMemo(() => {
-    const map = {};
-    events.forEach((e) => { const d = e.date?.split('T')[0]; if (d) { if (!map[d]) map[d] = []; map[d].push(e); } });
-    return map;
-  }, [events]);
-
-  const monthStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
-  const monthEvents = events.filter((e) => e.date?.startsWith(monthStr));
-  const initials = (friend.name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-
-  return (
-    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50" />
-      <div className="relative bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[92dvh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="sm:hidden flex justify-center pt-3 pb-0.5"><div className="w-10 h-1 bg-gray-200 rounded-full" /></div>
-        <div className="relative px-5 pt-5 pb-4 flex items-center gap-3"
-          style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 60%, #2a1a00 100%)' }}>
-          <button onClick={onClose} className="absolute top-4 right-4 text-white/40 hover:text-white/80 transition-colors p-1">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-          <div className="w-12 h-12 rounded-full flex-shrink-0" style={{ background: 'linear-gradient(135deg, #2d7005, #91BE4D 45%, #ec9937)', padding: 2.5 }}>
-            <div className="w-full h-full rounded-full overflow-hidden bg-[#1c3a07] flex items-center justify-center">
-              {friend.profilePhoto ? <img src={friend.profilePhoto} alt={friend.name} className="w-full h-full object-cover" /> : <span className="text-sm font-black text-[#91BE4D]">{initials}</span>}
-            </div>
-          </div>
-          <div>
-            <p className="text-[#91BE4D] text-[10px] font-bold uppercase tracking-widest">Friend's Schedule</p>
-            <p className="text-white font-bold text-base leading-tight">{friend.name}</p>
-            {(friend.city) && <p className="text-white/50 text-xs mt-0.5">📍 {friend.city}</p>}
-          </div>
-        </div>
-        <div className="p-4">
-          {loading ? <div className="py-16"><PaddleLoader label="Loading schedule..." /></div>
-          : error ? <div className="py-10 text-center text-red-500 text-sm">{error}</div>
-          : (<>
-            <div className="flex items-center justify-between mb-3">
-              <button onClick={() => { if (viewMonth === 0) { setViewYear(y => y-1); setViewMonth(11); } else setViewMonth(m => m-1); }} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-600"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg></button>
-              <p className="text-sm font-bold text-gray-900">{monthName}</p>
-              <button onClick={() => { if (viewMonth === 11) { setViewYear(y => y+1); setViewMonth(0); } else setViewMonth(m => m+1); }} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition text-gray-600"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg></button>
-            </div>
-            <div className="grid grid-cols-7 mb-1">{WEEKDAYS_SHORT.map((d, i) => <div key={i} className="text-center text-[10px] font-semibold text-gray-400 uppercase py-1">{d}</div>)}</div>
-            <div className="grid grid-cols-7 border border-gray-100 rounded-xl overflow-hidden">
-              {monthGrid.map((day, idx) => {
-                if (!day) return <div key={`blank-${idx}`} className="min-h-[52px] bg-gray-50/50 border-b border-r border-gray-100" />;
-                const dateStr = toDateStr(viewYear, viewMonth, day);
-                const dayEvents = eventsByDate[dateStr] || [];
-                const isToday = dateStr === todayStr;
-                return (
-                  <div key={dateStr} className={`min-h-[52px] border-b border-r border-gray-100 p-0.5 ${dayEvents.length > 0 ? 'bg-[#f4f8e8]/60' : ''}`}>
-                    <div className="flex justify-center mb-0.5">
-                      <span className={`w-5 h-5 flex items-center justify-center rounded-full text-[11px] font-semibold ${isToday ? 'bg-[#91BE4D] text-white' : 'text-gray-600'}`}>{day}</span>
-                    </div>
-                    {dayEvents.slice(0, 2).map((e, i) => (
-                      <div key={i} className={`text-[8px] rounded px-0.5 py-0.5 truncate font-semibold leading-tight ${e.kind === 'tournament' ? 'bg-[#91BE4D]/20 text-[#3a5e08]' : 'bg-blue-100 text-blue-700'}`}>
-                        {e.kind === 'tournament' ? '🏆' : '🎾'} {e.title || e.categoryName || 'Event'}
-                      </div>
-                    ))}
-                    {dayEvents.length > 2 && <p className="text-[7px] text-gray-400 text-center">+{dayEvents.length - 2}</p>}
-                  </div>
-                );
-              })}
-            </div>
-            {monthEvents.length > 0 ? (
-              <div className="mt-4">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">This month</p>
-                <div className="space-y-1.5">
-                  {monthEvents.sort((a, b) => a.date < b.date ? -1 : 1).map((e, i) => (
-                    <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2">
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${e.kind === 'tournament' ? 'bg-[#91BE4D]' : 'bg-blue-400'}`} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-gray-800 truncate">{e.title || e.categoryName || (e.kind === 'tournament' ? 'Tournament' : 'Session')}</p>
-                        {e.categoryName && e.kind === 'tournament' && <p className="text-[10px] text-gray-400">{e.categoryName}</p>}
-                      </div>
-                      <span className="text-[10px] text-gray-400 flex-shrink-0">{new Date(e.date + 'T00:00:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : <p className="text-xs text-gray-400 text-center mt-4">No events this month</p>}
-            <p className="text-[10px] text-gray-300 text-center mt-4">Only schedule info is shared. Expenses and financials stay private.</p>
-          </>)}
         </div>
       </div>
     </div>
@@ -395,256 +269,7 @@ function PlayerMiniCard({ player, onClick, friendState, onAddFriend, currentUser
   );
 }
 
-// ── Player detail modal ──────────────────────────────────────────────────────
-function PlayerModal({ playerId, onClose, friendState, currentUserId, onSendFriendRequest }) {
-  const [player, setPlayer] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [sending, setSending] = useState(false);
 
-  useEffect(() => {
-    api.getPlayer(playerId)
-      .then((res) => setPlayer(res.data.data))
-      .catch(() => setError('Could not load player profile.'))
-      .finally(() => setLoading(false));
-  }, [playerId]);
-
-  const rarity = player ? rarityLabel(player.totalMedals || 0) : null;
-
-  const handleFriendClick = async () => {
-    if (friendState !== 'none' || sending) return;
-    setSending(true);
-    await onSendFriendRequest(player.id);
-    setSending(false);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50" />
-      <div className="relative bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl max-h-[90dvh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="sm:hidden flex justify-center pt-3 pb-1"><div className="w-10 h-1 bg-gray-200 rounded-full" /></div>
-
-        {loading ? <div className="py-16"><PaddleLoader label="Loading player..." /></div>
-        : error ? <div className="py-16 text-center text-red-500 text-sm">{error}</div>
-        : player ? (
-          <>
-            {/* Dark header */}
-            <div className="relative px-6 pt-6 pb-5 flex flex-col items-center"
-              style={{ background: 'linear-gradient(160deg, #0f2206 0%, #1c3a07 50%, #2a1a00 100%)' }}>
-              <button onClick={onClose} className="absolute top-4 right-4 text-white/40 hover:text-white/80 transition-colors p-1">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-              <div className="w-24 h-24 rounded-full mb-3 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #2d7005, #91BE4D 45%, #ec9937)', padding: 3 }}>
-                <div className="w-full h-full rounded-full overflow-hidden bg-[#1c3a07] flex items-center justify-center">
-                  {player.profilePhoto
-                    ? <img src={player.profilePhoto} alt={player.name} className="w-full h-full object-cover" />
-                    : <span className="text-2xl font-black text-[#91BE4D]">{(player.name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}</span>
-                  }
-                </div>
-              </div>
-              <p className="text-white text-xl font-black text-center">{player.name}</p>
-              {([player.city, player.state].filter(Boolean).length > 0) && (
-                <p className="text-[#91BE4D] text-xs font-semibold mt-1">📍 {[player.city, player.state].filter(Boolean).join(', ')}</p>
-              )}
-              {(player.duprSingles || player.duprDoubles) && (
-                <p className="text-[#ec9937] text-sm font-black mt-2">
-                  {player.duprSingles ? `Singles ${player.duprSingles}` : ''}{player.duprSingles && player.duprDoubles ? ' · ' : ''}{player.duprDoubles ? `Doubles ${player.duprDoubles}` : ''}
-                </p>
-              )}
-              {player.playingSince && <p className="text-white/50 text-xs mt-1">Playing since <span className="text-white/80 font-semibold">{player.playingSince}</span></p>}
-              {rarity && (
-                <span className="mt-3 text-[10px] font-bold px-3 py-1 rounded-full"
-                  style={{ color: rarity.color, background: rarity.bg, border: `1px solid ${rarity.color}40` }}>
-                  {rarity.text}
-                </span>
-              )}
-            </div>
-
-            {/* White content */}
-            <div className="px-6 py-5 space-y-5">
-
-              {/* Add Friend — visible in white area */}
-              {currentUserId && String(player.id) !== String(currentUserId) && (
-                friendState === 'friend' ? (
-                  <div className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#f4f8e8] border border-[#91BE4D]/30">
-                    <svg className="w-4 h-4 text-[#4a6e10]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                    <span className="text-sm font-bold text-[#4a6e10]">Friends</span>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <button type="button" onClick={handleFriendClick}
-                      disabled={friendState === 'pending' || sending}
-                      className={`w-full py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
-                        friendState === 'pending' ? 'bg-orange-50 text-orange-600 border border-orange-200 cursor-default'
-                        : 'text-white hover:opacity-90 disabled:opacity-60'
-                      }`}
-                      style={friendState !== 'pending' ? { background: 'linear-gradient(to right, #2d7005, #91BE4D 60%, #ec9937)' } : {}}>
-                      {sending
-                        ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>Sending…</>
-                        : friendState === 'pending' ? '⏳ Friend request sent'
-                        : <><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>Add Friend</>
-                      }
-                    </button>
-                    <p className="text-xs text-gray-500 text-center">
-                      Add friend to view their upcoming schedule calendar and follow their plans 😉
-                    </p>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                      <p className="text-[11px] text-blue-800 leading-relaxed">
-                        Friend access shares only schedule/basic profile. Expenses, entry fees and earnings stay private.
-                      </p>
-                    </div>
-                  </div>
-                )
-              )}
-
-              {/* Stats */}
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Stats</p>
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  <div className="bg-gray-50 rounded-xl p-3">
-                    <p className="text-lg">🏅</p>
-                    <p className="text-base font-black text-gray-800 leading-tight">{player.totalTournaments}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">Events</p>
-                  </div>
-                  {['Gold', 'Silver', 'Bronze'].map((m) => (
-                    <div key={m} className="bg-gray-50 rounded-xl p-3">
-                      <p className="text-lg">{MEDAL_EMOJI[m]}</p>
-                      <p className="text-base font-black text-gray-800 leading-tight">{player.medals?.[m] ?? 0}</p>
-                      <p className="text-[10px] text-gray-400">{m}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {player.topCategories?.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Plays</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {player.topCategories.map((c) => (
-                      <span key={c.name} className="text-xs font-semibold bg-[#f4f8e8] text-[#4a6e10] px-3 py-1 rounded-full border border-[#91BE4D]/20">
-                        {c.name} <span className="text-[#91BE4D]">×{c.count}</span>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {player.recentMedalTournaments?.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Recent Highlights</p>
-                  <div className="space-y-2">
-                    {player.recentMedalTournaments.map((t, i) => (
-                      <div key={i} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2.5">
-                        <span className="text-lg flex-shrink-0">{MEDAL_EMOJI[t.medal]}</span>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-800 truncate">{t.tournamentName}</p>
-                          <p className="text-xs text-gray-400">{t.category}{t.date ? ` · ${t.date}` : ''}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <p className="text-[10px] text-gray-300 text-center">
-                Member since {new Date(player.memberSince).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
-              </p>
-            </div>
-          </>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-// ── Edit community profile modal ─────────────────────────────────────────────
-function EditMyCommunityProfileModal({ onClose, onSaved }) {
-  const fileInputRef = useRef(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [form, setForm] = useState({ duprSingles: '', duprDoubles: '', playingSince: '', profilePhoto: null, manualAchievements: [] });
-
-  useEffect(() => {
-    Promise.all([api.getProfile(), api.getTournaments()])
-      .then(([profileRes]) => {
-        const p = profileRes.data.data || {};
-        setForm({ duprSingles: p.duprSingles ?? p.duprRating ?? '', duprDoubles: p.duprDoubles ?? '', playingSince: p.playingSince ?? '', profilePhoto: p.profilePhoto ?? null, manualAchievements: Array.isArray(p.manualAchievements) ? p.manualAchievements : [] });
-      })
-      .catch(() => setError('Could not load your profile.'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const addAchievement = () => setForm((f) => ({ ...f, manualAchievements: [...(f.manualAchievements || []), { tournamentName: '', categoryName: '', medal: 'Gold', date: '' }] }));
-
-  const save = async () => {
-    setSaving(true); setError('');
-    try {
-      await api.updateProfile({ duprSingles: form.duprSingles || null, duprDoubles: form.duprDoubles || null, duprRating: form.duprSingles || null, playingSince: form.playingSince || null, profilePhoto: form.profilePhoto || null, manualAchievements: form.manualAchievements || [] });
-      onSaved?.(); onClose();
-    } catch (err) { setError(err.response?.data?.message || 'Could not update profile'); }
-    finally { setSaving(false); }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50" />
-      <div className="relative bg-white w-full sm:max-w-2xl sm:rounded-2xl rounded-t-2xl max-h-[90dvh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Update your player card</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">✕</button>
-        </div>
-        {loading ? <div className="p-6"><PaddleLoader label="Loading profile..." className="min-h-[100px]" /></div> : (
-          <div className="p-5 space-y-4">
-            <div className="grid sm:grid-cols-2 gap-3">
-              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">DUPR Singles</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D]" value={form.duprSingles} onChange={(e) => setForm((f) => ({ ...f, duprSingles: e.target.value }))} /></div>
-              <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">DUPR Doubles</label><input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D]" value={form.duprDoubles} onChange={(e) => setForm((f) => ({ ...f, duprDoubles: e.target.value }))} /></div>
-            </div>
-            <div><label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Playing since</label><select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#91BE4D]" value={form.playingSince} onChange={(e) => setForm((f) => ({ ...f, playingSince: e.target.value }))}><option value="">Select year…</option>{YEARS.map((y) => <option key={y} value={y}>{y}</option>)}</select></div>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Profile photo</label>
-              <div className="flex items-center gap-3">
-                <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center border border-gray-200">{form.profilePhoto ? <img src={form.profilePhoto} alt="profile" className="w-full h-full object-cover" /> : <span className="text-xs text-gray-400">None</span>}</div>
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="text-sm font-semibold text-[#4a6e10]">Upload / Change</button>
-                {form.profilePhoto && <button type="button" onClick={() => setForm((f) => ({ ...f, profilePhoto: null }))} className="text-xs text-gray-500 hover:text-red-500">Remove</button>}
-              </div>
-              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; const dataUrl = await resizeImage(file); setForm((f) => ({ ...f, profilePhoto: dataUrl })); }} />
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-2"><label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Past achievements</label><button type="button" onClick={addAchievement} className="text-xs font-semibold text-[#4a6e10]">+ Add</button></div>
-              <div className="space-y-2">
-                {(form.manualAchievements || []).map((row, idx) => (
-                  <div key={idx} className="bg-gray-50 rounded-xl p-3 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <input className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#91BE4D]" placeholder="Tournament name" value={row.tournamentName || ''} onChange={(e) => setForm((f) => { const copy = [...(f.manualAchievements || [])]; copy[idx] = { ...copy[idx], tournamentName: e.target.value }; return { ...f, manualAchievements: copy }; })} />
-                      <button type="button" onClick={() => setForm((f) => ({ ...f, manualAchievements: (f.manualAchievements || []).filter((_, i) => i !== idx) }))} className="text-gray-400 hover:text-red-500 flex-shrink-0"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
-                    </div>
-                    <SearchableSelect
-                      options={CATEGORIES}
-                      value={row.categoryName || ''}
-                      onChange={(v) => setForm((f) => { const copy = [...(f.manualAchievements || [])]; copy[idx] = { ...copy[idx], categoryName: v }; return { ...f, manualAchievements: copy }; })}
-                      placeholder="Category (e.g. Mixed Doubles 4.0)"
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <select className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#91BE4D]" value={row.medal || 'Gold'} onChange={(e) => setForm((f) => { const copy = [...(f.manualAchievements || [])]; copy[idx] = { ...copy[idx], medal: e.target.value }; return { ...f, manualAchievements: copy }; })}><option>Gold</option><option>Silver</option><option>Bronze</option></select>
-                      <input type="date" className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#91BE4D]" value={row.date || ''} onChange={(e) => setForm((f) => { const copy = [...(f.manualAchievements || [])]; copy[idx] = { ...copy[idx], date: e.target.value }; return { ...f, manualAchievements: copy }; })} />
-                    </div>
-                  </div>
-                ))}
-                {(form.manualAchievements || []).length === 0 && <button type="button" onClick={addAchievement} className="w-full border-2 border-dashed border-gray-200 rounded-xl py-3 text-xs text-gray-400 hover:border-[#91BE4D]/40 hover:text-[#4a6e10] transition-colors">+ Add a past tournament</button>}
-              </div>
-            </div>
-            {error ? <p className="text-xs text-red-500">{error}</p> : null}
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={onClose} className="px-3 py-2 text-sm border border-gray-300 rounded-lg text-gray-600">Cancel</button>
-              <button type="button" onClick={save} disabled={saving} className="px-4 py-2 text-sm text-white rounded-lg disabled:opacity-50 font-semibold hover:opacity-90" style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}>{saving ? 'Saving…' : 'Save profile'}</button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ── Friends section ──────────────────────────────────────────────────────────
 function FriendsSection({ friends, onViewCalendar, onRemoveFriend }) {
@@ -1263,7 +888,7 @@ export default function Players() {
 
       {/* Modals */}
       {selectedId && (
-        <PlayerModal
+        <PlayerProfileModal
           playerId={selectedId}
           onClose={() => setSelectedId(null)}
           onSendFriendRequest={handleSendFriendRequest}
@@ -1272,7 +897,7 @@ export default function Players() {
         />
       )}
       {showEditProfile && (
-        <EditMyCommunityProfileModal
+        <EditCommunityPlayerCardModal
           onClose={() => setShowEditProfile(false)}
           onSaved={() => { fetchPlayers(); showToast('Your player profile has been updated!'); }}
         />

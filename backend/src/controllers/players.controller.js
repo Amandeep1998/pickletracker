@@ -186,7 +186,7 @@ exports.getPlayers = async (req, res, next) => {
 exports.getPlayer = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id)
-      .select('name city state profilePhoto duprRating duprSingles duprDoubles playingSince createdAt manualAchievements')
+      .select('name city profilePhoto duprRating duprSingles duprDoubles playingSince createdAt manualAchievements')
       .lean();
 
     if (!user) return res.status(404).json({ success: false, message: 'Player not found' });
@@ -200,7 +200,8 @@ exports.getPlayer = async (req, res, next) => {
     const medals = { Gold: 0, Silver: 0, Bronze: 0 };
     const catCount = {};
     tournaments.forEach((t) => {
-      t.categories.forEach((c) => {
+      const cats = t.categories || [];
+      cats.forEach((c) => {
         if (medals[c.medal] !== undefined) medals[c.medal]++;
         if (c.categoryName) catCount[c.categoryName] = (catCount[c.categoryName] || 0) + 1;
       });
@@ -219,7 +220,7 @@ exports.getPlayer = async (req, res, next) => {
 
     const recentMedalTournaments = [
       ...tournaments.flatMap((t) =>
-        t.categories
+        (t.categories || [])
           .filter((c) => c.medal && c.medal !== 'None')
           .map((c) => ({ tournamentName: t.name, medal: c.medal, category: c.categoryName, date: c.date }))
       ),
@@ -253,7 +254,6 @@ exports.getPlayer = async (req, res, next) => {
         id: user._id,
         name: user.name,
         city: user.city || null,
-        state: user.state || null,
         profilePhoto: user.profilePhoto || null,
         duprRating: user.duprRating || null,
         duprSingles: user.duprSingles ?? user.duprRating ?? null,

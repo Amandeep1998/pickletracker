@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import CITIES_BY_STATE from '../data/indianCities';
+import { useLoadScript } from '@react-google-maps/api';
+import CityAutocomplete from './CityAutocomplete';
 
-const ALL_CITIES = [...new Set(Object.values(CITIES_BY_STATE).flat())].sort();
-
+const MAP_LIBRARIES = ['places'];
 // Coordinates for major Indian cities — used to snap GPS to nearest known city
 const CITY_COORDS = {
   'Mumbai': { lat: 19.076, lng: 72.877 }, 'Navi Mumbai': { lat: 19.033, lng: 73.029 },
@@ -58,7 +58,7 @@ function haversine(a, b) {
   return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
 
-// Returns nearest known major city name from GPS coordinates
+// Returns nearest known major Indian city from GPS when Google Geocoder is unavailable
 function findNearestCity(lat, lng) {
   const pos = { lat, lng };
   let nearest = null;
@@ -70,6 +70,20 @@ function findNearestCity(lat, lng) {
   return nearest;
 }
 
+function localityFromGeocodeResult(result) {
+  if (!result?.address_components) return null;
+  const comps = result.address_components;
+  const has = (t) => comps.find((c) => c.types.includes(t));
+  return (
+    has('locality')?.long_name ||
+    has('postal_town')?.long_name ||
+    has('administrative_area_level_3')?.long_name ||
+    has('administrative_area_level_2')?.long_name ||
+    has('administrative_area_level_1')?.long_name ||
+    null
+  );
+}
+
 /**
  * Location modal — auto-detect GPS or manual city search.
  * Props:
@@ -77,28 +91,16 @@ function findNearestCity(lat, lng) {
  *   onSkip()             — called when user dismisses without saving
  */
 export default function LocationModal({ onSave, onSkip }) {
+  useLoadScript({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+    libraries: MAP_LIBRARIES,
+  });
+
   const [mode, setMode] = useState('choose'); // 'choose' | 'detecting' | 'confirm' | 'manual'
   const [detectedCity, setDetectedCity] = useState('');
   const [manualQuery, setManualQuery] = useState('');
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const inputRef = useRef(null);
-  const dropdownRef = useRef(null);
-
-  const filteredCities = manualQuery.trim().length >= 1
-    ? ALL_CITIES.filter((c) => c.toLowerCase().includes(manualQuery.toLowerCase()))
-    : [];
-
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
   const handleAutoDetect = () => {
     if (!navigator.geolocation) {
       setError('Geolocation is not supported by your browser.');
@@ -109,18 +111,42 @@ export default function LocationModal({ onSave, onSkip }) {
     setError('');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        try {
-          const city = findNearestCity(pos.coords.latitude, pos.coords.longitude);
-          if (city) {
-            setDetectedCity(city);
-            setMode('confirm');
-          } else {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+
+        const tryIndianFallback = () => {
+          try {
+            const city = findNearestCity(lat, lng);
+            if (city) {
+              setDetectedCity(city);
+              setMode('confirm');
+            } else {
+              setError('Could not detect your city. Please enter it manually.');
+              setMode('manual');
+            }
+          } catch {
             setError('Could not detect your city. Please enter it manually.');
             setMode('manual');
           }
-        } catch {
-          setError('Could not detect your city. Please enter it manually.');
-          setMode('manual');
+        };
+
+        if (window.google?.maps?.Geocoder) {
+          const geocoder = new window.google.maps.Geocoder();
+          geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+            if (status === 'OK' && results?.length) {
+              const name =
+                localityFromGeocodeResult(results[0]) ||
+                localityFromGeocodeResult(results.find((r) => r.types.includes('locality')) || results[0]);
+              if (name) {
+                setDetectedCity(name);
+                setMode('confirm');
+                return;
+              }
+            }
+            tryIndianFallback();
+          });
+        } else {
+          tryIndianFallback();
         }
       },
       () => {
@@ -154,7 +180,9 @@ export default function LocationModal({ onSave, onSkip }) {
           <div className="w-10 h-10 rounded-xl bg-[#f4f8e8] flex items-center justify-center text-xl flex-shrink-0">📍</div>
           <div>
             <p className="font-bold text-gray-900">Where are you based?</p>
-            <p className="text-xs text-gray-400 mt-0.5">See nearby players and get a personalised Nearby Players view</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Search any city worldwide for nearby players and your feed
+            </p>
           </div>
           <button onClick={onSkip} className="ml-auto text-gray-300 hover:text-gray-500 flex-shrink-0 mt-0.5">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -190,7 +218,7 @@ export default function LocationModal({ onSave, onSkip }) {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-gray-900">Enter city manually</p>
-                  <p className="text-xs text-gray-400">Search and select your city</p>
+                  <p className="text-xs text-gray-400">Search any city worldwide</p>
                 </div>
               </button>
 
@@ -243,35 +271,22 @@ export default function LocationModal({ onSave, onSkip }) {
           {mode === 'manual' && (
             <div className="space-y-4">
               {error && <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{error}</p>}
-              <div ref={dropdownRef} className="relative">
+              <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Your city</label>
-                <input
-                  ref={inputRef}
-                  type="text"
+                <CityAutocomplete
                   value={manualQuery}
-                  onChange={(e) => { setManualQuery(e.target.value); setDropdownOpen(true); }}
-                  onFocus={() => setDropdownOpen(true)}
-                  placeholder="Search city…"
-                  autoComplete="off"
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]"
+                  onChange={setManualQuery}
+                  placeholder="Search any city worldwide…"
+                  className="rounded-xl px-3 py-2.5"
                 />
-                {dropdownOpen && filteredCities.length > 0 && (
-                  <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-52 overflow-y-auto">
-                    {filteredCities.map((c) => (
-                      <li key={c} onMouseDown={() => { setManualQuery(c); setDropdownOpen(false); }}
-                        className="px-3 py-2 text-sm text-gray-700 hover:bg-[#f4f8e8] cursor-pointer">
-                        {c}
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
               <div className="flex gap-2">
-                <button onClick={onSkip}
+                <button type="button" onClick={onSkip}
                   className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-500 hover:bg-gray-50 transition-colors">
                   Skip
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleSave(manualQuery.trim())}
                   disabled={!manualQuery.trim() || saving}
                   className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center justify-center gap-2"

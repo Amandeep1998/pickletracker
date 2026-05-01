@@ -266,7 +266,7 @@ function InstallModal({ browserType, onClose }) {
 }
 
 // ── Compact button (Navbar / MobileMenu) ──────────────────────────────────────
-export default function InstallAppButton({ variant = 'default' }) {
+export default function InstallAppButton({ variant = 'default', compact = false }) {
   const { action, browserType, trigger } = useInstallPrompt();
   const [showModal, setShowModal] = useState(false);
 
@@ -286,7 +286,7 @@ export default function InstallAppButton({ variant = 'default' }) {
       <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
       </svg>
-      <span>Install App</span>
+      <span className={compact ? 'hidden xl:inline' : ''}>Install App</span>
     </>
   );
 
@@ -313,7 +313,9 @@ export default function InstallAppButton({ variant = 'default' }) {
           onClick={handleClick}
           title={action === 'native' ? nativeHint : manualHint}
           aria-label={installAria}
-          className="flex items-center space-x-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-[#91BE4D]/40 bg-[#f4f8e8] hover:bg-[#eaf3d4] text-[#4a6e10] transition-colors whitespace-nowrap"
+          className={`flex items-center gap-1.5 text-xs font-semibold rounded-lg border border-[#91BE4D]/40 bg-[#f4f8e8] hover:bg-[#eaf3d4] text-[#4a6e10] transition-colors whitespace-nowrap ${
+            compact ? 'px-2 py-1.5 xl:px-3' : 'px-3 py-1.5'
+          }`}
         >
           {inner}
         </button>
