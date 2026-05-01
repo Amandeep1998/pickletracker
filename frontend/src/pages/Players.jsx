@@ -135,8 +135,8 @@ function ConsentModal({ request, onConfirm, onCancel, loading }) {
           </div>
         </div>
         <div className="bg-[#f4f8e8] border border-[#91BE4D]/20 rounded-xl p-3.5 mb-5">
-          <p className="text-xs text-[#4a6e10] font-medium leading-relaxed">
-            Accepting lets you and <strong>{request.user?.name}</strong> see each other's tournament and session schedule.
+          <p className="text-xs text-[#4a6e10] font-semibold leading-relaxed">
+            If you accept, <strong>{request.user?.name}</strong> will be able to <strong>view your tournament and session schedule</strong> in PickleTracker. You will be able to view theirs as well.
           </p>
           <p className="text-xs text-[#4a6e10] mt-2 leading-relaxed">
             🔒 <strong>Private info stays private</strong> — expenses, entry fees, and winnings are never shared.

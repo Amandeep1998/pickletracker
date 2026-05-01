@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
@@ -48,6 +49,9 @@ const FriendRequestRow = memo(function FriendRequestRowInner({ request, onAccept
           <span className="text-gray-600 font-normal"> wants to be friends</span>
         </p>
         {u?.city && <p className="text-[11px] text-gray-400 mt-0.5">{u.city}</p>}
+        <p className="text-[11px] text-[#4a6e10] mt-1.5 leading-snug">
+          If you accept, <span className="font-semibold">{name}</span> can view your tournament &amp; session schedule — and you can view theirs.
+        </p>
         <p className="text-[11px] text-gray-400 mt-1">{timeAgo(request.createdAt)}</p>
         <div className="flex flex-wrap gap-2 mt-2">
           <button
@@ -73,14 +77,46 @@ const FriendRequestRow = memo(function FriendRequestRowInner({ request, onAccept
   );
 });
 
-const NotificationItem = memo(function NotificationItemInner({ notif, onGoToPost }) {
+const NotificationItem = memo(function NotificationItemInner({ notif, onNotificationClick }) {
   const isComment = notif.type === 'comment';
+  const isFriendConnected = notif.type === 'friend_connected';
   const initials = (notif.actorName || '?')[0].toUpperCase();
+
+  if (isFriendConnected) {
+    return (
+      <button
+        type="button"
+        onClick={() => onNotificationClick(notif)}
+        className={`w-full text-left flex items-start gap-3 px-4 py-3 transition-colors hover:bg-gray-50/90 active:bg-gray-100/80 ${
+          notif.read ? '' : 'bg-[#f4f8e8]'
+        }`}
+      >
+        <span
+          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-0.5"
+          style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
+        >
+          {initials}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-[#272702] leading-snug break-words">
+            You and <span className="font-semibold">{notif.actorName}</span> are now friends.
+          </p>
+          <p className="text-xs text-gray-500 mt-1 leading-snug">
+            You can view each other&apos;s schedule from your friends list.
+          </p>
+          <p className="text-[11px] text-gray-400 mt-1">{timeAgo(notif.createdAt)}</p>
+        </div>
+        {!notif.read && (
+          <span className="w-2 h-2 rounded-full bg-[#91BE4D] flex-shrink-0 mt-2" aria-hidden />
+        )}
+      </button>
+    );
+  }
 
   return (
     <button
       type="button"
-      onClick={() => onGoToPost(notif)}
+      onClick={() => onNotificationClick(notif)}
       className={`w-full text-left flex items-start gap-3 px-4 py-3 transition-colors hover:bg-gray-50/90 active:bg-gray-100/80 ${notif.read ? '' : 'bg-[#f4f8e8]'}`}
     >
       {/* Actor avatar */}
@@ -150,9 +186,10 @@ function PushDeniedBanner() {
 }
 
 const EST_SECTION = 30;
-const EST_FRIEND = 130;
+const EST_FRIEND = 148;
 const EST_NOTIF = 82;
 const EST_NOTIF_WITH_COMMENT = 100;
+const EST_NOTIF_FRIEND = 102;
 
 function buildFriendRows(friendRequests) {
   return friendRequests.map((req) => ({
@@ -175,7 +212,7 @@ function NotificationPanelVirtualList({
   onAcceptFriend,
   onRejectFriend,
   friendActionId,
-  onGoToPost,
+  onNotificationClick,
 }) {
   const scrollRef = useRef(null);
   const virtualizer = useVirtualizer({
@@ -186,6 +223,7 @@ function NotificationPanelVirtualList({
       if (!row) return EST_NOTIF;
       if (row.type === 'section') return EST_SECTION;
       if (row.type === 'friend') return EST_FRIEND;
+      if (row.type === 'notif' && row.notif?.type === 'friend_connected') return EST_NOTIF_FRIEND;
       return row.notif?.commentText ? EST_NOTIF_WITH_COMMENT : EST_NOTIF;
     },
     overscan: 8,
@@ -229,7 +267,9 @@ function NotificationPanelVirtualList({
                   busy={String(friendActionId) === String(row.request.id)}
                 />
               )}
-              {row.type === 'notif' && <NotificationItem notif={row.notif} onGoToPost={onGoToPost} />}
+              {row.type === 'notif' && (
+                <NotificationItem notif={row.notif} onNotificationClick={onNotificationClick} />
+              )}
             </div>
           );
         })}
@@ -240,6 +280,7 @@ function NotificationPanelVirtualList({
 
 export default function NotificationBell() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const containerRef = useRef(null);
   const friendPanelRef = useRef(null);
   const notifPanelRef = useRef(null);
@@ -369,6 +410,29 @@ export default function NotificationBell() {
         });
       });
   }, []);
+
+  const handleNotificationClick = useCallback(
+    (notif) => {
+      if (notif.type === 'friend_connected') {
+        setNotifOpen(false);
+        setFriendOpen(false);
+        api
+          .markFeedNotificationRead(notif.id)
+          .then((res) => {
+            const uc = res.data?.unreadCount;
+            if (typeof uc === 'number') setUnreadCount(uc);
+            setNotifications((prev) =>
+              prev.map((n) => (String(n.id) === String(notif.id) ? { ...n, read: true } : n)),
+            );
+          })
+          .catch(() => {});
+        navigate('/players');
+        return;
+      }
+      handleOpenFeedFromNotification(notif);
+    },
+    [handleOpenFeedFromNotification, navigate],
+  );
 
   const handleSendFriendFromProfile = useCallback(async (playerId) => {
     await api.sendFriendRequest(playerId);
@@ -500,7 +564,7 @@ export default function NotificationBell() {
               <p className="text-2xl mb-2">👋</p>
               <p className="text-sm font-medium text-gray-500">No pending friend requests</p>
               <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                When someone sends you a request from Nearby Players, it will appear here
+                When someone sends you a request, it will appear here
               </p>
             </div>
           </div>
@@ -512,7 +576,7 @@ export default function NotificationBell() {
             onAcceptFriend={handleAcceptFriend}
             onRejectFriend={handleRejectFriend}
             friendActionId={friendActionId}
-            onGoToPost={handleOpenFeedFromNotification}
+            onNotificationClick={handleNotificationClick}
           />
         )}
       </div>
@@ -552,7 +616,7 @@ export default function NotificationBell() {
             onAcceptFriend={handleAcceptFriend}
             onRejectFriend={handleRejectFriend}
             friendActionId={friendActionId}
-            onGoToPost={handleOpenFeedFromNotification}
+            onNotificationClick={handleNotificationClick}
           />
         )}
       </div>

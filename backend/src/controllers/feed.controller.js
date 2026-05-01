@@ -378,6 +378,32 @@ exports.markAllRead = async (req, res, next) => {
 };
 
 /**
+ * PUT /api/feed/notifications/:id/read
+ * Marks a single notification as read; returns updated unread count.
+ */
+exports.markOneRead = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid notification id' });
+    }
+    const userId = req.user.id;
+    const updated = await FeedNotification.findOneAndUpdate(
+      { _id: id, userId },
+      { $set: { read: true } },
+      { new: false }
+    ).lean();
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Notification not found' });
+    }
+    const unreadCount = await FeedNotification.countDocuments({ userId, read: false });
+    res.json({ success: true, unreadCount });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * POST /api/feed/:tournamentId/like
  * Toggle like. Creates an in-app notification + immediate push for the tournament owner.
  */

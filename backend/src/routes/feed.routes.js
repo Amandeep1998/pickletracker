@@ -6,6 +6,7 @@ const {
   getFeedPost,
   getNotifications,
   markAllRead,
+  markOneRead,
   toggleLike,
   getComments,
   addComment,
@@ -15,6 +16,7 @@ const {
 // Notification routes — must be defined before /:tournamentId to avoid conflicts
 router.get('/notifications',          protect, getNotifications);
 router.put('/notifications/read-all', protect, markAllRead);
+router.put('/notifications/:id/read', protect, markOneRead);
 
 // Single post (notifications popup) — before "/" and /:tournamentId/*
 router.get('/post/:tournamentId', protect, getFeedPost);

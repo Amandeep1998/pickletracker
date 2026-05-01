@@ -75,7 +75,7 @@ async function sendFriendRequestEmail({ toEmail, toName, fromName }) {
           Accept Friend Request
         </a>
         <p style="color: #9ca3af; font-size: 12px; line-height: 1.6;">
-          Open the Nearby Players page on PickleTracker to accept or decline this request.
+          Open PickleTracker to accept or decline this request from your friend requests list.
         </p>
         <hr style="border: none; border-top: 1px solid #f3f4f6; margin: 24px 0;" />
         <p style="color: #d1d5db; font-size: 11px; text-align: center;">

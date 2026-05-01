@@ -3,6 +3,7 @@ const Friendship = require('../models/Friendship');
 const User = require('../models/User');
 const Tournament = require('../models/Tournament');
 const Session = require('../models/Session');
+const FeedNotification = require('../models/FeedNotification');
 const socketManager = require('../socket/socketManager');
 const { sendFriendRequestEmail } = require('../services/email.service');
 const { sendPushToUser } = require('./push.controller');
@@ -149,16 +150,48 @@ const acceptFriendRequest = async (req, res, next) => {
     if (!row) return res.status(404).json({ success: false, message: 'Friend request not found' });
     row.status = 'accepted';
     await row.save();
-    // Notify the original requester that their request was accepted
-    socketManager.emitToUser(String(row.requesterId), 'friend:refresh', {});
+
     const accepter = await User.findById(userId).select('name').lean();
+    const requester = await User.findById(row.requesterId).select('name').lean();
     const accepterName = accepter?.name || 'Someone';
+    const requesterName = requester?.name || 'Someone';
+
+    const friendNotifPayload = {
+      type: 'friend_connected',
+      tournamentId: null,
+      tournamentName: '',
+    };
+
+    await FeedNotification.create({
+      userId: row.requesterId,
+      actorId: userId,
+      actorName: accepterName,
+      ...friendNotifPayload,
+    });
+    await FeedNotification.create({
+      userId,
+      actorId: row.requesterId,
+      actorName: requesterName,
+      ...friendNotifPayload,
+    });
+
+    socketManager.emitToUser(String(row.requesterId), 'friend:refresh', {});
+    socketManager.emitToUser(String(userId), 'friend:refresh', {});
+
+    const pushBody = "You're now friends — you can view each other's schedule on PickleTracker.";
     sendPushToUser(String(row.requesterId), {
-      title: 'Friend request accepted',
-      body: `${accepterName} accepted your friend request`,
+      title: "You're now friends",
+      body: pushBody,
       url: '/players',
-      tag: 'friend-accepted',
+      tag: 'friend-connected',
     }).catch(() => {});
+    sendPushToUser(userId, {
+      title: "You're now friends",
+      body: pushBody,
+      url: '/players',
+      tag: 'friend-connected',
+    }).catch(() => {});
+
     res.json({ success: true, data: row });
   } catch (err) {
     next(err);

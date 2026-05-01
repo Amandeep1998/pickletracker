@@ -90,6 +90,18 @@ describe('Friendship + schedule visibility', () => {
     expect(tournamentEvent).toBeTruthy();
     expect(tournamentEvent.entryFee).toBeUndefined();
     expect(tournamentEvent.prizeAmount).toBeUndefined();
+
+    const notifsRequester = await request(app)
+      .get('/api/feed/notifications')
+      .set('Authorization', `Bearer ${tokenA}`);
+    expect(notifsRequester.status).toBe(200);
+    expect(notifsRequester.body.data.some((n) => n.type === 'friend_connected')).toBe(true);
+
+    const notifsAccepter = await request(app)
+      .get('/api/feed/notifications')
+      .set('Authorization', `Bearer ${tokenB}`);
+    expect(notifsAccepter.status).toBe(200);
+    expect(notifsAccepter.body.data.some((n) => n.type === 'friend_connected')).toBe(true);
   });
 
   it('includes split dupr and manual achievements in player detail', async () => {

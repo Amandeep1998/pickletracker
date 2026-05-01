@@ -98,6 +98,7 @@ export const deleteFeedComment = (tournamentId, commentId) => api.delete(`/feed/
 // Feed notifications
 export const getFeedNotifications = () => api.get('/feed/notifications');
 export const markFeedNotificationsRead = () => api.put('/feed/notifications/read-all');
+export const markFeedNotificationRead = (id) => api.put(`/feed/notifications/${id}/read`);
 
 // Players / Community
 export const getPlayers = (params) => api.get('/players', { params });
