@@ -98,7 +98,7 @@ export default function Calendar() {
   const [moneySummaryOpen, setMoneySummaryOpen] = useState(false);
 
   // Push notifications
-  const { permission: pushPermission, subscribed: pushSubscribed, isSupported: pushSupported, requestAndSubscribe, silentSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
+  const { permission: pushPermission, subscribed: pushSubscribed, checking: pushChecking, isSupported: pushSupported, requestAndSubscribe, silentSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
   const [pushLoading, setPushLoading] = useState(false);
   const isReminderOn = pushSubscribed;
 
@@ -680,7 +680,23 @@ export default function Calendar() {
                 </svg>
               </div>
 
-              {pushSupported && pushPermission !== 'denied' && (
+              {pushSupported && pushPermission !== 'denied' && pushChecking && (
+                <div
+                  className="inline-flex items-center gap-3 rounded-2xl px-4 py-3 border border-white/15 bg-white/5 w-full sm:w-auto justify-between sm:justify-start animate-pulse"
+                  aria-busy="true"
+                  aria-label="Loading reminder settings"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-xl bg-white/15 flex-shrink-0" />
+                    <div className="space-y-2 min-w-0 flex-1 text-left">
+                      <div className="h-3.5 rounded-md bg-white/20 w-28 max-w-full" />
+                      <div className="h-2.5 rounded-md bg-white/12 w-[min(100%,11rem)]" />
+                    </div>
+                  </div>
+                  <div className="h-7 w-12 shrink-0 rounded-full bg-white/15" />
+                </div>
+              )}
+              {pushSupported && pushPermission !== 'denied' && !pushChecking && (
                 <button
                   type="button"
                   aria-pressed={isReminderOn}
