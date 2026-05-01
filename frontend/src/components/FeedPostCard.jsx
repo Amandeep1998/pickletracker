@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import * as api from '../services/api';
 
 const MEDAL_EMOJI = { Gold: '🥇', Silver: '🥈', Bronze: '🥉' };
@@ -67,7 +67,7 @@ function Avatar({ user }) {
 /**
  * Community feed card — used on Home and in the notification post popup.
  */
-export function FeedCard({ item, currentUserId, onViewProfile, expandCommentsFromLink = false }) {
+function FeedCardComponent({ item, currentUserId, onViewProfile, expandCommentsFromLink = false }) {
   const isUpcoming = item.type === 'upcoming';
   const dates = item.categories.map((c) => c.date).filter(Boolean);
   const dateRange = formatDateRange(dates);
@@ -398,3 +398,5 @@ export function FeedCard({ item, currentUserId, onViewProfile, expandCommentsFro
     </div>
   );
 }
+
+export const FeedCard = memo(FeedCardComponent);

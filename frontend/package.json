@@ -10,6 +10,7 @@
   "dependencies": {
     "@react-google-maps/api": "^2.19.3",
     "@sentry/react": "^7.119.0",
+    "@tanstack/react-virtual": "^3.13.24",
     "axios": "^1.7.2",
     "firebase": "^11.10.0",
     "html-to-image": "^1.11.11",

@@ -8,7 +8,7 @@ import PlayerProfileModal from '../components/PlayerProfileModal';
 import EditCommunityPlayerCardModal from '../components/EditCommunityPlayerCardModal';
 import PlayerProfileCardContent from '../components/PlayerProfileCardContent';
 import PaddleLoader from '../components/PaddleLoader';
-import { FeedCard } from '../components/FeedPostCard';
+import HomeFeedVirtualList from '../components/HomeFeedVirtualList';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -135,9 +135,6 @@ const FILTERS = [
   { key: 'played', label: 'Played' },
   { key: 'nearby', label: 'Nearby' },
 ];
-
-/** Insert promo blocks after this many feed cards when enough activity exists */
-const FEED_ITEMS_BEFORE_PROMO = 3;
 
 export default function Home() {
   const { user, refreshUser } = useAuth();
@@ -319,9 +316,21 @@ export default function Home() {
     });
   }, [feed, filter, friendIdsSet]);
 
+  const feedPromoSlot = useMemo(
+    () => (
+      <HomeMidFeedPlayerCardPromo
+        cardLoading={cardLoading}
+        publicCardPlayer={publicCardPlayer}
+        currentUserId={user?.id}
+        onEditPlayerCard={() => setShowEditPlayerCard(true)}
+      />
+    ),
+    [cardLoading, publicCardPlayer, user?.id]
+  );
+
   return (
     <div className="min-h-screen bg-[#f8faf3]">
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-3">
 
         {/* Greeting */}
         <div>
@@ -434,54 +443,12 @@ export default function Home() {
         )}
 
         {!loading && !error && visibleFeed.length > 0 && (
-          <div className="space-y-3">
-            {visibleFeed.length >= FEED_ITEMS_BEFORE_PROMO ? (
-              <>
-                {visibleFeed.slice(0, FEED_ITEMS_BEFORE_PROMO).map((item) => (
-                  <FeedCard
-                    key={item.id}
-                    item={item}
-                    currentUserId={user?.id}
-                    onViewProfile={setProfilePlayerId}
-                  />
-                ))}
-
-                <HomeMidFeedPlayerCardPromo
-                  cardLoading={cardLoading}
-                  publicCardPlayer={publicCardPlayer}
-                  currentUserId={user?.id}
-                  onEditPlayerCard={() => setShowEditPlayerCard(true)}
-                />
-
-                {visibleFeed.slice(FEED_ITEMS_BEFORE_PROMO).map((item) => (
-                  <FeedCard
-                    key={item.id}
-                    item={item}
-                    currentUserId={user?.id}
-                    onViewProfile={setProfilePlayerId}
-                  />
-                ))}
-              </>
-            ) : (
-              <>
-                {visibleFeed.map((item) => (
-                  <FeedCard
-                    key={item.id}
-                    item={item}
-                    currentUserId={user?.id}
-                    onViewProfile={setProfilePlayerId}
-                  />
-                ))}
-
-                <HomeMidFeedPlayerCardPromo
-                  cardLoading={cardLoading}
-                  publicCardPlayer={publicCardPlayer}
-                  currentUserId={user?.id}
-                  onEditPlayerCard={() => setShowEditPlayerCard(true)}
-                />
-              </>
-            )}
-          </div>
+          <HomeFeedVirtualList
+            visibleFeed={visibleFeed}
+            currentUserId={user?.id}
+            onViewProfile={setProfilePlayerId}
+            promoSlot={feedPromoSlot}
+          />
         )}
 
         {profilePlayerId && (

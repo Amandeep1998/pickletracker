@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import { usePushNotifications } from '../hooks/usePushNotifications';
@@ -19,7 +20,7 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
-function FriendRequestRow({ request, onAccept, onReject, busy }) {
+const FriendRequestRow = memo(function FriendRequestRowInner({ request, onAccept, onReject, busy }) {
   const u = request.user;
   const name = u?.name || 'Player';
   const initials = name
@@ -70,9 +71,9 @@ function FriendRequestRow({ request, onAccept, onReject, busy }) {
       </div>
     </div>
   );
-}
+});
 
-function NotificationItem({ notif, onGoToPost }) {
+const NotificationItem = memo(function NotificationItemInner({ notif, onGoToPost }) {
   const isComment = notif.type === 'comment';
   const initials = (notif.actorName || '?')[0].toUpperCase();
 
@@ -110,7 +111,7 @@ function NotificationItem({ notif, onGoToPost }) {
       )}
     </button>
   );
-}
+});
 
 function PushPrompt({ onEnable, enabling }) {
   return (
@@ -148,6 +149,98 @@ function PushDeniedBanner() {
   );
 }
 
+const EST_SECTION = 30;
+const EST_FRIEND = 130;
+const EST_NOTIF = 82;
+const EST_NOTIF_WITH_COMMENT = 100;
+
+function buildPanelRows(friendRequests, notifs) {
+  const out = [];
+  if (friendRequests.length > 0) {
+    out.push({ type: 'section', key: 'section-fr', label: 'Friend requests' });
+    for (const req of friendRequests) {
+      out.push({ type: 'friend', key: `fr-${req.id}`, request: req });
+    }
+  }
+  if (notifs.length > 0) {
+    if (friendRequests.length > 0) {
+      out.push({ type: 'section', key: 'section-lc', label: 'Likes & comments', showBorder: true });
+    }
+    for (const n of notifs) {
+      out.push({ type: 'notif', key: `n-${n.id}`, notif: n });
+    }
+  }
+  return out;
+}
+
+function NotificationPanelVirtualList({
+  rows,
+  onAcceptFriend,
+  onRejectFriend,
+  friendActionId,
+  onGoToPost,
+}) {
+  const scrollRef = useRef(null);
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: (index) => {
+      const row = rows[index];
+      if (!row) return EST_NOTIF;
+      if (row.type === 'section') return EST_SECTION;
+      if (row.type === 'friend') return EST_FRIEND;
+      return row.notif?.commentText ? EST_NOTIF_WITH_COMMENT : EST_NOTIF;
+    },
+    overscan: 8,
+    gap: 0,
+    enabled: rows.length > 0,
+  });
+
+  return (
+    <div
+      ref={scrollRef}
+      className="max-h-[min(420px,55dvh)] sm:max-h-[420px] overflow-y-auto overflow-x-hidden min-h-0 flex-1"
+    >
+      <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
+        {virtualizer.getVirtualItems().map((v) => {
+          const row = rows[v.index];
+          return (
+            <div
+              key={v.key}
+              data-index={v.index}
+              ref={virtualizer.measureElement}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${v.start}px)`,
+              }}
+            >
+              {row.type === 'section' && (
+                <div
+                  className={`px-4 pt-3 pb-1 bg-white ${row.showBorder ? 'border-t border-gray-100' : ''}`}
+                >
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{row.label}</p>
+                </div>
+              )}
+              {row.type === 'friend' && (
+                <FriendRequestRow
+                  request={row.request}
+                  onAccept={onAcceptFriend}
+                  onReject={onRejectFriend}
+                  busy={String(friendActionId) === String(row.request.id)}
+                />
+              )}
+              {row.type === 'notif' && <NotificationItem notif={row.notif} onGoToPost={onGoToPost} />}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function NotificationBell() {
   const { user } = useAuth();
   const containerRef = useRef(null);
@@ -179,6 +272,7 @@ export default function NotificationBell() {
         api.getFeedNotifications(),
         api.getFriendRequests(),
       ]);
+      setNotifications(notifRes.data.data || []);
       setUnreadCount(notifRes.data.unreadCount || 0);
       setIncomingFriendRequests(friendsRes.data.data?.incoming || []);
     } catch {
@@ -259,7 +353,9 @@ export default function NotificationBell() {
       return;
     }
     setOpen(true);
-    setLoading(true);
+    const hasCachedRows =
+      notifications.length > 0 || incomingFriendRequests.length > 0;
+    setLoading(!hasCachedRows);
     try {
       // Run in parallel — previously refreshPushState() blocked on service worker before any API call.
       const [pushSnap, notifRes, friendsRes] = await Promise.all([
@@ -331,6 +427,11 @@ export default function NotificationBell() {
     ? Math.max(1, unreadCount + friendIncomingCount)
     : unreadCount + friendIncomingCount;
 
+  const panelRows = useMemo(
+    () => buildPanelRows(incomingFriendRequests, notifications),
+    [incomingFriendRequests, notifications]
+  );
+
   const dropdownBody = (
     <>
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
@@ -343,63 +444,43 @@ export default function NotificationBell() {
       {showPushPrompt && <PushPrompt onEnable={handleEnablePush} enabling={enabling} />}
       {showPushDenied && <PushDeniedBanner />}
 
-      <div className="max-h-[min(420px,55dvh)] sm:max-h-[420px] overflow-y-auto overflow-x-hidden min-h-0">
-        {!loading && incomingFriendRequests.length > 0 && (
-          <div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide px-4 pt-3 pb-1 sticky top-0 bg-white z-[1]">
-              Friend requests
-            </p>
-            <div className="divide-y divide-gray-100 border-b border-gray-100">
-              {incomingFriendRequests.map((req) => (
-                <FriendRequestRow
-                  key={String(req.id)}
-                  request={req}
-                  onAccept={handleAcceptFriend}
-                  onReject={handleRejectFriend}
-                  busy={String(friendActionId) === String(req.id)}
-                />
+      <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
+        {loading && panelRows.length === 0 && (
+          <div className="max-h-[min(420px,55dvh)] sm:max-h-[420px] overflow-y-auto overflow-x-hidden min-h-0">
+            <div className="space-y-0 divide-y divide-gray-50">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-start gap-3 px-4 py-3 animate-pulse">
+                  <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0" />
+                  <div className="flex-1 space-y-1.5 pt-1 min-w-0">
+                    <div className="h-3 bg-gray-200 rounded w-3/4" />
+                    <div className="h-2.5 bg-gray-100 rounded w-1/2" />
+                  </div>
+                </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {loading && (
-          <div className="space-y-0 divide-y divide-gray-50">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-start gap-3 px-4 py-3 animate-pulse">
-                <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0" />
-                <div className="flex-1 space-y-1.5 pt-1 min-w-0">
-                  <div className="h-3 bg-gray-200 rounded w-3/4" />
-                  <div className="h-2.5 bg-gray-100 rounded w-1/2" />
-                </div>
-              </div>
-            ))}
           </div>
         )}
 
         {!loading && notifications.length === 0 && incomingFriendRequests.length === 0 && (
-          <div className="text-center py-10 px-3">
-            <p className="text-2xl mb-2">🔔</p>
-            <p className="text-sm font-medium text-gray-500">No notifications yet</p>
-            <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-              When someone likes or comments on your tournaments or sends a friend request, you&apos;ll see it here
-            </p>
+          <div className="max-h-[min(420px,55dvh)] sm:max-h-[420px] overflow-y-auto overflow-x-hidden min-h-0">
+            <div className="text-center py-10 px-3">
+              <p className="text-2xl mb-2">🔔</p>
+              <p className="text-sm font-medium text-gray-500">No notifications yet</p>
+              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                When someone likes or comments on your tournaments or sends a friend request, you&apos;ll see it here
+              </p>
+            </div>
           </div>
         )}
 
-        {!loading && notifications.length > 0 && (
-          <div>
-            {incomingFriendRequests.length > 0 && (
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide px-4 pt-3 pb-1 border-t border-gray-100 bg-white">
-                Likes &amp; comments
-              </p>
-            )}
-            <div className="divide-y divide-gray-50">
-              {notifications.map((n) => (
-                <NotificationItem key={String(n.id)} notif={n} onGoToPost={handleOpenFeedFromNotification} />
-              ))}
-            </div>
-          </div>
+        {panelRows.length > 0 && (
+          <NotificationPanelVirtualList
+            rows={panelRows}
+            onAcceptFriend={handleAcceptFriend}
+            onRejectFriend={handleRejectFriend}
+            friendActionId={friendActionId}
+            onGoToPost={handleOpenFeedFromNotification}
+          />
         )}
       </div>
     </>
