@@ -121,7 +121,7 @@ function PushPrompt({ onEnable, enabling }) {
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold text-[#272702]">Enable push notifications</p>
           <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
-            Get notified for comments, likes, friend requests, and tournament reminders
+            Get notified for comments and likes on your posts, plus tournament reminders
           </p>
         </div>
       </div>
@@ -154,23 +154,20 @@ const EST_FRIEND = 130;
 const EST_NOTIF = 82;
 const EST_NOTIF_WITH_COMMENT = 100;
 
-function buildPanelRows(friendRequests, notifs) {
-  const out = [];
-  if (friendRequests.length > 0) {
-    out.push({ type: 'section', key: 'section-fr', label: 'Friend requests' });
-    for (const req of friendRequests) {
-      out.push({ type: 'friend', key: `fr-${req.id}`, request: req });
-    }
-  }
-  if (notifs.length > 0) {
-    if (friendRequests.length > 0) {
-      out.push({ type: 'section', key: 'section-lc', label: 'Likes & comments', showBorder: true });
-    }
-    for (const n of notifs) {
-      out.push({ type: 'notif', key: `n-${n.id}`, notif: n });
-    }
-  }
-  return out;
+function buildFriendRows(friendRequests) {
+  return friendRequests.map((req) => ({
+    type: 'friend',
+    key: `fr-${req.id}`,
+    request: req,
+  }));
+}
+
+function buildNotifRows(notifs) {
+  return notifs.map((n) => ({
+    type: 'notif',
+    key: `n-${n.id}`,
+    notif: n,
+  }));
 }
 
 function NotificationPanelVirtualList({
@@ -244,9 +241,11 @@ function NotificationPanelVirtualList({
 export default function NotificationBell() {
   const { user } = useAuth();
   const containerRef = useRef(null);
-  const panelRef = useRef(null);
+  const friendPanelRef = useRef(null);
+  const notifPanelRef = useRef(null);
   const socket = useSocket();
-  const [open, setOpen] = useState(false);
+  const [friendOpen, setFriendOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const [isMobileLayout, setIsMobileLayout] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches
   );
@@ -280,6 +279,19 @@ export default function NotificationBell() {
     }
   }, []);
 
+  /** Loads notifications + friend requests (+ push snapshot). Caller decides whether to mark feed notifications read. */
+  const loadPanelData = useCallback(async () => {
+    const [pushSnap, notifRes, friendsRes] = await Promise.all([
+      refreshPushState(),
+      api.getFeedNotifications(),
+      api.getFriendRequests(),
+    ]);
+    setNotifications(notifRes.data.data || []);
+    setUnreadCount(notifRes.data.unreadCount || 0);
+    setIncomingFriendRequests(friendsRes.data.data?.incoming || []);
+    return { pushSnap, notifRes };
+  }, [refreshPushState]);
+
   useEffect(() => {
     refreshBellData();
     const interval = setInterval(refreshBellData, 60_000);
@@ -305,15 +317,29 @@ export default function NotificationBell() {
 
   // Close on outside click (panel may be portaled outside the bell wrapper on mobile)
   useEffect(() => {
-    if (!open) return;
+    if (!friendOpen && !notifOpen) return;
     const handler = (e) => {
       if (containerRef.current?.contains(e.target)) return;
-      if (panelRef.current?.contains(e.target)) return;
-      setOpen(false);
+      if (friendPanelRef.current?.contains(e.target)) return;
+      if (notifPanelRef.current?.contains(e.target)) return;
+      setFriendOpen(false);
+      setNotifOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
+  }, [friendOpen, notifOpen]);
+
+  useEffect(() => {
+    if (!friendOpen && !notifOpen) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        setFriendOpen(false);
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [friendOpen, notifOpen]);
 
   useEffect(() => {
     if (!feedPostModal) return;
@@ -326,7 +352,8 @@ export default function NotificationBell() {
 
   const handleOpenFeedFromNotification = useCallback((notif) => {
     const expandComments = notif.type === 'comment';
-    setOpen(false);
+    setNotifOpen(false);
+    setFriendOpen(false);
     setFeedPostModal({ loading: true, expandComments });
     api
       .getFeedPost(notif.tournamentId)
@@ -347,25 +374,35 @@ export default function NotificationBell() {
     await api.sendFriendRequest(playerId);
   }, []);
 
-  const handleOpen = async () => {
-    if (open) {
-      setOpen(false);
+  const handleToggleFriendPanel = async () => {
+    if (friendOpen) {
+      setFriendOpen(false);
       return;
     }
-    setOpen(true);
-    const hasCachedRows =
-      notifications.length > 0 || incomingFriendRequests.length > 0;
-    setLoading(!hasCachedRows);
+    setNotifOpen(false);
+    setFriendOpen(true);
+    const hasCached = incomingFriendRequests.length > 0 || notifications.length > 0;
+    setLoading(!hasCached);
     try {
-      // Run in parallel — previously refreshPushState() blocked on service worker before any API call.
-      const [pushSnap, notifRes, friendsRes] = await Promise.all([
-        refreshPushState(),
-        api.getFeedNotifications(),
-        api.getFriendRequests(),
-      ]);
-      setNotifications(notifRes.data.data || []);
-      setUnreadCount(notifRes.data.unreadCount || 0);
-      setIncomingFriendRequests(friendsRes.data.data?.incoming || []);
+      await loadPanelData();
+    } catch {
+      /* silent */
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleNotifPanel = async () => {
+    if (notifOpen) {
+      setNotifOpen(false);
+      return;
+    }
+    setFriendOpen(false);
+    setNotifOpen(true);
+    const hasCached = notifications.length > 0 || incomingFriendRequests.length > 0;
+    setLoading(!hasCached);
+    try {
+      const { pushSnap, notifRes } = await loadPanelData();
       const needsEnableBanner =
         isSupported && pushSnap.permission === 'default' && !pushSnap.subscribed;
       if (!needsEnableBanner && (notifRes.data.unreadCount || 0) > 0) {
@@ -422,21 +459,71 @@ export default function NotificationBell() {
   const showPushDenied = isSupported && !checking && permission === 'denied';
 
   const friendIncomingCount = incomingFriendRequests.length;
-  // Show at least "1" while push permission hasn't been resolved — draws user to the prompt
-  const badgeCount = showPushPrompt
-    ? Math.max(1, unreadCount + friendIncomingCount)
-    : unreadCount + friendIncomingCount;
+  /** Bell badge: unread likes/comments only (+ push prompt nudge). Friend requests use the other icon. */
+  const notifBadgeCount = showPushPrompt ? Math.max(1, unreadCount) : unreadCount;
 
-  const panelRows = useMemo(
-    () => buildPanelRows(incomingFriendRequests, notifications),
-    [incomingFriendRequests, notifications]
+  const friendPanelRows = useMemo(
+    () => buildFriendRows(incomingFriendRequests),
+    [incomingFriendRequests],
   );
 
-  const dropdownBody = (
+  const notifPanelRows = useMemo(() => buildNotifRows(notifications), [notifications]);
+
+  const listSkeleton = (
+    <div className="max-h-[min(420px,55dvh)] sm:max-h-[420px] overflow-y-auto overflow-x-hidden min-h-0">
+      <div className="space-y-0 divide-y divide-gray-50">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex items-start gap-3 px-4 py-3 animate-pulse">
+            <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0" />
+            <div className="flex-1 space-y-1.5 pt-1 min-w-0">
+              <div className="h-3 bg-gray-200 rounded w-3/4" />
+              <div className="h-2.5 bg-gray-100 rounded w-1/2" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const friendDropdownBody = (
+    <>
+      <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
+        <h3 className="font-semibold text-sm text-[#272702] truncate">Friend requests</h3>
+      </div>
+
+      <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
+        {loading && friendPanelRows.length === 0 && listSkeleton}
+
+        {!loading && friendIncomingCount === 0 && (
+          <div className="max-h-[min(420px,55dvh)] sm:max-h-[420px] overflow-y-auto overflow-x-hidden min-h-0">
+            <div className="text-center py-10 px-3">
+              <p className="text-2xl mb-2">👋</p>
+              <p className="text-sm font-medium text-gray-500">No pending friend requests</p>
+              <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                When someone sends you a request from Nearby Players, it will appear here
+              </p>
+            </div>
+          </div>
+        )}
+
+        {friendPanelRows.length > 0 && (
+          <NotificationPanelVirtualList
+            rows={friendPanelRows}
+            onAcceptFriend={handleAcceptFriend}
+            onRejectFriend={handleRejectFriend}
+            friendActionId={friendActionId}
+            onGoToPost={handleOpenFeedFromNotification}
+          />
+        )}
+      </div>
+    </>
+  );
+
+  const notifDropdownBody = (
     <>
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-gray-100 shrink-0">
         <h3 className="font-semibold text-sm text-[#272702] truncate">Notifications</h3>
-        {unreadCount === 0 && notifications.length > 0 && friendIncomingCount === 0 && (
+        {unreadCount === 0 && notifications.length > 0 && (
           <span className="text-[11px] text-gray-400 shrink-0">All caught up</span>
         )}
       </div>
@@ -445,37 +532,23 @@ export default function NotificationBell() {
       {showPushDenied && <PushDeniedBanner />}
 
       <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
-        {loading && panelRows.length === 0 && (
-          <div className="max-h-[min(420px,55dvh)] sm:max-h-[420px] overflow-y-auto overflow-x-hidden min-h-0">
-            <div className="space-y-0 divide-y divide-gray-50">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-start gap-3 px-4 py-3 animate-pulse">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 flex-shrink-0" />
-                  <div className="flex-1 space-y-1.5 pt-1 min-w-0">
-                    <div className="h-3 bg-gray-200 rounded w-3/4" />
-                    <div className="h-2.5 bg-gray-100 rounded w-1/2" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {loading && notifPanelRows.length === 0 && listSkeleton}
 
-        {!loading && notifications.length === 0 && incomingFriendRequests.length === 0 && (
+        {!loading && notifications.length === 0 && (
           <div className="max-h-[min(420px,55dvh)] sm:max-h-[420px] overflow-y-auto overflow-x-hidden min-h-0">
             <div className="text-center py-10 px-3">
               <p className="text-2xl mb-2">🔔</p>
               <p className="text-sm font-medium text-gray-500">No notifications yet</p>
               <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-                When someone likes or comments on your tournaments or sends a friend request, you&apos;ll see it here
+                When someone likes or comments on your tournaments, you&apos;ll see it here
               </p>
             </div>
           </div>
         )}
 
-        {panelRows.length > 0 && (
+        {notifPanelRows.length > 0 && (
           <NotificationPanelVirtualList
-            rows={panelRows}
+            rows={notifPanelRows}
             onAcceptFriend={handleAcceptFriend}
             onRejectFriend={handleRejectFriend}
             friendActionId={friendActionId}
@@ -494,41 +567,88 @@ export default function NotificationBell() {
     'left-[max(0.75rem,env(safe-area-inset-left,0px))] right-[max(0.75rem,env(safe-area-inset-right,0px))]';
 
   return (
-    <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        onClick={handleOpen}
-        className={`relative p-2 rounded-lg transition-colors ${
-          open ? 'bg-[#f4f8e8] text-[#4a6e10]' : 'text-gray-400 hover:text-[#4a6e10] hover:bg-[#f4f8e8]'
-        }`}
-        aria-label="Notifications"
-        aria-expanded={open}
-      >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
-        {badgeCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-rose-500 leading-none">
-            {badgeCount > 9 ? '9+' : badgeCount}
-          </span>
-        )}
-      </button>
+    <div ref={containerRef} className="flex items-center gap-0.5">
+      {/* Friend requests — separate from activity notifications */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={handleToggleFriendPanel}
+          className={`relative p-2 rounded-lg transition-colors ${
+            friendOpen ? 'bg-indigo-50 text-indigo-700' : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50/80'
+          }`}
+          aria-label="Friend requests"
+          aria-expanded={friendOpen}
+          title="Friend requests"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+            />
+          </svg>
+          {friendIncomingCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-indigo-500 leading-none">
+              {friendIncomingCount > 9 ? '9+' : friendIncomingCount}
+            </span>
+          )}
+        </button>
 
-      {open && !isMobileLayout && (
-        <div ref={panelRef} className={desktopPanelClass}>
-          {dropdownBody}
-        </div>
-      )}
-
-      {open &&
-        isMobileLayout &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div ref={panelRef} className={mobilePanelClass} role="dialog" aria-label="Notifications">
-            {dropdownBody}
-          </div>,
-          document.body
+        {friendOpen && !isMobileLayout && (
+          <div ref={friendPanelRef} className={desktopPanelClass}>
+            {friendDropdownBody}
+          </div>
         )}
+
+        {friendOpen &&
+          isMobileLayout &&
+          typeof document !== 'undefined' &&
+          createPortal(
+            <div ref={friendPanelRef} className={mobilePanelClass} role="dialog" aria-label="Friend requests">
+              {friendDropdownBody}
+            </div>,
+            document.body,
+          )}
+      </div>
+
+      {/* Likes & comments (+ push prompts) */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={handleToggleNotifPanel}
+          className={`relative p-2 rounded-lg transition-colors ${
+            notifOpen ? 'bg-[#f4f8e8] text-[#4a6e10]' : 'text-gray-400 hover:text-[#4a6e10] hover:bg-[#f4f8e8]'
+          }`}
+          aria-label="Notifications"
+          aria-expanded={notifOpen}
+          title="Notifications"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          {notifBadgeCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-rose-500 leading-none">
+              {notifBadgeCount > 9 ? '9+' : notifBadgeCount}
+            </span>
+          )}
+        </button>
+
+        {notifOpen && !isMobileLayout && (
+          <div ref={notifPanelRef} className={desktopPanelClass}>
+            {notifDropdownBody}
+          </div>
+        )}
+
+        {notifOpen &&
+          isMobileLayout &&
+          typeof document !== 'undefined' &&
+          createPortal(
+            <div ref={notifPanelRef} className={mobilePanelClass} role="dialog" aria-label="Notifications">
+              {notifDropdownBody}
+            </div>,
+            document.body,
+          )}
+      </div>
 
       {feedPostModal &&
         typeof document !== 'undefined' &&
