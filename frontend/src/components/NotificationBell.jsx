@@ -55,7 +55,7 @@ function PushPrompt({ onEnable, enabling }) {
       <span className="text-xl flex-shrink-0">🔔</span>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-[#272702]">Enable push notifications</p>
-        <p className="text-[11px] text-gray-500 mt-0.5">Get notified instantly when someone comments</p>
+        <p className="text-[11px] text-gray-500 mt-0.5">Get notified when someone comments and for tournament reminders</p>
       </div>
       <button
         onClick={onEnable}
