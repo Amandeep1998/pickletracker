@@ -89,6 +89,7 @@ export const deleteSession = (id) => api.delete(`/sessions/${id}`);
 
 // Community Feed
 export const getFeed = (params = {}) => api.get('/feed', { params });
+export const getFeedPost = (tournamentId) => api.get(`/feed/post/${tournamentId}`);
 export const toggleFeedLike = (tournamentId) => api.post(`/feed/${tournamentId}/like`);
 export const getFeedComments = (tournamentId) => api.get(`/feed/${tournamentId}/comments`);
 export const addFeedComment = (tournamentId, text) => api.post(`/feed/${tournamentId}/comments`, { text });

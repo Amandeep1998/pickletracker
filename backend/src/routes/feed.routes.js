@@ -3,6 +3,7 @@ const router = express.Router();
 const protect = require('../middleware/auth.middleware');
 const {
   getFeed,
+  getFeedPost,
   getNotifications,
   markAllRead,
   toggleLike,
@@ -14,6 +15,9 @@ const {
 // Notification routes — must be defined before /:tournamentId to avoid conflicts
 router.get('/notifications',          protect, getNotifications);
 router.put('/notifications/read-all', protect, markAllRead);
+
+// Single post (notifications popup) — before "/" and /:tournamentId/*
+router.get('/post/:tournamentId', protect, getFeedPost);
 
 // Feed
 router.get('/', protect, getFeed);

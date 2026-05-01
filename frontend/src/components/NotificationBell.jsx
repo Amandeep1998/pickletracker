@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useSocket } from '../context/SocketContext';
+import { FeedCard } from './FeedPostCard';
+import PlayerProfileModal from './PlayerProfileModal';
+import PaddleLoader from './PaddleLoader';
 
 function timeAgo(dateStr) {
   const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
@@ -68,12 +72,16 @@ function FriendRequestRow({ request, onAccept, onReject, busy }) {
   );
 }
 
-function NotificationItem({ notif }) {
+function NotificationItem({ notif, onGoToPost }) {
   const isComment = notif.type === 'comment';
   const initials = (notif.actorName || '?')[0].toUpperCase();
 
   return (
-    <div className={`flex items-start gap-3 px-4 py-3 transition-colors ${notif.read ? '' : 'bg-[#f4f8e8]'}`}>
+    <button
+      type="button"
+      onClick={() => onGoToPost(notif)}
+      className={`w-full text-left flex items-start gap-3 px-4 py-3 transition-colors hover:bg-gray-50/90 active:bg-gray-100/80 ${notif.read ? '' : 'bg-[#f4f8e8]'}`}
+    >
       {/* Actor avatar */}
       <span
         className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-0.5"
@@ -98,9 +106,9 @@ function NotificationItem({ notif }) {
 
       {/* Unread dot */}
       {!notif.read && (
-        <span className="w-2 h-2 rounded-full bg-[#91BE4D] flex-shrink-0 mt-2" />
+        <span className="w-2 h-2 rounded-full bg-[#91BE4D] flex-shrink-0 mt-2" aria-hidden />
       )}
-    </div>
+    </button>
   );
 }
 
@@ -141,6 +149,7 @@ function PushDeniedBanner() {
 }
 
 export default function NotificationBell() {
+  const { user } = useAuth();
   const containerRef = useRef(null);
   const panelRef = useRef(null);
   const socket = useSocket();
@@ -155,7 +164,14 @@ export default function NotificationBell() {
   const [enabling, setEnabling] = useState(false);
   const [friendActionId, setFriendActionId] = useState(null);
 
-  const { permission, subscribed, checking, isSupported, requestAndSubscribe } = usePushNotifications();
+  /** Like/comment notification → full post in overlay */
+  const [feedPostModal, setFeedPostModal] = useState(null);
+  /** null | { loading: true, expandComments } | { error: string } | { item, expandComments } */
+
+  const [profilePlayerId, setProfilePlayerId] = useState(null);
+
+  const { permission, subscribed, checking, isSupported, requestAndSubscribe, refreshPushState } =
+    usePushNotifications();
 
   const refreshBellData = useCallback(async () => {
     try {
@@ -205,6 +221,38 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  useEffect(() => {
+    if (!feedPostModal) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setFeedPostModal(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [feedPostModal]);
+
+  const handleOpenFeedFromNotification = useCallback((notif) => {
+    const expandComments = notif.type === 'comment';
+    setOpen(false);
+    setFeedPostModal({ loading: true, expandComments });
+    api
+      .getFeedPost(notif.tournamentId)
+      .then((res) => {
+        setFeedPostModal({
+          item: res.data.data,
+          expandComments,
+        });
+      })
+      .catch(() => {
+        setFeedPostModal({
+          error: 'Could not load this post. It may no longer be available.',
+        });
+      });
+  }, []);
+
+  const handleSendFriendFromProfile = useCallback(async (playerId) => {
+    await api.sendFriendRequest(playerId);
+  }, []);
+
   const handleOpen = async () => {
     if (open) {
       setOpen(false);
@@ -213,15 +261,18 @@ export default function NotificationBell() {
     setOpen(true);
     setLoading(true);
     try {
-      const [notifRes, friendsRes] = await Promise.all([
+      // Run in parallel — previously refreshPushState() blocked on service worker before any API call.
+      const [pushSnap, notifRes, friendsRes] = await Promise.all([
+        refreshPushState(),
         api.getFeedNotifications(),
         api.getFriendRequests(),
       ]);
       setNotifications(notifRes.data.data || []);
       setUnreadCount(notifRes.data.unreadCount || 0);
       setIncomingFriendRequests(friendsRes.data.data?.incoming || []);
-      const pushPending = isSupported && !checking && permission !== 'denied' && !subscribed;
-      if (!pushPending && (notifRes.data.unreadCount || 0) > 0) {
+      const needsEnableBanner =
+        isSupported && pushSnap.permission === 'default' && !pushSnap.subscribed;
+      if (!needsEnableBanner && (notifRes.data.unreadCount || 0) > 0) {
         api.markFeedNotificationsRead().catch(() => {});
         setUnreadCount(0);
         setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
@@ -269,7 +320,9 @@ export default function NotificationBell() {
     }
   };
 
-  const showPushPrompt = isSupported && !checking && permission !== 'denied' && !subscribed;
+  /** Only when the browser has not been asked yet — if permission is already granted, never nag here */
+  const showPushPrompt =
+    isSupported && !checking && permission === 'default' && !subscribed;
   const showPushDenied = isSupported && !checking && permission === 'denied';
 
   const friendIncomingCount = incomingFriendRequests.length;
@@ -343,7 +396,7 @@ export default function NotificationBell() {
             )}
             <div className="divide-y divide-gray-50">
               {notifications.map((n) => (
-                <NotificationItem key={String(n.id)} notif={n} />
+                <NotificationItem key={String(n.id)} notif={n} onGoToPost={handleOpenFeedFromNotification} />
               ))}
             </div>
           </div>
@@ -395,6 +448,74 @@ export default function NotificationBell() {
           </div>,
           document.body
         )}
+
+      {feedPostModal &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[240] flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setFeedPostModal(null)}
+            role="presentation"
+          >
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px]" />
+            <div
+              className="relative w-full sm:max-w-md max-h-[min(90dvh,700px)] overflow-y-auto sm:rounded-2xl bg-[#f8fafc] p-3 sm:p-4 shadow-2xl ring-1 ring-black/10"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Feed post"
+            >
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <h2 className="text-sm font-semibold text-[#272702]">Post</h2>
+                <button
+                  type="button"
+                  onClick={() => setFeedPostModal(null)}
+                  className="text-gray-400 hover:text-[#272702] p-1 rounded-lg transition-colors"
+                  aria-label="Close"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {feedPostModal.loading && (
+                <div className="py-16 bg-white rounded-2xl border border-gray-100">
+                  <PaddleLoader label="Loading post…" />
+                </div>
+              )}
+
+              {feedPostModal.error && (
+                <div className="rounded-2xl bg-white border border-gray-100 p-6 text-center text-sm text-gray-600">
+                  {feedPostModal.error}
+                </div>
+              )}
+
+              {feedPostModal.item && (
+                <FeedCard
+                  item={feedPostModal.item}
+                  currentUserId={user?.id}
+                  expandCommentsFromLink={Boolean(feedPostModal.expandComments)}
+                  onViewProfile={(id) => {
+                    setFeedPostModal(null);
+                    setProfilePlayerId(id);
+                  }}
+                />
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {profilePlayerId && (
+        <PlayerProfileModal
+          playerId={profilePlayerId}
+          onClose={() => setProfilePlayerId(null)}
+          friendState="none"
+          currentUserId={user?.id}
+          onSendFriendRequest={handleSendFriendFromProfile}
+        />
+      )}
     </div>
   );
 }

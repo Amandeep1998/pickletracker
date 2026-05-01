@@ -4,10 +4,7 @@ const Tournament = require('../models/Tournament');
 const FeedLike = require('../models/FeedLike');
 const FeedComment = require('../models/FeedComment');
 const FeedNotification = require('../models/FeedNotification');
-const FeedLikePushLog = require('../models/FeedLikePushLog');
 const { sendPushToUser } = require('./push.controller');
-
-const LIKE_PUSH_DEBOUNCE_MS = 5 * 60 * 1000; // 5 minutes
 
 /** Same semantics as GET /api/players?city= — poster city contains viewer city (case-insensitive). */
 function posterCityMatchesViewer(posterCity, viewerCity) {
@@ -16,14 +13,6 @@ function posterCityMatchesViewer(posterCity, viewerCity) {
   const raw = String(viewerCity).trim();
   const escaped = raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return new RegExp(escaped, 'i').test(String(posterCity).trim());
-}
-
-function formatLikePushBody(likerNames, totalCount, tournamentName) {
-  let who;
-  if (totalCount === 1)      who = likerNames[0];
-  else if (totalCount === 2) who = `${likerNames[0]} and ${likerNames[1]}`;
-  else                       who = `${likerNames[0]} and ${totalCount - 1} other${totalCount - 1 > 1 ? 's' : ''}`;
-  return `${who} liked your ${tournamentName}`;
 }
 
 /**
@@ -201,6 +190,147 @@ exports.getFeed = async (req, res, next) => {
 };
 
 /**
+ * GET /api/feed/post/:tournamentId
+ * Single feed row for a tournament (for notifications popup). Prefers "recent" over "upcoming".
+ */
+exports.getFeedPost = async (req, res, next) => {
+  try {
+    const rawId = req.params.tournamentId;
+    if (!mongoose.Types.ObjectId.isValid(rawId)) {
+      return res.status(400).json({ success: false, message: 'Invalid tournament id' });
+    }
+
+    const tournamentOid = new mongoose.Types.ObjectId(rawId);
+
+    const t = await Tournament.findById(tournamentOid).lean();
+    if (!t) {
+      return res.status(404).json({ success: false, message: 'Tournament not found' });
+    }
+
+    const user = await User.findById(t.userId).select('name city state profilePhoto').lean();
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Poster not found' });
+    }
+
+    const poster = {
+      id: user._id,
+      name: user.name,
+      city: user.city || null,
+      state: user.state || null,
+      profilePhoto: user.profilePhoto || null,
+    };
+
+    const likes = await FeedLike.find({ tournamentId: tournamentOid }).lean();
+    const likeCount = likes.length;
+    const likedByMe = likes.some((l) => String(l.userId) === String(req.user.id));
+
+    const allComments = await FeedComment.find({ tournamentId: tournamentOid }).sort({ createdAt: 1 }).lean();
+    const commentCount = allComments.length;
+    const recentComments = allComments.slice(-2).map((c) => ({
+      id: c._id,
+      userId: c.userId,
+      userName: c.userName,
+      text: c.text,
+      createdAt: c.createdAt,
+    }));
+
+    const social = {
+      likeCount,
+      likedByMe,
+      commentCount,
+      recentComments,
+    };
+
+    const today = new Date().toISOString().slice(0, 10);
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    let upcomingCategories = (t.categories || []).filter((c) => c.date && c.date >= today);
+    let recentCategories = (t.categories || []).filter(
+      (c) => c.date && c.date >= thirtyDaysAgo && c.date < today
+    );
+
+    const feedRows = [];
+
+    if (upcomingCategories.length > 0) {
+      feedRows.push({
+        id: `${t._id}-upcoming`,
+        type: 'upcoming',
+        user: poster,
+        tournament: { id: t._id, name: t.name, location: t.location?.name || null },
+        categories: upcomingCategories.map((c) => ({
+          name: c.categoryName,
+          date: c.date,
+          partnerName: c.partnerName || null,
+        })),
+        earliestDate: upcomingCategories.map((c) => c.date).sort()[0],
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+        ...social,
+      });
+    }
+
+    if (recentCategories.length > 0) {
+      feedRows.push({
+        id: `${t._id}-recent`,
+        type: 'recent',
+        user: poster,
+        tournament: { id: t._id, name: t.name, location: t.location?.name || null },
+        categories: recentCategories.map((c) => ({
+          name: c.categoryName,
+          date: c.date,
+          medal: c.medal || 'None',
+        })),
+        medals: recentCategories
+          .filter((c) => c.medal && c.medal !== 'None')
+          .map((c) => ({ category: c.categoryName, medal: c.medal })),
+        latestDate: recentCategories.map((c) => c.date).sort().reverse()[0],
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+        ...social,
+      });
+    }
+
+    if (feedRows.length === 0) {
+      const withDates = (t.categories || []).filter((c) => c.date);
+      if (withDates.length > 0) {
+        recentCategories = [...withDates].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        feedRows.push({
+          id: `${t._id}-recent`,
+          type: 'recent',
+          user: poster,
+          tournament: { id: t._id, name: t.name, location: t.location?.name || null },
+          categories: recentCategories.map((c) => ({
+            name: c.categoryName,
+            date: c.date,
+            medal: c.medal || 'None',
+          })),
+          medals: recentCategories
+            .filter((c) => c.medal && c.medal !== 'None')
+            .map((c) => ({ category: c.categoryName, medal: c.medal })),
+          latestDate: recentCategories.map((c) => c.date).sort().reverse()[0],
+          createdAt: t.createdAt,
+          updatedAt: t.updatedAt,
+          ...social,
+        });
+      }
+    }
+
+    if (feedRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        code: 'NO_FEED_ACTIVITY',
+        message: 'Nothing to show for this tournament.',
+      });
+    }
+
+    const preferred = feedRows.find((r) => r.type === 'recent') || feedRows[0];
+    res.json({ success: true, data: preferred });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * GET /api/feed/notifications
  * Returns the current user's in-app notifications (newest first, max 30).
  */
@@ -249,9 +379,7 @@ exports.markAllRead = async (req, res, next) => {
 
 /**
  * POST /api/feed/:tournamentId/like
- * Toggle like. Creates an in-app notification for the tournament owner.
- * Push notifications are batched — one push per 5-minute window per tournament,
- * showing all accumulated likers (Instagram-style).
+ * Toggle like. Creates an in-app notification + immediate push for the tournament owner.
  */
 exports.toggleLike = async (req, res, next) => {
   try {
@@ -280,8 +408,7 @@ exports.toggleLike = async (req, res, next) => {
             tournamentName: tournament.name,
           });
 
-          // Batched push — fire-and-forget, must not block response
-          sendBatchedLikePush(tournament, actorId).catch(() => {});
+          sendImmediateLikePush(tournament, actor).catch(() => {});
         }
       }
     }
@@ -293,51 +420,14 @@ exports.toggleLike = async (req, res, next) => {
   }
 };
 
-async function sendBatchedLikePush(tournament, actorId) {
+async function sendImmediateLikePush(tournament, actor) {
   const recipientId = tournament.userId;
-  const tournamentId = tournament._id;
-  const now = new Date();
-
-  // Check when last like push was sent for this tournament → owner pair
-  const log = await FeedLikePushLog.findOne({ userId: recipientId, tournamentId }).lean();
-
-  if (log && now - new Date(log.pushedAt) < LIKE_PUSH_DEBOUNCE_MS) {
-    // Within the debounce window — absorb silently
-    return;
-  }
-
-  // Outside window (or first ever) — build the batched message
-  // Get all current likers, newest first, to surface the most recent names
-  const likes = await FeedLike.find({ tournamentId })
-    .sort({ createdAt: -1 })
-    .limit(10)
-    .lean();
-
-  const totalCount = likes.length;
-  if (totalCount === 0) return;
-
-  const likerIds = likes.map((l) => l.userId);
-  const likers = await User.find({ _id: { $in: likerIds } }).select('name').lean();
-
-  // Build ordered name list matching likes order (newest first)
-  const likerMap = {};
-  for (const u of likers) likerMap[String(u._id)] = u.name;
-  const likerNames = likerIds.map((id) => likerMap[String(id)]).filter(Boolean);
-
-  const body = formatLikePushBody(likerNames, totalCount, tournament.name);
-
-  // Update the push log (upsert) before sending so rapid likes don't race
-  await FeedLikePushLog.findOneAndUpdate(
-    { userId: recipientId, tournamentId },
-    { pushedAt: now },
-    { upsert: true }
-  );
-
+  const name = tournament.name || 'tournament';
   await sendPushToUser(recipientId, {
     title: 'Someone liked your tournament',
-    body,
-    url:   '/home',
-    tag:   'feed-like',
+    body: `${actor.name} liked your ${name}`,
+    url: '/home',
+    tag: `feed-like-${String(tournament._id)}-${Date.now()}`,
   });
 }
 
@@ -409,13 +499,12 @@ exports.addComment = async (req, res, next) => {
         commentText:    text.trim(),
       });
 
-      // Push notification for comments
       sendPushToUser(tournament.userId, {
         title: `${actor.name} commented on your tournament`,
-        body:  excerpt,
-        url:   '/home',
-        tag:   'feed-comment',
-      }).catch(() => {}); // fire-and-forget, must not block response
+        body: excerpt,
+        url: '/home',
+        tag: `feed-comment-${String(comment._id)}`,
+      }).catch(() => {});
     }
 
     res.status(201).json({

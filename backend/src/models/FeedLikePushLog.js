@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
-// Tracks when the last batched "likes" push was sent per (recipient, tournament).
-// Used to debounce like push notifications — one push per 5-minute window.
+// Legacy collection — like pushes were debounced (removed); documents may remain in DB.
 const feedLikePushLogSchema = new mongoose.Schema({
   userId:       { type: mongoose.Schema.Types.ObjectId, ref: 'User',       required: true },
   tournamentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Tournament', required: true },

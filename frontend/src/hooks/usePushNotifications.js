@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import * as api from '../services/api';
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
@@ -97,5 +97,51 @@ export function usePushNotifications() {
     }
   };
 
-  return { permission, subscribed, checking, isSupported, requestAndSubscribe, silentSubscribe, unsubscribe };
+  /**
+   * Re-read Notification.permission + PushManager subscription (fixes stale state when
+   * another screen subscribed). Optionally creates subscription if permission already granted.
+   * Returns a snapshot for immediate UI logic before the next paint.
+   */
+  const refreshPushState = useCallback(async () => {
+    if (!isSupported) {
+      return { permission: 'denied', subscribed: false };
+    }
+    const perm = Notification.permission;
+    setPermission(perm);
+    try {
+      const reg = await swReady();
+      let sub = await reg.pushManager.getSubscription();
+      setSubscribed(!!sub);
+      if (perm === 'granted' && !sub && VAPID_PUBLIC_KEY) {
+        try {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+          });
+          await api.subscribePush(sub.toJSON());
+          setSubscribed(true);
+        } catch (err) {
+          console.error('[Push] refreshPushState subscribe:', err);
+        }
+      }
+      sub = await reg.pushManager.getSubscription();
+      const ok = !!sub;
+      setSubscribed(ok);
+      return { permission: perm, subscribed: ok };
+    } catch (err) {
+      console.error('[Push] refreshPushState:', err);
+      return { permission: perm, subscribed: false };
+    }
+  }, [isSupported]);
+
+  return {
+    permission,
+    subscribed,
+    checking,
+    isSupported,
+    requestAndSubscribe,
+    silentSubscribe,
+    unsubscribe,
+    refreshPushState,
+  };
 }
