@@ -303,7 +303,7 @@ export default function NotificationBell() {
 
   const [profilePlayerId, setProfilePlayerId] = useState(null);
 
-  const { permission, subscribed, checking, isSupported, requestAndSubscribe, refreshPushState } =
+  const { permission, subscribed, checking, isSupported, pushSupportMessage, requestAndSubscribe, refreshPushState } =
     usePushNotifications();
 
   const refreshBellData = useCallback(async () => {
@@ -594,6 +594,12 @@ export default function NotificationBell() {
 
       {showPushPrompt && <PushPrompt onEnable={handleEnablePush} enabling={enabling} />}
       {showPushDenied && <PushDeniedBanner />}
+      {!isSupported && pushSupportMessage && (
+        <div className="px-3 py-2.5 border-b border-amber-100 bg-amber-50/95 text-[11px] text-amber-950 leading-snug shrink-0">
+          <p className="font-semibold text-amber-900 mb-0.5">Tournament push reminders</p>
+          <p>{pushSupportMessage}</p>
+        </div>
+      )}
 
       <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
         {loading && notifPanelRows.length === 0 && listSkeleton}

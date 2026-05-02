@@ -38,7 +38,7 @@ const resizeImage = (file) =>
 export default function Profile() {
   const { user, refreshUser, handleLogout } = useAuth();
   const fileInputRef = useRef(null);
-  const { permission, subscribed, checking: pushChecking, isSupported, requestAndSubscribe, unsubscribe } = usePushNotifications();
+  const { permission, subscribed, checking: pushChecking, isSupported, pushSupportMessage, requestAndSubscribe, unsubscribe } = usePushNotifications();
   const [pushLoading, setPushLoading] = useState(false);
   const [pushMsg, setPushMsg] = useState('');
 
@@ -696,8 +696,8 @@ export default function Profile() {
             )}
           </div>
 
-          {/* Notifications Card */}
-          {isSupported && (
+          {/* Notifications — Web Push only in supported browsers (e.g. not iPhone Safari tab) */}
+          {(isSupported || pushSupportMessage) && (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5 mt-5">
               <div className="flex items-start gap-3 mb-3">
                 <span className="text-2xl">🔔</span>
@@ -709,7 +709,14 @@ export default function Profile() {
                 </div>
               </div>
 
-              {permission === 'denied' ? (
+              {!isSupported && pushSupportMessage ? (
+                <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                  <p className="text-xs font-semibold text-amber-900 mb-1">Reminders cannot run in this browser view</p>
+                  <p className="text-xs text-amber-800 leading-relaxed">{pushSupportMessage}</p>
+                </div>
+              ) : pushChecking ? (
+                <p className="text-xs text-gray-500 py-1">Checking notification status…</p>
+              ) : permission === 'denied' ? (
                 <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
                   <p className="text-xs font-semibold text-red-600 mb-0.5">Notifications blocked</p>
                   <p className="text-xs text-red-400 leading-relaxed">

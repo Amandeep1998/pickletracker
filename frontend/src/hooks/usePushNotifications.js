@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import * as api from '../services/api';
+import { getWebPushSupportState } from '../utils/webPushSupport';
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+const vapidConfigured = Boolean(VAPID_PUBLIC_KEY);
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -10,16 +12,16 @@ function urlBase64ToUint8Array(base64String) {
   return new Uint8Array([...rawData].map((c) => c.charCodeAt(0)));
 }
 
-const isSupported =
-  typeof window !== 'undefined' &&
-  'Notification' in window &&
-  'serviceWorker' in navigator &&
-  'PushManager' in window;
-
 export function usePushNotifications() {
-  const [permission, setPermission] = useState(() =>
-    isSupported ? Notification.permission : 'denied'
-  );
+  const support = useMemo(() => getWebPushSupportState(vapidConfigured), []);
+  const { canSubscribe: isSupported, userMessage: pushSupportMessage } = support;
+
+  const [permission, setPermission] = useState(() => {
+    if (!support.canSubscribe || typeof window === 'undefined' || !('Notification' in window)) {
+      return 'denied';
+    }
+    return Notification.permission;
+  });
   const [subscribed, setSubscribed] = useState(false);
   const [checking, setChecking] = useState(isSupported);
 
@@ -42,7 +44,7 @@ export function usePushNotifications() {
 
   // Request browser permission then subscribe with VAPID key
   const requestAndSubscribe = async () => {
-    if (!isSupported || !VAPID_PUBLIC_KEY) return false;
+    if (!isSupported || !vapidConfigured) return false;
     try {
       const result = await Notification.requestPermission();
       setPermission(result);
@@ -63,7 +65,7 @@ export function usePushNotifications() {
   };
 
   const silentSubscribe = async () => {
-    if (!isSupported || !VAPID_PUBLIC_KEY || Notification.permission !== 'granted') return;
+    if (!isSupported || !vapidConfigured || Notification.permission !== 'granted') return;
     try {
       const reg = await swReady();
       const existing = await reg.pushManager.getSubscription();
@@ -112,7 +114,7 @@ export function usePushNotifications() {
       const reg = await swReady();
       let sub = await reg.pushManager.getSubscription();
       setSubscribed(!!sub);
-      if (perm === 'granted' && !sub && VAPID_PUBLIC_KEY) {
+      if (perm === 'granted' && !sub && vapidConfigured) {
         try {
           sub = await reg.pushManager.subscribe({
             userVisibleOnly: true,
@@ -139,6 +141,7 @@ export function usePushNotifications() {
     subscribed,
     checking,
     isSupported,
+    pushSupportMessage,
     requestAndSubscribe,
     silentSubscribe,
     unsubscribe,

@@ -99,7 +99,7 @@ export default function Calendar() {
   const [moneySummaryOpen, setMoneySummaryOpen] = useState(false);
 
   // Push notifications
-  const { permission: pushPermission, subscribed: pushSubscribed, checking: pushChecking, isSupported: pushSupported, requestAndSubscribe, silentSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
+  const { permission: pushPermission, subscribed: pushSubscribed, checking: pushChecking, isSupported: pushSupported, pushSupportMessage, requestAndSubscribe, silentSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
   const [pushLoading, setPushLoading] = useState(false);
   const isReminderOn = pushSubscribed;
 
@@ -412,7 +412,13 @@ export default function Calendar() {
     }
     if (!pushSupported) {
       if (dateStr) focusAndHighlightDate(dateStr);
-      showToastIfAny();
+      if (landingToastMsg) {
+        setPendingToast(landingToastMsg);
+        setTimeout(() => setPendingToast(''), 6000);
+      } else if (hasFuture && pushSupportMessage) {
+        setPendingToast(pushSupportMessage);
+        setTimeout(() => setPendingToast(''), 9000);
+      }
       return;
     }
     if (pushPermission === 'granted') {
@@ -806,6 +812,18 @@ export default function Calendar() {
                     />
                   </span>
                 </button>
+              )}
+              {!pushSupported && pushSupportMessage && (
+                <div
+                  className="inline-flex items-start gap-2.5 rounded-2xl px-3.5 py-2.5 border border-amber-300/35 bg-amber-950/25 w-full sm:max-w-md text-left"
+                  role="status"
+                >
+                  <span className="text-base leading-none mt-0.5 flex-shrink-0" aria-hidden>ℹ️</span>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-amber-100">Reminders unavailable in this view</p>
+                    <p className="text-[10px] text-amber-50/85 leading-snug mt-1">{pushSupportMessage}</p>
+                  </div>
+                </div>
               )}
             </div>
           </div>
