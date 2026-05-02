@@ -178,16 +178,15 @@ const acceptFriendRequest = async (req, res, next) => {
     socketManager.emitToUser(String(row.requesterId), 'friend:refresh', {});
     socketManager.emitToUser(String(userId), 'friend:refresh', {});
 
-    const pushBody = "You're now friends — you can view each other's schedule on PickleTracker.";
     sendPushToUser(String(row.requesterId), {
-      title: "You're now friends",
-      body: pushBody,
+      title: `You're now friends with ${accepterName}`,
+      body: `You and ${accepterName} can view each other's schedule on PickleTracker.`,
       url: '/players',
       tag: 'friend-connected',
     }).catch(() => {});
     sendPushToUser(userId, {
-      title: "You're now friends",
-      body: pushBody,
+      title: `You're now friends with ${requesterName}`,
+      body: `You and ${requesterName} can view each other's schedule on PickleTracker.`,
       url: '/players',
       tag: 'friend-connected',
     }).catch(() => {});
