@@ -2,6 +2,20 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Tournament = require('../models/Tournament');
+const Session = require('../models/Session');
+const Expense = require('../models/Expense');
+const Friendship = require('../models/Friendship');
+const WhatsAppSession = require('../models/WhatsAppSession');
+const PushSubscription = require('../models/PushSubscription');
+const CoachingIncome = require('../models/CoachingIncome');
+const CoachStudent = require('../models/CoachStudent');
+const CoachOverheadExpense = require('../models/CoachOverheadExpense');
+const CoachScheduleSlot = require('../models/CoachScheduleSlot');
+const FeedLike = require('../models/FeedLike');
+const FeedComment = require('../models/FeedComment');
+const FeedNotification = require('../models/FeedNotification');
+const FeedLikePushLog = require('../models/FeedLikePushLog');
 const { verifyIdToken } = require('../services/firebaseAdmin.service');
 const { sendPasswordResetEmail } = require('../services/email.service');
 const { isValidIanaTimeZone, shouldAutoUpdateTimeZoneFromDevice } = require('../utils/userTimeZone');
@@ -49,6 +63,7 @@ function publicUser(user) {
           : user.timeZone && user.timeZone !== 'UTC'
             ? 'manual'
             : 'auto',
+    shareTournamentsOnFeed: user.shareTournamentsOnFeed !== false,
   };
 }
 
@@ -361,6 +376,10 @@ const updateProfile = async (req, res, next) => {
       update.onboardingDone = Boolean(req.body.onboardingDone);
     }
 
+    if (req.body.shareTournamentsOnFeed !== undefined) {
+      update.shareTournamentsOnFeed = Boolean(req.body.shareTournamentsOnFeed);
+    }
+
     if (req.body.roles !== undefined) {
       if (!Array.isArray(req.body.roles)) {
         return res.status(400).json({ success: false, message: 'roles must be an array' });
@@ -401,6 +420,59 @@ const updateProfile = async (req, res, next) => {
   }
 };
 
+/**
+ * DELETE /api/auth/account
+ * Permanently deletes the authenticated user and owned data (same cascade idea as admin user delete).
+ */
+const deleteAccount = async (req, res, next) => {
+  try {
+    const id = req.user.id;
+    const user = await User.findById(id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const tournaments = await Tournament.find({ userId: id }).select('_id').lean();
+    const tournamentIds = tournaments.map((t) => t._id);
+
+    const deletes = [
+      PushSubscription.deleteMany({ userId: id }),
+      CoachingIncome.deleteMany({ userId: id }),
+      CoachStudent.deleteMany({ userId: id }),
+      CoachOverheadExpense.deleteMany({ userId: id }),
+      CoachScheduleSlot.deleteMany({ userId: id }),
+      FeedLike.deleteMany({ userId: id }),
+      FeedComment.deleteMany({ userId: id }),
+      FeedNotification.deleteMany({ userId: id }),
+      FeedNotification.deleteMany({ actorId: id }),
+      FeedLikePushLog.deleteMany({ userId: id }),
+    ];
+
+    if (tournamentIds.length > 0) {
+      deletes.push(
+        FeedLike.deleteMany({ tournamentId: { $in: tournamentIds } }),
+        FeedComment.deleteMany({ tournamentId: { $in: tournamentIds } }),
+        FeedNotification.deleteMany({ tournamentId: { $in: tournamentIds } }),
+        FeedLikePushLog.deleteMany({ tournamentId: { $in: tournamentIds } })
+      );
+    }
+
+    await Promise.all(deletes);
+
+    await Promise.all([
+      Tournament.deleteMany({ userId: id }),
+      Session.deleteMany({ userId: id }),
+      Expense.deleteMany({ userId: id }),
+      WhatsAppSession.deleteMany({ userId: id }),
+      Friendship.deleteMany({ $or: [{ requesterId: id }, { recipientId: id }] }),
+    ]);
+
+    await User.findByIdAndDelete(id);
+
+    res.json({ success: true, message: 'Account deleted' });
+  } catch (err) {
+    next(err);
+  }
+};
+
 const pingPlatform = async (req, res, next) => {
   try {
     const { platform, timeZone: bodyTz } = req.body;
@@ -435,4 +507,14 @@ const pingPlatform = async (req, res, next) => {
   }
 };
 
-module.exports = { signup, login, googleAuth, forgotPassword, resetPassword, getProfile, updateProfile, pingPlatform };
+module.exports = {
+  signup,
+  login,
+  googleAuth,
+  forgotPassword,
+  resetPassword,
+  getProfile,
+  updateProfile,
+  deleteAccount,
+  pingPlatform,
+};

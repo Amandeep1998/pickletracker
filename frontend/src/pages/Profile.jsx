@@ -13,6 +13,7 @@ import { tryUpdateCurrencyFromAutoTimeZone } from '../utils/currencyFromTimeZone
 import { CURRENCIES } from '../utils/format';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import PaddleLoader from '../components/PaddleLoader';
+import Modal from '../components/Modal';
 
 const resizeImage = (file) =>
   new Promise((resolve) => {
@@ -35,7 +36,7 @@ const resizeImage = (file) =>
   });
 
 export default function Profile() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, handleLogout } = useAuth();
   const fileInputRef = useRef(null);
   const { permission, subscribed, checking: pushChecking, isSupported, requestAndSubscribe, unsubscribe } = usePushNotifications();
   const [pushLoading, setPushLoading] = useState(false);
@@ -91,6 +92,12 @@ export default function Profile() {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState('');
 
+  const [shareTournamentsOnFeed, setShareTournamentsOnFeed] = useState(true);
+  const [feedPrefSaving, setFeedPrefSaving] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
   useEffect(() => {
     api.getProfile()
       .then((res) => {
@@ -104,6 +111,7 @@ export default function Profile() {
         if (p.city) setLocCity(p.city);
         if (p.currency) setCurrency(p.currency);
         setTimeZone(p.timeZone || 'UTC');
+        setShareTournamentsOnFeed(p.shareTournamentsOnFeed !== false);
         refreshUser(p);
       })
       .catch(() => setSaveError('Could not load profile.'))
@@ -264,6 +272,33 @@ export default function Profile() {
       setExportError('Export failed. Please try again.');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleShareFeedToggle = async (next) => {
+    setFeedPrefSaving(true);
+    try {
+      const res = await api.updateProfile({ shareTournamentsOnFeed: next });
+      refreshUser(res.data.data);
+      setShareTournamentsOnFeed(next);
+    } catch {
+      /* keep switch — user can retry */
+    } finally {
+      setFeedPrefSaving(false);
+    }
+  };
+
+  const handleConfirmDeleteAccount = async () => {
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      await api.deleteAccount();
+      await handleLogout();
+      window.location.href = '/login';
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || 'Could not delete account. Try again.');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -784,6 +819,95 @@ export default function Profile() {
               )}
             </button>
           </div>
+
+          {/* Settings — feed visibility & account deletion */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-5 mt-5">
+            <p className="text-sm font-bold text-gray-900 mb-0.5">Settings</p>
+            <p className="text-xs text-gray-400 mb-4">
+              Control how your tournament activity appears to others.
+            </p>
+
+            <div className="flex items-start justify-between gap-4 py-3 border-b border-gray-100">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-800">Show tournaments on Home feed</p>
+                <p className="text-xs text-gray-500 mt-1 leading-snug">
+                  When enabled, summaries of tournaments you log can appear in the community feed. Turn off to keep new activity off the feed — your data stays in your account.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={shareTournamentsOnFeed}
+                aria-label={shareTournamentsOnFeed ? 'Tournaments visible on feed' : 'Tournaments hidden from feed'}
+                disabled={feedPrefSaving}
+                onClick={() => handleShareFeedToggle(!shareTournamentsOnFeed)}
+                className={`relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#91BE4D] disabled:opacity-50 ${
+                  shareTournamentsOnFeed ? '' : 'bg-gray-300'
+                }`}
+                style={
+                  shareTournamentsOnFeed
+                    ? { background: 'linear-gradient(to right, #2d7005, #91BE4D)' }
+                    : undefined
+                }
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition duration-200 ease-in-out mt-0.5 ${
+                    shareTournamentsOnFeed ? 'translate-x-[1.375rem]' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <div className="pt-4">
+              <p className="text-sm font-semibold text-gray-800 mb-1">Delete account</p>
+              <p className="text-xs text-gray-500 mb-3 leading-snug">
+                Permanently remove your account and data we store for you (tournaments, sessions, expenses, coaching entries, and friend connections). This cannot be undone.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteError('');
+                  setDeleteModalOpen(true);
+                }}
+                className="w-full py-2.5 rounded-xl border border-red-200 bg-red-50 text-sm font-semibold text-red-700 hover:bg-red-100 transition-colors"
+              >
+                Delete my account…
+              </button>
+            </div>
+          </div>
+
+          <Modal
+            isOpen={deleteModalOpen}
+            onClose={() => !deleteLoading && setDeleteModalOpen(false)}
+            title="Delete account?"
+          >
+            <div className="py-1">
+              <p className="text-sm text-gray-700 leading-relaxed mb-4">
+                This permanently deletes your PickleTracker account and your tournaments, sessions, expenses, and related information. Confirm only if you are sure.
+              </p>
+              {deleteError && (
+                <div className="mb-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{deleteError}</div>
+              )}
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+                <button
+                  type="button"
+                  disabled={deleteLoading}
+                  onClick={() => setDeleteModalOpen(false)}
+                  className="w-full sm:w-auto py-2.5 px-4 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={deleteLoading}
+                  onClick={handleConfirmDeleteAccount}
+                  className="w-full sm:w-auto py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                >
+                  {deleteLoading ? 'Deleting…' : 'Yes, delete my account'}
+                </button>
+              </div>
+            </div>
+          </Modal>
         </>
       )}
     </div>

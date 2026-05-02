@@ -59,10 +59,11 @@ exports.getFeed = async (req, res, next) => {
 
     // ── Step 2: Fetch user info ───────────────────────────────────────────────
     const users = await User.find({ _id: { $in: userIds } })
-      .select('name city state profilePhoto')
+      .select('name city state profilePhoto shareTournamentsOnFeed')
       .lean();
 
     const userMap = {};
+    const feedHiddenUserIds = new Set();
     for (const u of users) {
       userMap[String(u._id)] = {
         id: u._id,
@@ -71,6 +72,9 @@ exports.getFeed = async (req, res, next) => {
         state: u.state || null,
         profilePhoto: u.profilePhoto || null,
       };
+      if (u.shareTournamentsOnFeed === false) {
+        feedHiddenUserIds.add(String(u._id));
+      }
     }
 
     // ── Step 3: Like counts + current user liked? ─────────────────────────────
@@ -116,6 +120,7 @@ exports.getFeed = async (req, res, next) => {
     for (const t of tournaments) {
       const user = userMap[String(t.userId)];
       if (!user) continue;
+      if (feedHiddenUserIds.has(String(t.userId))) continue;
 
       const tIdStr = String(t._id);
       const social = {
@@ -207,9 +212,18 @@ exports.getFeedPost = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'Tournament not found' });
     }
 
-    const user = await User.findById(t.userId).select('name city state profilePhoto').lean();
+    const user = await User.findById(t.userId).select('name city state profilePhoto shareTournamentsOnFeed').lean();
     if (!user) {
       return res.status(404).json({ success: false, message: 'Poster not found' });
+    }
+
+    const viewerOwnsPost = String(req.user.id) === String(t.userId);
+    if (user.shareTournamentsOnFeed === false && !viewerOwnsPost) {
+      return res.status(404).json({
+        success: false,
+        code: 'FEED_HIDDEN',
+        message: 'This tournament is not shared on the feed.',
+      });
     }
 
     const poster = {

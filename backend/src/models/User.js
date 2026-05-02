@@ -150,6 +150,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    /** When false, this user's tournaments are omitted from the Home community feed (likes/comments may still exist on old rows). */
+    shareTournamentsOnFeed: {
+      type: Boolean,
+      default: true,
+    },
     roles: {
       type: [String],
       enum: ['player', 'coach', 'organizer'],
