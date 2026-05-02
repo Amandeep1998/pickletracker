@@ -19,7 +19,7 @@ export default function MobileMenu({ onOpenLocationModal }) {
   };
 
   const navLinkClass = ({ isActive }) =>
-    `block px-5 py-3 text-sm font-medium transition-colors ${
+    `block px-4 py-2 text-sm font-medium transition-colors ${
       isActive
         ? 'text-[#91BE4D] bg-[#91BE4D]/8 border-l-4 border-[#91BE4D]'
         : 'text-[#272702]/70 hover:bg-gray-50 hover:text-[#91BE4D] border-l-4 border-transparent'
@@ -54,7 +54,7 @@ export default function MobileMenu({ onOpenLocationModal }) {
       >
         {/* Sidebar header — brand + user identity */}
         <div className="flex-shrink-0 border-b border-gray-100">
-          <div className="flex items-center justify-between px-5 py-3">
+          <div className="flex items-center justify-between px-4 py-2.5">
             <BrandLogo size="md" />
             <button
               onClick={() => setIsOpen(false)}
@@ -71,7 +71,7 @@ export default function MobileMenu({ onOpenLocationModal }) {
             <NavLink
               to="/profile"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-5 pb-3 hover:opacity-80 transition-opacity"
+              className="flex items-center gap-3 px-4 pb-2.5 hover:opacity-80 transition-opacity"
             >
               {user.profilePhoto
                 ? <img src={user.profilePhoto} alt={user.name} className="w-9 h-9 rounded-full object-cover flex-shrink-0 ring-2 ring-[#91BE4D]/40" />
@@ -90,7 +90,7 @@ export default function MobileMenu({ onOpenLocationModal }) {
 
         {/* Nav Links — scrollable, with fade hint at bottom */}
         <div className="relative flex-1 min-h-0">
-          <nav className="h-full overflow-y-auto pt-2 pb-2 space-y-0.5">
+          <nav className="h-full overflow-y-auto pt-1 pb-1 space-y-0">
             <NavLink to="/home"        className={navLinkClass} onClick={() => setIsOpen(false)}>Home</NavLink>
             <NavLink to="/dashboard"   className={navLinkClass} onClick={() => setIsOpen(false)}>Dashboard</NavLink>
             <NavLink to="/tournaments" className={navLinkClass} onClick={() => setIsOpen(false)}>Tournaments</NavLink>
@@ -105,7 +105,7 @@ export default function MobileMenu({ onOpenLocationModal }) {
             <NavLink to="/profile"     className={navLinkClass} onClick={() => setIsOpen(false)}>Profile</NavLink>
             {isAdmin && (
               <NavLink to="/admin" className={({ isActive }) =>
-                `block px-5 py-3 text-sm font-medium transition-colors border-l-4 ${
+                `block px-4 py-2 text-sm font-medium transition-colors border-l-4 ${
                   isActive ? 'text-purple-500 bg-purple-50 border-purple-400' : 'text-purple-400 hover:bg-purple-50 hover:text-purple-500 border-transparent'
                 }`
               } onClick={() => setIsOpen(false)}>
@@ -118,7 +118,7 @@ export default function MobileMenu({ onOpenLocationModal }) {
         </div>
 
         {/* Footer — minimal: city + install + logout */}
-        <div className="flex-shrink-0 border-t border-gray-100 bg-gray-50/60 px-4 py-3 space-y-2">
+        <div className="flex-shrink-0 border-t border-gray-100 bg-gray-50/60 px-4 py-2.5 space-y-1.5">
           <button
             onClick={() => { setIsOpen(false); onOpenLocationModal?.(); }}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:border-[#91BE4D] hover:bg-[#f4f8e8] transition-colors text-left"
@@ -137,7 +137,7 @@ export default function MobileMenu({ onOpenLocationModal }) {
           <InstallAppButton variant="menu" />
           <button
             onClick={handleLogoutClick}
-            className="w-full hover:opacity-90 text-white font-bold py-2.5 rounded-lg text-sm transition-opacity tracking-wide"
+            className="w-full hover:opacity-90 text-white font-bold py-2 rounded-lg text-sm transition-opacity tracking-wide"
             style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
           >
             Logout
