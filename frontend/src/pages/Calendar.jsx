@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import posthog from 'posthog-js';
 import * as api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,7 @@ import PaddleLoader from '../components/PaddleLoader';
 import OnboardingWizard from '../components/OnboardingWizard';
 import { buildVideoUrl } from '../utils/pickleVideo';
 import Modal from '../components/Modal';
+import PushPermissionPrompt from '../components/PushPermissionPrompt';
 import { deleteTournamentFromCalendar, isCalendarConnected } from '../services/googleCalendar';
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -102,6 +103,13 @@ export default function Calendar() {
   const [pushLoading, setPushLoading] = useState(false);
   const isReminderOn = pushSubscribed;
 
+  const [pushPrompt, setPushPrompt] = useState({ open: false, name: '', blocked: false });
+  const pendingCalendarHighlightRef = useRef('');
+  const pendingLandingToastRef = useRef('');
+  const scheduleHighlightAfterPushRef = useRef(
+    /** @type {(name: string, categories: unknown[], dateStr: string, landingToast?: string) => void} */ (() => {}),
+  );
+
   // Pending tournament notification toast + highlight
   const [pendingToast, setPendingToast] = useState('');
   const [highlightDate, setHighlightDate] = useState('');
@@ -151,11 +159,9 @@ export default function Calendar() {
     api.createTournament(data)
       .then(() => fetchData())
       .then(() => {
-        // After data is fresh, navigate to the tournament's month and flash
-        // the cell (shared helper — same behaviour as add/edit on Calendar).
-        focusAndHighlightDate(data.categories?.[0]?.date);
-        setPendingToast(`"${data.name}" saved! You'll get a reminder the day before you play, and a late-evening push that day to log results (your profile time zone). 🏆`);
-        setTimeout(() => setPendingToast(''), 6000);
+        const dateStr = data.categories?.[0]?.date;
+        const toast = `"${data.name}" saved! You'll get a reminder the day before you play, and a late-evening push that day to log results (your profile time zone). 🏆`;
+        scheduleHighlightAfterPushRef.current(data.name, data.categories, dateStr || '', toast);
       })
       .catch(() => {
         // Tournament save failed — still load the calendar normally
@@ -379,6 +385,54 @@ export default function Calendar() {
     setTimeout(() => setHighlightDate(''), 8000);
   };
 
+  function flushPendingCalendarUX() {
+    const pendingDate = pendingCalendarHighlightRef.current;
+    pendingCalendarHighlightRef.current = '';
+    const toastMsg = pendingLandingToastRef.current;
+    pendingLandingToastRef.current = '';
+    if (pendingDate) focusAndHighlightDate(pendingDate);
+    if (toastMsg) {
+      setPendingToast(toastMsg);
+      setTimeout(() => setPendingToast(''), 6000);
+    }
+  }
+
+  function scheduleHighlightAfterPushPromptIfNeeded(tournamentName, categories, dateStr, landingToastMsg = '') {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const hasFuture = categories?.some((c) => c.date >= todayIso);
+    const showToastIfAny = () => {
+      if (!landingToastMsg) return;
+      setPendingToast(landingToastMsg);
+      setTimeout(() => setPendingToast(''), 6000);
+    };
+    if (!hasFuture) {
+      if (dateStr) focusAndHighlightDate(dateStr);
+      showToastIfAny();
+      return;
+    }
+    if (!pushSupported) {
+      if (dateStr) focusAndHighlightDate(dateStr);
+      showToastIfAny();
+      return;
+    }
+    if (pushPermission === 'granted') {
+      silentSubscribe();
+      if (dateStr) focusAndHighlightDate(dateStr);
+      showToastIfAny();
+      return;
+    }
+    if (pushPermission === 'default' || pushPermission === 'denied') {
+      pendingCalendarHighlightRef.current = dateStr || '';
+      pendingLandingToastRef.current = landingToastMsg || '';
+      setPushPrompt({ open: true, name: tournamentName, blocked: pushPermission === 'denied' });
+      return;
+    }
+    if (dateStr) focusAndHighlightDate(dateStr);
+    showToastIfAny();
+  }
+
+  scheduleHighlightAfterPushRef.current = scheduleHighlightAfterPushPromptIfNeeded;
+
   // Travel expense logged on the tournament form is a separate Expense record
   // (type: 'travel') — the Tournament schema has no travel fields, so without
   // this call the travel data submitted from the Calendar would silently
@@ -438,14 +492,6 @@ export default function Calendar() {
     finally { setPushLoading(false); }
   };
 
-  const maybeTriggerPushPrompt = (tournamentName, categories) => {
-    if (!pushSupported) return;
-    const today = new Date().toISOString().slice(0, 10);
-    const hasFuture = categories?.some((c) => c.date >= today);
-    if (!hasFuture) return;
-    if (pushPermission === 'granted') silentSubscribe();
-  };
-
   const handleAddTournament = async (data) => {
     setFormLoading(true);
     setAddError('');
@@ -464,8 +510,8 @@ export default function Calendar() {
       });
       setAddModal({ open: false, date: null });
       await fetchTournaments();
-      focusAndHighlightDate(created?.categories?.[0]?.date || data?.categories?.[0]?.date);
-      maybeTriggerPushPrompt(data.name, data.categories);
+      const dateStr = created?.categories?.[0]?.date || data?.categories?.[0]?.date;
+      scheduleHighlightAfterPushPromptIfNeeded(data.name, data.categories, dateStr || '', '');
     } catch (err) {
       const msg = err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add tournament';
       setAddError(msg);
@@ -492,8 +538,8 @@ export default function Calendar() {
       setIsEditing(false);
       setSelectedTournament(null);
       await fetchTournaments();
-      focusAndHighlightDate(updated?.categories?.[0]?.date || data?.categories?.[0]?.date);
-      maybeTriggerPushPrompt(data.name, data.categories);
+      const dateStr = updated?.categories?.[0]?.date || data?.categories?.[0]?.date;
+      scheduleHighlightAfterPushPromptIfNeeded(data.name, data.categories, dateStr || '', '');
     } catch (err) {
       setFormError(err.response?.data?.message || 'Failed to update tournament');
     } finally {
@@ -628,7 +674,21 @@ export default function Calendar() {
         />
       )}
 
-
+      {pushPrompt.open && (
+        <PushPermissionPrompt
+          tournamentName={pushPrompt.name}
+          blocked={pushPrompt.blocked}
+          onAccept={async () => {
+            setPushPrompt({ open: false, name: '', blocked: false });
+            await requestAndSubscribe();
+            flushPendingCalendarUX();
+          }}
+          onDismiss={() => {
+            setPushPrompt({ open: false, name: '', blocked: false });
+            flushPendingCalendarUX();
+          }}
+        />
+      )}
 
       {/* Pending tournament saved toast */}
       {pendingToast && (
@@ -1691,7 +1751,7 @@ export default function Calendar() {
 
       {/* ── Floating Action Button (speed-dial) ──
           Hidden whenever a modal/popup is open so it doesn't overlap forms. */}
-      {!showOnboarding && !dayPopup.open && !addModal.open && !addSessionModal.open && !editSessionModal.open && !selectedTournament && (
+      {!showOnboarding && !pushPrompt.open && !dayPopup.open && !addModal.open && !addSessionModal.open && !editSessionModal.open && !selectedTournament && (
       <>
       {fabOpen && (
         <div

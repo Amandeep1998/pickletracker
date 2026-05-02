@@ -28,19 +28,28 @@ export default function Tournaments() {
   const [mode, setMode] = useState('add'); // 'add' | 'edit'
   const [selectedTournament, setSelectedTournament] = useState(null);
 
-  const { permission: pushPermission, isSupported: pushSupported, requestAndSubscribe, silentSubscribe } = usePushNotifications();
-  const [pushPrompt, setPushPrompt] = useState({ open: false, name: '' });
+  const {
+    permission: pushPermission,
+    isSupported: pushSupported,
+    requestAndSubscribe,
+    silentSubscribe,
+    refreshPushState,
+  } = usePushNotifications();
+  const [pushPrompt, setPushPrompt] = useState({ open: false, name: '', blocked: false });
 
-  const maybeTriggerPushPrompt = (tournamentName, categories) => {
+  /** After saving an upcoming tournament: re-subscribe if already allowed, else offer the same prompt as Calendar. */
+  const maybeTriggerPushPrompt = async (tournamentName, categories) => {
     if (!pushSupported) return;
     const today = new Date().toISOString().slice(0, 10);
     const hasFuture = categories?.some((c) => c.date >= today);
     if (!hasFuture) return;
-    if (pushPermission === 'granted') {
-      silentSubscribe();
-    } else if (pushPermission === 'default') {
+
+    const { permission } = await refreshPushState();
+    if (permission === 'granted') {
+      await silentSubscribe();
+    } else if (permission === 'default') {
       setPushPrompt({ open: true, name: tournamentName, blocked: false });
-    } else if (pushPermission === 'denied') {
+    } else if (permission === 'denied') {
       setPushPrompt({ open: true, name: tournamentName, blocked: true });
     }
   };
@@ -58,6 +67,12 @@ export default function Tournaments() {
 
   useEffect(() => {
     fetchTournaments();
+  }, []);
+
+  // Re-register push subscription when the browser already granted permission (parity with Calendar).
+  useEffect(() => {
+    if (pushPermission === 'granted') silentSubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const openAddModal = () => {
@@ -139,7 +154,7 @@ export default function Tournaments() {
 
       closeModal();
       fetchTournaments();
-      maybeTriggerPushPrompt(data.name, data.categories);
+      await maybeTriggerPushPrompt(data.name, data.categories);
     } catch (err) {
       const msg =
         err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add tournament';
@@ -219,7 +234,7 @@ export default function Tournaments() {
 
       closeModal();
       fetchTournaments();
-      maybeTriggerPushPrompt(data.name, data.categories);
+      await maybeTriggerPushPrompt(data.name, data.categories);
     } catch (err) {
       const msg =
         err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to update';
