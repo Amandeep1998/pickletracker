@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CATEGORIES, MEDALS, formatCurrency, getCurrencySymbol } from '../utils/format';
 import useCurrency from '../hooks/useCurrency';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import SearchableSelect from './SearchableSelect';
 import LocationAutocomplete from './LocationAutocomplete';
 import DatePicker from './DatePicker';
@@ -99,6 +100,15 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading, o
   const [travel, setTravel] = useState({ ...EMPTY_TRAVEL });
   const [locationOpen, setLocationOpen] = useState(!!initial?.location);
   const stepTopRef = useRef(null);
+  /** One attempt per form mount — prompt when entering Extras (Next click keeps user-gesture for the permission dialog). */
+  const extrasPushPromptedRef = useRef(false);
+
+  const {
+    isSupported: pushSupported,
+    permission: pushPermission,
+    subscribed: pushSubscribed,
+    requestAndSubscribe: requestPushSubscribe,
+  } = usePushNotifications();
 
   useEffect(() => {
     if (initial) {
@@ -123,6 +133,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading, o
       setForm(getEmptyForm());
     }
     setStep(1);
+    extrasPushPromptedRef.current = false;
     const te = initial?.travelExpense;
     if (te) {
       setTravelOpen(true);
@@ -296,6 +307,18 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading, o
       return;
     }
     setErrors({});
+    const nextStepId = stepIds[step];
+    if (
+      nextStepId === 'extras' &&
+      !extrasPushPromptedRef.current &&
+      pushSupported &&
+      pushPermission !== 'denied'
+    ) {
+      if (!pushSubscribed) {
+        extrasPushPromptedRef.current = true;
+        void requestPushSubscribe();
+      }
+    }
     setStep((s) => s + 1);
     scrollToTop();
   };
