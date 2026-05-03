@@ -9,6 +9,7 @@ import { syncTournamentToCalendar, deleteTournamentFromCalendar, isCalendarConne
 import { NavLink } from 'react-router-dom';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import PaddleLoader from '../components/PaddleLoader';
+import SaveCelebrationModal from '../components/SaveCelebrationModal';
 
 export default function Tournaments() {
   const currency = useCurrency();
@@ -21,6 +22,8 @@ export default function Tournaments() {
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
   const [deleteAllLoading, setDeleteAllLoading] = useState(false);
   const [showEditDeleteConfirm, setShowEditDeleteConfirm] = useState(false);
+
+  const [celebration, setCelebration] = useState(null);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -42,6 +45,26 @@ export default function Tournaments() {
     if (!hasFuture) return;
     const { permission } = await refreshPushState();
     if (permission === 'granted') await silentSubscribe();
+  };
+
+  const getThisMonthStats = (tournamentsArr) => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const inMonth = tournamentsArr.filter((t) => {
+      const dates = (t.categories || []).map((c) => c.date).filter(Boolean).sort();
+      const earliest = dates[0];
+      if (!earliest) return false;
+      const d = new Date(earliest);
+      return d.getFullYear() === y && d.getMonth() === m;
+    });
+    return {
+      spend: inMonth.reduce(
+        (s, t) => s + (t.totalExpenses || 0) + (t.travelExpense?.amount || 0),
+        0
+      ),
+      earnings: inMonth.reduce((s, t) => s + (t.totalEarnings || 0), 0),
+    };
   };
 
   const fetchTournaments = async () => {
@@ -142,9 +165,25 @@ export default function Tournaments() {
         }
       }
 
+      const prevStats = getThisMonthStats(tournaments);
+      const newEntryFee = created?.totalExpenses ?? data.categories?.reduce((s, c) => s + (c.entryFee || 0), 0) ?? 0;
+      const newTravel = data.travelExpense?.total || 0;
+      const newWinnings = created?.totalEarnings ?? data.categories?.reduce((s, c) => s + (c.prizeAmount || 0), 0) ?? 0;
+      const additions = [];
+      if (newEntryFee > 0) additions.push({ kind: 'entryFee', amount: newEntryFee });
+      if (newTravel > 0) additions.push({ kind: 'travel', amount: newTravel });
+      if (newWinnings > 0) additions.push({ kind: 'winnings', amount: newWinnings });
       closeModal();
       fetchTournaments();
       await silentSubscribeIfFutureTournament(data.categories);
+      setCelebration({
+        kind: 'tournament',
+        name: created.name,
+        additions,
+        prevMonthSpend: prevStats.spend,
+        prevMonthEarnings: prevStats.earnings,
+        prevMonthTournamentCount: prevStats.count,
+      });
     } catch (err) {
       const msg =
         err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add tournament';
@@ -222,9 +261,31 @@ export default function Tournaments() {
         console.error('[handleEdit] Failed to sync travel expense', err);
       }
 
+      const oldT = tournaments.find((t) => t._id === selectedTournament._id);
+      const oldSpend = (oldT?.totalExpenses || 0) + (oldT?.travelExpense?.amount || 0);
+      const oldEarnings = oldT?.totalEarnings || 0;
+      const stats = getThisMonthStats(tournaments);
+      const prevMonthSpend = Math.max(0, stats.spend - oldSpend);
+      const prevMonthEarnings = Math.max(0, stats.earnings - oldEarnings);
+      const prevMonthTournamentCount = Math.max(0, stats.count - 1);
+      const newEntryFee = updated?.totalExpenses ?? data.categories?.reduce((s, c) => s + (c.entryFee || 0), 0) ?? 0;
+      const newTravel = data.travelExpense?.total || 0;
+      const newWinnings = updated?.totalEarnings ?? data.categories?.reduce((s, c) => s + (c.prizeAmount || 0), 0) ?? 0;
+      const additions = [];
+      if (newEntryFee > 0) additions.push({ kind: 'entryFee', amount: newEntryFee });
+      if (newTravel > 0) additions.push({ kind: 'travel', amount: newTravel });
+      if (newWinnings > 0) additions.push({ kind: 'winnings', amount: newWinnings });
       closeModal();
       fetchTournaments();
       await silentSubscribeIfFutureTournament(data.categories);
+      setCelebration({
+        kind: 'tournament',
+        name: updated.name,
+        additions,
+        prevMonthSpend,
+        prevMonthEarnings,
+        prevMonthTournamentCount,
+      });
     } catch (err) {
       const msg =
         err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to update';
@@ -702,6 +763,18 @@ export default function Tournaments() {
           </div>
         </div>
       </Modal>
+
+      <SaveCelebrationModal
+        isOpen={!!celebration}
+        onClose={() => setCelebration(null)}
+        kind={celebration?.kind || 'tournament'}
+        name={celebration?.name || ''}
+        additions={celebration?.additions || []}
+        currency={currency}
+        prevMonthSpend={celebration?.prevMonthSpend ?? 0}
+        prevMonthEarnings={celebration?.prevMonthEarnings ?? 0}
+        prevMonthTournamentCount={celebration?.prevMonthTournamentCount ?? 0}
+      />
 
       {/* Add / Edit Modal */}
       <Modal

@@ -13,6 +13,7 @@ import PaddleLoader from '../components/PaddleLoader';
 import OnboardingWizard from '../components/OnboardingWizard';
 import { buildVideoUrl } from '../utils/pickleVideo';
 import Modal from '../components/Modal';
+import SaveCelebrationModal from '../components/SaveCelebrationModal';
 import { deleteTournamentFromCalendar, isCalendarConnected } from '../services/googleCalendar';
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -55,6 +56,7 @@ export default function Calendar() {
   const [tournaments, setTournaments] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [celebration, setCelebration] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -78,8 +80,6 @@ export default function Calendar() {
   const [addSessionModal, setAddSessionModal] = useState({ open: false, date: null, sessionType: null });
   const [sessionFormLoading, setSessionFormLoading] = useState(false);
   const [sessionFormError, setSessionFormError] = useState('');
-  const [savedSessionResult, setSavedSessionResult] = useState(null);
-
   // Edit session modal — opened by tapping a session card in the day popup
   const [editSessionModal, setEditSessionModal] = useState({ open: false, session: null });
   const [deleteTournamentConfirmOpen, setDeleteTournamentConfirmOpen] = useState(false);
@@ -471,6 +471,45 @@ export default function Calendar() {
     finally { setPushLoading(false); }
   };
 
+  const getThisMonthStats = (tournamentsArr) => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const inMonth = tournamentsArr.filter((t) => {
+      const dates = (t.categories || []).map((c) => c.date).filter(Boolean).sort();
+      const earliest = dates[0];
+      if (!earliest) return false;
+      const d = new Date(earliest);
+      return d.getFullYear() === y && d.getMonth() === m;
+    });
+    return {
+      spend: inMonth.reduce(
+        (s, t) => s + (t.totalExpenses || 0) + (t.travelExpense?.amount || 0),
+        0
+      ),
+      earnings: inMonth.reduce((s, t) => s + (t.totalEarnings || 0), 0),
+      count: inMonth.length,
+    };
+  };
+
+  const getThisMonthSessionStats = (sessionsArr) => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const inMonth = sessionsArr.filter((s) => {
+      if (!s.date) return false;
+      const d = new Date(s.date);
+      return d.getFullYear() === y && d.getMonth() === m;
+    });
+    const cost = inMonth.reduce(
+      (sum, s) => sum + (s.courtFee || 0) + (s.coachFee || 0) + (s.travelExpense?.total || 0),
+      0
+    );
+    const ratings = inMonth.map((s) => s.rating).filter((r) => typeof r === 'number');
+    const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
+    return { cost, count: inMonth.length, avgRating };
+  };
+
   const handleAddTournament = async (data) => {
     setFormLoading(true);
     setAddError('');
@@ -487,10 +526,26 @@ export default function Calendar() {
         has_notes: !!(data.notes?.trim()),
         has_travel_expense: !!data.travelExpense,
       });
+      const prevStats = getThisMonthStats(tournaments);
+      const newEntryFee = created?.totalExpenses ?? data.categories?.reduce((s, c) => s + (c.entryFee || 0), 0) ?? 0;
+      const newTravel = data.travelExpense?.total || 0;
+      const newWinnings = created?.totalEarnings ?? data.categories?.reduce((s, c) => s + (c.prizeAmount || 0), 0) ?? 0;
+      const additions = [];
+      if (newEntryFee > 0) additions.push({ kind: 'entryFee', amount: newEntryFee });
+      if (newTravel > 0)   additions.push({ kind: 'travel',   amount: newTravel });
+      if (newWinnings > 0) additions.push({ kind: 'winnings', amount: newWinnings });
       setAddModal({ open: false, date: null });
       await fetchTournaments();
       const dateStr = created?.categories?.[0]?.date || data?.categories?.[0]?.date;
-      afterTournamentSavedCalendarUX(data.categories, dateStr || '', '');
+      setCelebration({
+        kind: 'tournament',
+        name: created?.name || data?.name || 'Tournament',
+        additions,
+        prevMonthSpend: prevStats.spend,
+        prevMonthEarnings: prevStats.earnings,
+        prevMonthTournamentCount: prevStats.count,
+        pendingCalendarUX: () => afterTournamentSavedCalendarUX(data.categories, dateStr || '', ''),
+      });
     } catch (err) {
       const msg = err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add tournament';
       setAddError(msg);
@@ -514,11 +569,33 @@ export default function Calendar() {
         has_notes: !!(data.notes?.trim()),
         has_travel_expense: !!data.travelExpense,
       });
+      const oldT = tournaments.find((t) => t._id === selectedTournament?._id);
+      const oldSpend = (oldT?.totalExpenses || 0) + (oldT?.travelExpense?.amount || 0);
+      const oldEarnings = oldT?.totalEarnings || 0;
+      const stats = getThisMonthStats(tournaments);
+      const prevMonthSpend = Math.max(0, stats.spend - oldSpend);
+      const prevMonthEarnings = Math.max(0, stats.earnings - oldEarnings);
+      const prevMonthTournamentCount = Math.max(0, stats.count - 1);
+      const newEntryFee = updated?.totalExpenses ?? data.categories?.reduce((s, c) => s + (c.entryFee || 0), 0) ?? 0;
+      const newTravel = data.travelExpense?.total || 0;
+      const newWinnings = updated?.totalEarnings ?? data.categories?.reduce((s, c) => s + (c.prizeAmount || 0), 0) ?? 0;
+      const additions = [];
+      if (newEntryFee > 0) additions.push({ kind: 'entryFee', amount: newEntryFee });
+      if (newTravel > 0)   additions.push({ kind: 'travel',   amount: newTravel });
+      if (newWinnings > 0) additions.push({ kind: 'winnings', amount: newWinnings });
       setIsEditing(false);
       setSelectedTournament(null);
       await fetchTournaments();
       const dateStr = updated?.categories?.[0]?.date || data?.categories?.[0]?.date;
-      afterTournamentSavedCalendarUX(data.categories, dateStr || '', '');
+      setCelebration({
+        kind: 'tournament',
+        name: updated?.name || data?.name || 'Tournament',
+        additions,
+        prevMonthSpend,
+        prevMonthEarnings,
+        prevMonthTournamentCount,
+        pendingCalendarUX: () => afterTournamentSavedCalendarUX(data.categories, dateStr || '', ''),
+      });
     } catch (err) {
       setFormError(err.response?.data?.message || 'Failed to update tournament');
     } finally {
@@ -551,7 +628,7 @@ export default function Calendar() {
     setSessionFormLoading(true);
     setSessionFormError('');
     try {
-      const res = await api.createSession(data);
+      await api.createSession(data);
       posthog.capture('session_logged', {
         type: data.type,
         has_rating: !!data.rating,
@@ -560,23 +637,40 @@ export default function Calendar() {
         went_wrong_count: data.wentWrong?.length ?? 0,
         has_notes: !!(data.notes?.trim()),
       });
-      const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-      const sessionDate = data.date || new Date().toISOString().slice(0, 10);
-      const monthPrefix = sessionDate.slice(0, 7);
-      const monthName = MONTHS[parseInt(sessionDate.slice(5, 7), 10) - 1];
-      const existingFee = sessions
-        .filter((s) => s.date?.startsWith(monthPrefix))
-        .reduce((sum, s) => sum + (s.courtFee || 0) + (s.coachFee || 0), 0);
-      const monthlyCourtFee = existingFee + (data.courtFee || 0) + (data.coachFee || 0);
+
+      // Compute prev-month session stats from current state (before refetch)
+      const prevSessionStats = getThisMonthSessionStats(sessions);
+
+      const courtFee = data.courtFee || 0;
+      const coachFee = data.coachFee || 0;
+      const travelTotal = data.travelExpense?.total || 0;
+      const additions = [];
+      if (courtFee > 0)    additions.push({ kind: 'courtFee', amount: courtFee });
+      if (coachFee > 0)    additions.push({ kind: 'coachFee', amount: coachFee });
+      if (travelTotal > 0) additions.push({ kind: 'travel',   amount: travelTotal });
+
+      const weaknesses = data.wentWrong?.length > 0
+        ? data.wentWrong
+        : (data.drillFocus?.length > 0 ? data.drillFocus : []);
+
+      const sessionLabel = data.date
+        ? `${data.type === 'tournament' ? 'Tournament' : data.type === 'casual' ? 'Casual play' : 'Practice drill'} · ${data.date}`
+        : (data.type || 'Session');
 
       await fetchData();
 
-      const weaknesses = data.wentWrong?.length > 0 ? data.wentWrong : (data.drillFocus?.length > 0 ? data.drillFocus : []);
-      if (weaknesses.length > 0 || monthlyCourtFee > 0) {
-        setSavedSessionResult({ weaknesses, rating: data.rating, monthlyCourtFee, monthName });
-      } else {
-        setAddSessionModal({ open: false, date: null, sessionType: null });
-      }
+      // Close session form modal first, then open celebration
+      setAddSessionModal({ open: false, date: null, sessionType: null });
+      setCelebration({
+        kind: 'session',
+        name: sessionLabel,
+        additions,
+        prevMonthPracticeCost: prevSessionStats.cost,
+        prevMonthSessionCount: prevSessionStats.count,
+        prevMonthAvgRating: prevSessionStats.avgRating,
+        newSessionRating: data.rating || null,
+        weaknesses,
+      });
     } catch (err) {
       setSessionFormError(err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add session');
     } finally {
@@ -1324,7 +1418,7 @@ export default function Calendar() {
                 )}
               </div>
               <button
-                onClick={() => { setSavedSessionResult(null); setAddSessionModal({ open: false, date: null, sessionType: null }); setSessionFormError(''); }}
+                onClick={() => { setAddSessionModal({ open: false, date: null, sessionType: null }); setSessionFormError(''); }}
                 className="text-gray-400 hover:text-gray-600 min-h-[40px] min-w-[40px] flex items-center justify-center rounded hover:bg-gray-100 transition"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1334,57 +1428,15 @@ export default function Calendar() {
             </div>
             {/* Scrollable body */}
             <div className="overflow-y-auto flex-1 px-4 sm:px-6 pb-4 sm:pb-6">
-              {savedSessionResult ? (
-                <div className="py-4 space-y-3">
-                  {savedSessionResult.monthlyCourtFee > 0 && (
-                    <div className="rounded-xl px-4 py-3 flex items-center gap-3" style={{ background: '#fff8ec', border: '1px solid #f5d9a0' }}>
-                      <span className="text-xl">🏟️</span>
-                      <p className="text-sm text-orange-800">
-                        You've spent <span className="font-bold">{formatCurrency(savedSessionResult.monthlyCourtFee, currency)}</span> on court fees in {savedSessionResult.monthName}
-                      </p>
-                    </div>
-                  )}
-                  {savedSessionResult.weaknesses.length > 0 && (
-                    <div className="rounded-xl px-4 py-3 space-y-2" style={{ background: '#f0f8e8', border: '1px solid #d4e8b0' }}>
-                      <p className="text-xs font-bold text-[#2d5a05] uppercase tracking-wide">Watch & improve</p>
-                      {savedSessionResult.weaknesses.map((skill) => (
-                        <a
-                          key={skill}
-                          href={buildVideoUrl(skill, savedSessionResult.rating)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-red-600 hover:text-red-800 font-medium"
-                        >
-                          <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                          </svg>
-                          <span className="text-gray-700 font-semibold">{skill}</span>
-                          <span className="text-xs text-gray-400">· Watch on YouTube</span>
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                  <button
-                    onClick={() => { setSavedSessionResult(null); setAddSessionModal({ open: false, date: null, sessionType: null }); }}
-                    className="w-full text-white font-bold py-3 rounded-xl text-sm tracking-wide hover:opacity-90 transition-opacity"
-                    style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
-                  >
-                    Done
-                  </button>
-                </div>
-              ) : (
-                <>
-                  {sessionFormError && (
-                    <div className="mb-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{sessionFormError}</div>
-                  )}
-                  <SessionForm
-                    initial={sessionAddInitial}
-                    onSubmit={handleAddSession}
-                    onCancel={() => { setSavedSessionResult(null); setAddSessionModal({ open: false, date: null, sessionType: null }); setSessionFormError(''); }}
-                    loading={sessionFormLoading}
-                  />
-                </>
+              {sessionFormError && (
+                <div className="mb-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{sessionFormError}</div>
               )}
+              <SessionForm
+                initial={sessionAddInitial}
+                onSubmit={handleAddSession}
+                onCancel={() => { setAddSessionModal({ open: false, date: null, sessionType: null }); setSessionFormError(''); }}
+                loading={sessionFormLoading}
+              />
             </div>
           </div>
         </div>
@@ -1861,6 +1913,32 @@ export default function Calendar() {
           </div>
         </div>
       </Modal>
+
+      {/* Save Celebration Modal */}
+      <SaveCelebrationModal
+        isOpen={!!celebration}
+        onClose={() => {
+          const cb = celebration?.pendingCalendarUX;
+          setCelebration(null);
+          if (typeof cb === 'function') {
+            // Run highlight on next tick so the modal unmounts first
+            setTimeout(() => cb(), 0);
+          }
+        }}
+        kind={celebration?.kind || 'tournament'}
+        name={celebration?.name || ''}
+        additions={celebration?.additions || []}
+        currency={currency}
+        prevMonthSpend={celebration?.prevMonthSpend || 0}
+        prevMonthEarnings={celebration?.prevMonthEarnings || 0}
+        prevMonthTournamentCount={celebration?.prevMonthTournamentCount || 0}
+        prevMonthPracticeCost={celebration?.prevMonthPracticeCost || 0}
+        prevMonthSessionCount={celebration?.prevMonthSessionCount || 0}
+        prevMonthAvgRating={celebration?.prevMonthAvgRating ?? null}
+        newSessionRating={celebration?.newSessionRating ?? null}
+        weaknesses={celebration?.weaknesses || []}
+        videoUrlBuilder={buildVideoUrl}
+      />
 
     </div>
   );
