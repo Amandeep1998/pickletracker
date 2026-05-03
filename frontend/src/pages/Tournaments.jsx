@@ -7,7 +7,6 @@ import useCurrency from '../hooks/useCurrency';
 import { getMapUrl } from '../utils/mapUrl';
 import { syncTournamentToCalendar, deleteTournamentFromCalendar, isCalendarConnected } from '../services/googleCalendar';
 import { NavLink } from 'react-router-dom';
-import PushPermissionPrompt from '../components/PushPermissionPrompt';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import PaddleLoader from '../components/PaddleLoader';
 
@@ -31,27 +30,18 @@ export default function Tournaments() {
   const {
     permission: pushPermission,
     isSupported: pushSupported,
-    requestAndSubscribe,
     silentSubscribe,
     refreshPushState,
   } = usePushNotifications();
-  const [pushPrompt, setPushPrompt] = useState({ open: false, name: '', blocked: false });
 
-  /** After saving an upcoming tournament: re-subscribe if already allowed, else offer the same prompt as Calendar. */
-  const maybeTriggerPushPrompt = async (tournamentName, categories) => {
+  /** After saving an upcoming tournament: refresh subscription only if permission was already granted (no prompt modal). */
+  const silentSubscribeIfFutureTournament = async (categories) => {
     if (!pushSupported) return;
     const today = new Date().toISOString().slice(0, 10);
     const hasFuture = categories?.some((c) => c.date >= today);
     if (!hasFuture) return;
-
     const { permission } = await refreshPushState();
-    if (permission === 'granted') {
-      await silentSubscribe();
-    } else if (permission === 'default') {
-      setPushPrompt({ open: true, name: tournamentName, blocked: false });
-    } else if (permission === 'denied') {
-      setPushPrompt({ open: true, name: tournamentName, blocked: true });
-    }
+    if (permission === 'granted') await silentSubscribe();
   };
 
   const fetchTournaments = async () => {
@@ -154,7 +144,7 @@ export default function Tournaments() {
 
       closeModal();
       fetchTournaments();
-      await maybeTriggerPushPrompt(data.name, data.categories);
+      await silentSubscribeIfFutureTournament(data.categories);
     } catch (err) {
       const msg =
         err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to add tournament';
@@ -234,7 +224,7 @@ export default function Tournaments() {
 
       closeModal();
       fetchTournaments();
-      await maybeTriggerPushPrompt(data.name, data.categories);
+      await silentSubscribeIfFutureTournament(data.categories);
     } catch (err) {
       const msg =
         err.response?.data?.errors?.[0] || err.response?.data?.message || 'Failed to update';
@@ -327,19 +317,6 @@ export default function Tournaments() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-
-      {/* Push permission prompt — shown after saving a future tournament */}
-      {pushPrompt.open && (
-        <PushPermissionPrompt
-          tournamentName={pushPrompt.name}
-          blocked={pushPrompt.blocked}
-          onAccept={async () => {
-            setPushPrompt({ open: false, name: '', blocked: false });
-            await requestAndSubscribe();
-          }}
-          onDismiss={() => setPushPrompt({ open: false, name: '', blocked: false })}
-        />
-      )}
 
       {/* Hero Banner */}
       <div className="rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-6 flex items-center justify-between overflow-hidden relative" style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}>
