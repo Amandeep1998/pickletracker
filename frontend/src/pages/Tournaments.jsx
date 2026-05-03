@@ -10,6 +10,7 @@ import { NavLink } from 'react-router-dom';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import PaddleLoader from '../components/PaddleLoader';
 import SaveCelebrationModal from '../components/SaveCelebrationModal';
+import MonthlyStatsPreparingOverlay from '../components/MonthlyStatsPreparingOverlay';
 
 export default function Tournaments() {
   const currency = useCurrency();
@@ -24,6 +25,7 @@ export default function Tournaments() {
   const [showEditDeleteConfirm, setShowEditDeleteConfirm] = useState(false);
 
   const [celebration, setCelebration] = useState(null);
+  const [monthlyStatsPrep, setMonthlyStatsPrep] = useState({ open: false, variant: 'tournament' });
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -174,7 +176,14 @@ export default function Tournaments() {
       if (newTravel > 0) additions.push({ kind: 'travel', amount: newTravel });
       if (newWinnings > 0) additions.push({ kind: 'winnings', amount: newWinnings });
       closeModal();
-      fetchTournaments();
+      setMonthlyStatsPrep({ open: true, variant: 'tournament' });
+      try {
+        await fetchTournaments();
+      } catch {
+        /* non-blocking */
+      } finally {
+        setMonthlyStatsPrep({ open: false, variant: 'tournament' });
+      }
       await silentSubscribeIfFutureTournament(data.categories);
       setCelebration({
         kind: 'tournament',
@@ -276,7 +285,14 @@ export default function Tournaments() {
       if (newTravel > 0) additions.push({ kind: 'travel', amount: newTravel });
       if (newWinnings > 0) additions.push({ kind: 'winnings', amount: newWinnings });
       closeModal();
-      fetchTournaments();
+      setMonthlyStatsPrep({ open: true, variant: 'tournament' });
+      try {
+        await fetchTournaments();
+      } catch {
+        /* non-blocking */
+      } finally {
+        setMonthlyStatsPrep({ open: false, variant: 'tournament' });
+      }
       await silentSubscribeIfFutureTournament(data.categories);
       setCelebration({
         kind: 'tournament',
@@ -763,6 +779,8 @@ export default function Tournaments() {
           </div>
         </div>
       </Modal>
+
+      <MonthlyStatsPreparingOverlay open={monthlyStatsPrep.open} variant={monthlyStatsPrep.variant} />
 
       <SaveCelebrationModal
         isOpen={!!celebration}

@@ -14,6 +14,7 @@ import OnboardingWizard from '../components/OnboardingWizard';
 import { buildVideoUrl } from '../utils/pickleVideo';
 import Modal from '../components/Modal';
 import SaveCelebrationModal from '../components/SaveCelebrationModal';
+import MonthlyStatsPreparingOverlay from '../components/MonthlyStatsPreparingOverlay';
 import { deleteTournamentFromCalendar, isCalendarConnected } from '../services/googleCalendar';
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -57,6 +58,8 @@ export default function Calendar() {
   const [sessions, setSessions] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [celebration, setCelebration] = useState(null);
+  /** Shown after save while lists refresh, before SaveCelebrationModal */
+  const [monthlyStatsPrep, setMonthlyStatsPrep] = useState({ open: false, variant: 'tournament' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -535,7 +538,14 @@ export default function Calendar() {
       if (newTravel > 0)   additions.push({ kind: 'travel',   amount: newTravel });
       if (newWinnings > 0) additions.push({ kind: 'winnings', amount: newWinnings });
       setAddModal({ open: false, date: null });
-      await fetchTournaments();
+      setMonthlyStatsPrep({ open: true, variant: 'tournament' });
+      try {
+        await fetchTournaments();
+      } catch {
+        /* List refresh failed — celebration still uses baseline stats */
+      } finally {
+        setMonthlyStatsPrep({ open: false, variant: 'tournament' });
+      }
       const dateStr = created?.categories?.[0]?.date || data?.categories?.[0]?.date;
       setCelebration({
         kind: 'tournament',
@@ -585,7 +595,14 @@ export default function Calendar() {
       if (newWinnings > 0) additions.push({ kind: 'winnings', amount: newWinnings });
       setIsEditing(false);
       setSelectedTournament(null);
-      await fetchTournaments();
+      setMonthlyStatsPrep({ open: true, variant: 'tournament' });
+      try {
+        await fetchTournaments();
+      } catch {
+        /* non-blocking */
+      } finally {
+        setMonthlyStatsPrep({ open: false, variant: 'tournament' });
+      }
       const dateStr = updated?.categories?.[0]?.date || data?.categories?.[0]?.date;
       setCelebration({
         kind: 'tournament',
@@ -657,10 +674,16 @@ export default function Calendar() {
         ? `${data.type === 'tournament' ? 'Tournament' : data.type === 'casual' ? 'Casual play' : 'Practice drill'} · ${data.date}`
         : (data.type || 'Session');
 
-      await fetchData();
-
-      // Close session form modal first, then open celebration
       setAddSessionModal({ open: false, date: null, sessionType: null });
+      setMonthlyStatsPrep({ open: true, variant: 'session' });
+      try {
+        await fetchData();
+      } catch {
+        /* non-blocking */
+      } finally {
+        setMonthlyStatsPrep({ open: false, variant: 'session' });
+      }
+
       setCelebration({
         kind: 'session',
         name: sessionLabel,
@@ -1913,6 +1936,8 @@ export default function Calendar() {
           </div>
         </div>
       </Modal>
+
+      <MonthlyStatsPreparingOverlay open={monthlyStatsPrep.open} variant={monthlyStatsPrep.variant} />
 
       {/* Save Celebration Modal */}
       <SaveCelebrationModal
