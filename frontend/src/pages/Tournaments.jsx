@@ -11,6 +11,11 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 import PaddleLoader from '../components/PaddleLoader';
 import SaveCelebrationModal from '../components/SaveCelebrationModal';
 import MonthlyStatsPreparingOverlay from '../components/MonthlyStatsPreparingOverlay';
+import {
+  getCalendarMonthTournamentSpendTotals,
+  formatCelebrationMonthLabel,
+  celebrationMonthRefFromCategories,
+} from '../utils/celebrationMonthStats';
 
 export default function Tournaments() {
   const currency = useCurrency();
@@ -49,32 +54,15 @@ export default function Tournaments() {
     if (permission === 'granted') await silentSubscribe();
   };
 
-  const getThisMonthStats = (tournamentsArr) => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
-    const inMonth = tournamentsArr.filter((t) => {
-      const dates = (t.categories || []).map((c) => c.date).filter(Boolean).sort();
-      const earliest = dates[0];
-      if (!earliest) return false;
-      const d = new Date(earliest);
-      return d.getFullYear() === y && d.getMonth() === m;
-    });
-    return {
-      spend: inMonth.reduce(
-        (s, t) => s + (t.totalExpenses || 0) + (t.travelExpense?.amount || 0),
-        0
-      ),
-      earnings: inMonth.reduce((s, t) => s + (t.totalEarnings || 0), 0),
-    };
-  };
-
   const fetchTournaments = async () => {
     try {
       const res = await api.getTournaments();
-      setTournaments(res.data.data);
+      const list = res.data.data || [];
+      setTournaments(list);
+      return list;
     } catch {
       setApiError('Failed to load tournaments');
+      return tournaments;
     } finally {
       setLoadingList(false);
     }
@@ -167,31 +155,27 @@ export default function Tournaments() {
         }
       }
 
-      const prevStats = getThisMonthStats(tournaments);
-      const newEntryFee = created?.totalExpenses ?? data.categories?.reduce((s, c) => s + (c.entryFee || 0), 0) ?? 0;
-      const newTravel = data.travelExpense?.total || 0;
-      const newWinnings = created?.totalEarnings ?? data.categories?.reduce((s, c) => s + (c.prizeAmount || 0), 0) ?? 0;
-      const additions = [];
-      if (newEntryFee > 0) additions.push({ kind: 'entryFee', amount: newEntryFee });
-      if (newTravel > 0) additions.push({ kind: 'travel', amount: newTravel });
-      if (newWinnings > 0) additions.push({ kind: 'winnings', amount: newWinnings });
       closeModal();
       setMonthlyStatsPrep({ open: true, variant: 'tournament' });
+      let freshList = tournaments;
       try {
-        await fetchTournaments();
+        freshList = await fetchTournaments();
       } catch {
         /* non-blocking */
       } finally {
         setMonthlyStatsPrep({ open: false, variant: 'tournament' });
       }
       await silentSubscribeIfFutureTournament(data.categories);
+      const monthRef = celebrationMonthRefFromCategories(created?.categories || data?.categories);
+      const totals = getCalendarMonthTournamentSpendTotals(freshList, monthRef);
       setCelebration({
         kind: 'tournament',
         name: created.name,
-        additions,
-        prevMonthSpend: prevStats.spend,
-        prevMonthEarnings: prevStats.earnings,
-        prevMonthTournamentCount: prevStats.count,
+        currency,
+        monthLabel: formatCelebrationMonthLabel(monthRef),
+        tournamentSpendThisMonth: totals.spend,
+        tournamentPrizeThisMonth: totals.prizeMoney,
+        tournamentCountThisMonth: totals.count,
       });
     } catch (err) {
       const msg =
@@ -270,37 +254,27 @@ export default function Tournaments() {
         console.error('[handleEdit] Failed to sync travel expense', err);
       }
 
-      const oldT = tournaments.find((t) => t._id === selectedTournament._id);
-      const oldSpend = (oldT?.totalExpenses || 0) + (oldT?.travelExpense?.amount || 0);
-      const oldEarnings = oldT?.totalEarnings || 0;
-      const stats = getThisMonthStats(tournaments);
-      const prevMonthSpend = Math.max(0, stats.spend - oldSpend);
-      const prevMonthEarnings = Math.max(0, stats.earnings - oldEarnings);
-      const prevMonthTournamentCount = Math.max(0, stats.count - 1);
-      const newEntryFee = updated?.totalExpenses ?? data.categories?.reduce((s, c) => s + (c.entryFee || 0), 0) ?? 0;
-      const newTravel = data.travelExpense?.total || 0;
-      const newWinnings = updated?.totalEarnings ?? data.categories?.reduce((s, c) => s + (c.prizeAmount || 0), 0) ?? 0;
-      const additions = [];
-      if (newEntryFee > 0) additions.push({ kind: 'entryFee', amount: newEntryFee });
-      if (newTravel > 0) additions.push({ kind: 'travel', amount: newTravel });
-      if (newWinnings > 0) additions.push({ kind: 'winnings', amount: newWinnings });
       closeModal();
       setMonthlyStatsPrep({ open: true, variant: 'tournament' });
+      let freshList = tournaments;
       try {
-        await fetchTournaments();
+        freshList = await fetchTournaments();
       } catch {
         /* non-blocking */
       } finally {
         setMonthlyStatsPrep({ open: false, variant: 'tournament' });
       }
       await silentSubscribeIfFutureTournament(data.categories);
+      const monthRef = celebrationMonthRefFromCategories(updated?.categories || data?.categories);
+      const totals = getCalendarMonthTournamentSpendTotals(freshList, monthRef);
       setCelebration({
         kind: 'tournament',
         name: updated.name,
-        additions,
-        prevMonthSpend,
-        prevMonthEarnings,
-        prevMonthTournamentCount,
+        currency,
+        monthLabel: formatCelebrationMonthLabel(monthRef),
+        tournamentSpendThisMonth: totals.spend,
+        tournamentPrizeThisMonth: totals.prizeMoney,
+        tournamentCountThisMonth: totals.count,
       });
     } catch (err) {
       const msg =
@@ -787,11 +761,11 @@ export default function Tournaments() {
         onClose={() => setCelebration(null)}
         kind={celebration?.kind || 'tournament'}
         name={celebration?.name || ''}
-        additions={celebration?.additions || []}
         currency={currency}
-        prevMonthSpend={celebration?.prevMonthSpend ?? 0}
-        prevMonthEarnings={celebration?.prevMonthEarnings ?? 0}
-        prevMonthTournamentCount={celebration?.prevMonthTournamentCount ?? 0}
+        monthLabel={celebration?.monthLabel || ''}
+        tournamentSpendThisMonth={celebration?.tournamentSpendThisMonth ?? 0}
+        tournamentPrizeThisMonth={celebration?.tournamentPrizeThisMonth ?? 0}
+        tournamentCountThisMonth={celebration?.tournamentCountThisMonth ?? 0}
       />
 
       {/* Add / Edit Modal */}

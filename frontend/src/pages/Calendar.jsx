@@ -15,6 +15,13 @@ import { buildVideoUrl } from '../utils/pickleVideo';
 import Modal from '../components/Modal';
 import SaveCelebrationModal from '../components/SaveCelebrationModal';
 import MonthlyStatsPreparingOverlay from '../components/MonthlyStatsPreparingOverlay';
+import {
+  getCalendarMonthTournamentSpendTotals,
+  getCalendarMonthCasualDrillSpendTotals,
+  formatCelebrationMonthLabel,
+  celebrationMonthRefFromCategories,
+  celebrationMonthRefFromSessionDate,
+} from '../utils/celebrationMonthStats';
 import { deleteTournamentFromCalendar, isCalendarConnected } from '../services/googleCalendar';
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAYS_SHORT = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -111,10 +118,14 @@ export default function Calendar() {
 
   const fetchTournaments = async () => {
     const res = await api.getTournaments();
-    setTournaments(res.data.data);
+    const list = res.data.data || [];
+    setTournaments(list);
+    return list;
   };
 
   const fetchData = useCallback(async () => {
+    let tournamentsList = [];
+    let sessionsList = [];
     try {
       setError('');
       const tournamentsPromise = api.getTournaments();
@@ -122,18 +133,24 @@ export default function Calendar() {
       const expensesPromise = api.getExpenses();
 
       const tRes = await tournamentsPromise;
-      setTournaments(tRes.data.data || []);
+      tournamentsList = tRes.data.data || [];
+      setTournaments(tournamentsList);
       setLoading(false);
 
       const [sRes, eRes] = await Promise.allSettled([sessionsPromise, expensesPromise]);
-      if (sRes.status === 'fulfilled') setSessions(sRes.value.data.data || []);
-      else setSessions([]);
+      if (sRes.status === 'fulfilled') {
+        sessionsList = sRes.value.data.data || [];
+        setSessions(sessionsList);
+      } else {
+        setSessions([]);
+      }
       if (eRes.status === 'fulfilled') setExpenses(eRes.value.data.data || []);
       else setExpenses([]);
     } catch {
       setError('Failed to load calendar data');
       setLoading(false);
     }
+    return { tournaments: tournamentsList, sessions: sessionsList };
   }, []);
 
   // On mount: if there's a pending tournament from the landing page form,
@@ -474,45 +491,6 @@ export default function Calendar() {
     finally { setPushLoading(false); }
   };
 
-  const getThisMonthStats = (tournamentsArr) => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
-    const inMonth = tournamentsArr.filter((t) => {
-      const dates = (t.categories || []).map((c) => c.date).filter(Boolean).sort();
-      const earliest = dates[0];
-      if (!earliest) return false;
-      const d = new Date(earliest);
-      return d.getFullYear() === y && d.getMonth() === m;
-    });
-    return {
-      spend: inMonth.reduce(
-        (s, t) => s + (t.totalExpenses || 0) + (t.travelExpense?.amount || 0),
-        0
-      ),
-      earnings: inMonth.reduce((s, t) => s + (t.totalEarnings || 0), 0),
-      count: inMonth.length,
-    };
-  };
-
-  const getThisMonthSessionStats = (sessionsArr) => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
-    const inMonth = sessionsArr.filter((s) => {
-      if (!s.date) return false;
-      const d = new Date(s.date);
-      return d.getFullYear() === y && d.getMonth() === m;
-    });
-    const cost = inMonth.reduce(
-      (sum, s) => sum + (s.courtFee || 0) + (s.coachFee || 0) + (s.travelExpense?.total || 0),
-      0
-    );
-    const ratings = inMonth.map((s) => s.rating).filter((r) => typeof r === 'number');
-    const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
-    return { cost, count: inMonth.length, avgRating };
-  };
-
   const handleAddTournament = async (data) => {
     setFormLoading(true);
     setAddError('');
@@ -529,31 +507,27 @@ export default function Calendar() {
         has_notes: !!(data.notes?.trim()),
         has_travel_expense: !!data.travelExpense,
       });
-      const prevStats = getThisMonthStats(tournaments);
-      const newEntryFee = created?.totalExpenses ?? data.categories?.reduce((s, c) => s + (c.entryFee || 0), 0) ?? 0;
-      const newTravel = data.travelExpense?.total || 0;
-      const newWinnings = created?.totalEarnings ?? data.categories?.reduce((s, c) => s + (c.prizeAmount || 0), 0) ?? 0;
-      const additions = [];
-      if (newEntryFee > 0) additions.push({ kind: 'entryFee', amount: newEntryFee });
-      if (newTravel > 0)   additions.push({ kind: 'travel',   amount: newTravel });
-      if (newWinnings > 0) additions.push({ kind: 'winnings', amount: newWinnings });
       setAddModal({ open: false, date: null });
       setMonthlyStatsPrep({ open: true, variant: 'tournament' });
+      let freshList = tournaments;
       try {
-        await fetchTournaments();
+        freshList = await fetchTournaments();
       } catch {
-        /* List refresh failed — celebration still uses baseline stats */
+        /* List refresh failed */
       } finally {
         setMonthlyStatsPrep({ open: false, variant: 'tournament' });
       }
+      const monthRef = celebrationMonthRefFromCategories(created?.categories || data?.categories);
+      const totals = getCalendarMonthTournamentSpendTotals(freshList, monthRef);
       const dateStr = created?.categories?.[0]?.date || data?.categories?.[0]?.date;
       setCelebration({
         kind: 'tournament',
         name: created?.name || data?.name || 'Tournament',
-        additions,
-        prevMonthSpend: prevStats.spend,
-        prevMonthEarnings: prevStats.earnings,
-        prevMonthTournamentCount: prevStats.count,
+        currency,
+        monthLabel: formatCelebrationMonthLabel(monthRef),
+        tournamentSpendThisMonth: totals.spend,
+        tournamentPrizeThisMonth: totals.prizeMoney,
+        tournamentCountThisMonth: totals.count,
         pendingCalendarUX: () => afterTournamentSavedCalendarUX(data.categories, dateStr || '', ''),
       });
     } catch (err) {
@@ -579,38 +553,28 @@ export default function Calendar() {
         has_notes: !!(data.notes?.trim()),
         has_travel_expense: !!data.travelExpense,
       });
-      const oldT = tournaments.find((t) => t._id === selectedTournament?._id);
-      const oldSpend = (oldT?.totalExpenses || 0) + (oldT?.travelExpense?.amount || 0);
-      const oldEarnings = oldT?.totalEarnings || 0;
-      const stats = getThisMonthStats(tournaments);
-      const prevMonthSpend = Math.max(0, stats.spend - oldSpend);
-      const prevMonthEarnings = Math.max(0, stats.earnings - oldEarnings);
-      const prevMonthTournamentCount = Math.max(0, stats.count - 1);
-      const newEntryFee = updated?.totalExpenses ?? data.categories?.reduce((s, c) => s + (c.entryFee || 0), 0) ?? 0;
-      const newTravel = data.travelExpense?.total || 0;
-      const newWinnings = updated?.totalEarnings ?? data.categories?.reduce((s, c) => s + (c.prizeAmount || 0), 0) ?? 0;
-      const additions = [];
-      if (newEntryFee > 0) additions.push({ kind: 'entryFee', amount: newEntryFee });
-      if (newTravel > 0)   additions.push({ kind: 'travel',   amount: newTravel });
-      if (newWinnings > 0) additions.push({ kind: 'winnings', amount: newWinnings });
       setIsEditing(false);
       setSelectedTournament(null);
       setMonthlyStatsPrep({ open: true, variant: 'tournament' });
+      let freshList = tournaments;
       try {
-        await fetchTournaments();
+        freshList = await fetchTournaments();
       } catch {
         /* non-blocking */
       } finally {
         setMonthlyStatsPrep({ open: false, variant: 'tournament' });
       }
+      const monthRef = celebrationMonthRefFromCategories(updated?.categories || data?.categories);
+      const totals = getCalendarMonthTournamentSpendTotals(freshList, monthRef);
       const dateStr = updated?.categories?.[0]?.date || data?.categories?.[0]?.date;
       setCelebration({
         kind: 'tournament',
         name: updated?.name || data?.name || 'Tournament',
-        additions,
-        prevMonthSpend,
-        prevMonthEarnings,
-        prevMonthTournamentCount,
+        currency,
+        monthLabel: formatCelebrationMonthLabel(monthRef),
+        tournamentSpendThisMonth: totals.spend,
+        tournamentPrizeThisMonth: totals.prizeMoney,
+        tournamentCountThisMonth: totals.count,
         pendingCalendarUX: () => afterTournamentSavedCalendarUX(data.categories, dateStr || '', ''),
       });
     } catch (err) {
@@ -655,17 +619,6 @@ export default function Calendar() {
         has_notes: !!(data.notes?.trim()),
       });
 
-      // Compute prev-month session stats from current state (before refetch)
-      const prevSessionStats = getThisMonthSessionStats(sessions);
-
-      const courtFee = data.courtFee || 0;
-      const coachFee = data.coachFee || 0;
-      const travelTotal = data.travelExpense?.total || 0;
-      const additions = [];
-      if (courtFee > 0)    additions.push({ kind: 'courtFee', amount: courtFee });
-      if (coachFee > 0)    additions.push({ kind: 'coachFee', amount: coachFee });
-      if (travelTotal > 0) additions.push({ kind: 'travel',   amount: travelTotal });
-
       const weaknesses = data.wentWrong?.length > 0
         ? data.wentWrong
         : (data.drillFocus?.length > 0 ? data.drillFocus : []);
@@ -676,21 +629,25 @@ export default function Calendar() {
 
       setAddSessionModal({ open: false, date: null, sessionType: null });
       setMonthlyStatsPrep({ open: true, variant: 'session' });
+      let sessionsList = [];
       try {
-        await fetchData();
+        const fetched = await fetchData();
+        sessionsList = fetched.sessions || [];
       } catch {
         /* non-blocking */
       } finally {
         setMonthlyStatsPrep({ open: false, variant: 'session' });
       }
 
+      const monthRef = celebrationMonthRefFromSessionDate(data.date);
+      const sessionTotals = getCalendarMonthCasualDrillSpendTotals(sessionsList, monthRef);
       setCelebration({
         kind: 'session',
         name: sessionLabel,
-        additions,
-        prevMonthPracticeCost: prevSessionStats.cost,
-        prevMonthSessionCount: prevSessionStats.count,
-        prevMonthAvgRating: prevSessionStats.avgRating,
+        currency,
+        monthLabel: formatCelebrationMonthLabel(monthRef),
+        casualDrillSpendThisMonth: sessionTotals.cost,
+        casualDrillSessionCount: sessionTotals.count,
         newSessionRating: data.rating || null,
         weaknesses,
       });
@@ -1952,14 +1909,13 @@ export default function Calendar() {
         }}
         kind={celebration?.kind || 'tournament'}
         name={celebration?.name || ''}
-        additions={celebration?.additions || []}
         currency={currency}
-        prevMonthSpend={celebration?.prevMonthSpend || 0}
-        prevMonthEarnings={celebration?.prevMonthEarnings || 0}
-        prevMonthTournamentCount={celebration?.prevMonthTournamentCount || 0}
-        prevMonthPracticeCost={celebration?.prevMonthPracticeCost || 0}
-        prevMonthSessionCount={celebration?.prevMonthSessionCount || 0}
-        prevMonthAvgRating={celebration?.prevMonthAvgRating ?? null}
+        monthLabel={celebration?.monthLabel || ''}
+        tournamentSpendThisMonth={celebration?.tournamentSpendThisMonth ?? 0}
+        tournamentPrizeThisMonth={celebration?.tournamentPrizeThisMonth ?? 0}
+        tournamentCountThisMonth={celebration?.tournamentCountThisMonth ?? 0}
+        casualDrillSpendThisMonth={celebration?.casualDrillSpendThisMonth ?? 0}
+        casualDrillSessionCount={celebration?.casualDrillSessionCount ?? 0}
         newSessionRating={celebration?.newSessionRating ?? null}
         weaknesses={celebration?.weaknesses || []}
         videoUrlBuilder={buildVideoUrl}
