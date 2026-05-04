@@ -77,10 +77,64 @@ const FriendRequestRow = memo(function FriendRequestRowInner({ request, onAccept
   );
 });
 
+function formatCategoryDate(dateStr) {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if (!y || !m || !d) return dateStr;
+  const dt = new Date(y, m - 1, d);
+  return dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
 const NotificationItem = memo(function NotificationItemInner({ notif, onNotificationClick }) {
   const isComment = notif.type === 'comment';
   const isFriendConnected = notif.type === 'friend_connected';
+  const isTournamentReminder = notif.type === 'tournament_reminder';
+  const isLogResults = notif.type === 'log_results';
   const initials = (notif.actorName || '?')[0].toUpperCase();
+
+  if (isTournamentReminder || isLogResults) {
+    const categoryLabel = notif.categoryName || '';
+    const tournamentLabel = notif.tournamentName || 'tournament';
+    const dateLabel = formatCategoryDate(notif.categoryDate);
+    return (
+      <button
+        type="button"
+        onClick={() => onNotificationClick(notif)}
+        className={`w-full text-left flex items-start gap-3 px-4 py-3 transition-colors hover:bg-gray-50/90 active:bg-gray-100/80 ${
+          notif.read ? '' : 'bg-[#f4f8e8]'
+        }`}
+      >
+        <span
+          className="w-8 h-8 rounded-full flex items-center justify-center text-base flex-shrink-0 mt-0.5"
+          style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
+          aria-hidden
+        >
+          {isLogResults ? '🏆' : '⏰'}
+        </span>
+        <div className="flex-1 min-w-0">
+          {isLogResults ? (
+            <p className="text-sm text-[#272702] leading-snug break-words">
+              How did <span className="font-medium text-[#4a6e10]">{tournamentLabel}</span>
+              {categoryLabel ? <> — <span className="font-medium">{categoryLabel}</span></> : null} go? Tap to log your medal.
+            </p>
+          ) : (
+            <p className="text-sm text-[#272702] leading-snug break-words">
+              <span className="font-semibold">Tomorrow:</span>{' '}
+              <span className="font-medium text-[#4a6e10]">{tournamentLabel}</span>
+              {categoryLabel ? <> — <span className="font-medium">{categoryLabel}</span></> : null}. Good luck!
+            </p>
+          )}
+          {dateLabel && (
+            <p className="text-[11px] text-gray-500 mt-0.5">{dateLabel}</p>
+          )}
+          <p className="text-[11px] text-gray-400 mt-1">{timeAgo(notif.createdAt)}</p>
+        </div>
+        {!notif.read && (
+          <span className="w-2 h-2 rounded-full bg-[#91BE4D] flex-shrink-0 mt-2" aria-hidden />
+        )}
+      </button>
+    );
+  }
 
   if (isFriendConnected) {
     return (
@@ -190,6 +244,7 @@ const EST_FRIEND = 148;
 const EST_NOTIF = 82;
 const EST_NOTIF_WITH_COMMENT = 100;
 const EST_NOTIF_FRIEND = 102;
+const EST_NOTIF_REMINDER = 100;
 
 function buildFriendRows(friendRequests) {
   return friendRequests.map((req) => ({
@@ -224,6 +279,9 @@ function NotificationPanelVirtualList({
       if (row.type === 'section') return EST_SECTION;
       if (row.type === 'friend') return EST_FRIEND;
       if (row.type === 'notif' && row.notif?.type === 'friend_connected') return EST_NOTIF_FRIEND;
+      if (row.type === 'notif' && (row.notif?.type === 'tournament_reminder' || row.notif?.type === 'log_results')) {
+        return EST_NOTIF_REMINDER;
+      }
       return row.notif?.commentText ? EST_NOTIF_WITH_COMMENT : EST_NOTIF;
     },
     overscan: 8,
@@ -427,6 +485,22 @@ export default function NotificationBell() {
           })
           .catch(() => {});
         navigate('/players');
+        return;
+      }
+      if (notif.type === 'tournament_reminder' || notif.type === 'log_results') {
+        setNotifOpen(false);
+        setFriendOpen(false);
+        api
+          .markFeedNotificationRead(notif.id)
+          .then((res) => {
+            const uc = res.data?.unreadCount;
+            if (typeof uc === 'number') setUnreadCount(uc);
+            setNotifications((prev) =>
+              prev.map((n) => (String(n.id) === String(notif.id) ? { ...n, read: true } : n)),
+            );
+          })
+          .catch(() => {});
+        navigate('/calendar');
         return;
       }
       handleOpenFeedFromNotification(notif);

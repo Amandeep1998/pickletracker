@@ -2,6 +2,7 @@ const webpush = require('web-push');
 const PushSubscription = require('../models/PushSubscription');
 const Tournament = require('../models/Tournament');
 const User = require('../models/User');
+const FeedNotification = require('../models/FeedNotification');
 const {
   calendarDateInUserZone,
   calendarDatePlusDaysInUserZone,
@@ -45,6 +46,10 @@ exports.unsubscribe = async (req, res, next) => {
 };
 
 // ── Cron: day-before push (~7 PM in the user's time zone) ────────────────────
+// One reminder per (tournament, category) on tomorrow's date — dedup'd via the
+// FeedNotification row (unique partial index on userId+tournamentId+categoryDate+
+// categoryName+type), so multi-day tournaments correctly fire on each preceding
+// evening instead of once per user.
 
 const runPushReminders = async () => {
   const subscriptions = await PushSubscription.find().lean();
@@ -52,7 +57,7 @@ const runPushReminders = async () => {
 
   const userIds = [...new Set(subscriptions.map((s) => String(s.userId)))];
   const users = await User.find({ _id: { $in: userIds } })
-    .select('timeZone pushLastDayBeforeNudgeEventDate')
+    .select('timeZone')
     .lean();
   const userById = new Map(users.map((u) => [String(u._id), u]));
 
@@ -64,7 +69,6 @@ const runPushReminders = async () => {
     if (!inDayBeforePushWindow(user)) continue;
 
     const tomorrowStr = calendarDatePlusDaysInUserZone(user, 1);
-    if (user.pushLastDayBeforeNudgeEventDate === tomorrowStr) continue;
 
     const tournaments = await Tournament.find({
       userId,
@@ -72,26 +76,61 @@ const runPushReminders = async () => {
     }).lean();
     if (!tournaments.length) continue;
 
-    const names = tournaments.map((t) => t.name);
+    // Build the per-category candidate list for tomorrow.
+    const candidates = [];
+    for (const t of tournaments) {
+      for (const cat of t.categories || []) {
+        if (cat.date === tomorrowStr) {
+          candidates.push({ tournament: t, category: cat });
+        }
+      }
+    }
+    if (!candidates.length) continue;
+
+    // Try to insert one FeedNotification per candidate; the unique index drops
+    // duplicates so anything that survives is genuinely fresh (push-worthy).
+    const fresh = [];
+    for (const c of candidates) {
+      try {
+        await FeedNotification.create({
+          userId,
+          type: 'tournament_reminder',
+          tournamentId: c.tournament._id,
+          tournamentName: c.tournament.name,
+          categoryName: c.category.categoryName,
+          categoryDate: tomorrowStr,
+        });
+        fresh.push(c);
+      } catch (err) {
+        if (err && err.code === 11000) continue; // already notified
+        console.error('[PushReminder] failed to create tournament_reminder', err);
+      }
+    }
+    if (!fresh.length) continue;
+
+    // One consolidated push per user per evening for all newly-recorded categories.
+    const labels = fresh.map((f) =>
+      f.tournament.name === f.category.categoryName
+        ? f.tournament.name
+        : `${f.tournament.name} — ${f.category.categoryName}`
+    );
     const title = 'Tournament Tomorrow! 🏆';
     const body =
-      names.length === 1
-        ? `You have ${names[0]} tomorrow. Good luck!`
-        : `You have ${names.length} tournaments tomorrow: ${names.slice(0, 2).join(', ')}${names.length > 2 ? '…' : ''}`;
+      labels.length === 1
+        ? `${labels[0]} is tomorrow. Good luck!`
+        : `${labels.length} categories tomorrow: ${labels.slice(0, 2).join(', ')}${labels.length > 2 ? '…' : ''}`;
 
     const payload = JSON.stringify({
       title,
       body,
-      url: '/tournaments',
-      tag: 'tournament-reminder',
+      url: '/calendar',
+      tag: `tournament-reminder-${tomorrowStr}`,
     });
     const userSubs = subscriptions.filter((s) => String(s.userId) === userId);
 
-    let ok = 0;
     for (const sub of userSubs) {
       try {
         await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload);
-        ok++;
         sent++;
       } catch (err) {
         if (err.statusCode === 410 || err.statusCode === 404) {
@@ -99,14 +138,14 @@ const runPushReminders = async () => {
         }
       }
     }
-    if (ok > 0) {
-      await User.updateOne({ _id: userId }, { $set: { pushLastDayBeforeNudgeEventDate: tomorrowStr } }).catch(() => {});
-    }
   }
   return sent;
 };
 
 // ── Cron: same evening (~11:30 PM in the user's time zone) — log today's results ──
+// One nudge per (tournament, category) that finished today with medal still unset.
+// Dedup'd via FeedNotification row, so each category gets its own log-results
+// reminder for multi-day tournaments.
 
 const runPushResultReminders = async () => {
   const subscriptions = await PushSubscription.find().lean();
@@ -114,7 +153,7 @@ const runPushResultReminders = async () => {
 
   const userIds = [...new Set(subscriptions.map((s) => String(s.userId)))];
   const users = await User.find({ _id: { $in: userIds } })
-    .select('timeZone pushLastEveningResultNudgeLocalDate')
+    .select('timeZone')
     .lean();
   const userById = new Map(users.map((u) => [String(u._id), u]));
 
@@ -126,7 +165,6 @@ const runPushResultReminders = async () => {
     if (!inEveningResultPushWindow(user)) continue;
 
     const todayStr = calendarDateInUserZone(user);
-    if (user.pushLastEveningResultNudgeLocalDate === todayStr) continue;
 
     const tournaments = await Tournament.find({
       userId,
@@ -134,42 +172,64 @@ const runPushResultReminders = async () => {
     }).lean();
     if (!tournaments.length) continue;
 
-    const relevant = tournaments.filter((t) => {
-      const todayCats = t.categories.filter((c) => c.date === todayStr);
-      if (!todayCats.length) return false;
-      return todayCats.every((c) => c.medal === 'None');
-    });
-    if (!relevant.length) continue;
+    // Per-category candidates: today's date + medal not yet logged.
+    const candidates = [];
+    for (const t of tournaments) {
+      for (const cat of t.categories || []) {
+        if (cat.date === todayStr && cat.medal === 'None') {
+          candidates.push({ tournament: t, category: cat });
+        }
+      }
+    }
+    if (!candidates.length) continue;
 
-    const names = relevant.map((t) => t.name);
+    const fresh = [];
+    for (const c of candidates) {
+      try {
+        await FeedNotification.create({
+          userId,
+          type: 'log_results',
+          tournamentId: c.tournament._id,
+          tournamentName: c.tournament.name,
+          categoryName: c.category.categoryName,
+          categoryDate: todayStr,
+        });
+        fresh.push(c);
+      } catch (err) {
+        if (err && err.code === 11000) continue; // already nudged
+        console.error('[PushReminder] failed to create log_results notification', err);
+      }
+    }
+    if (!fresh.length) continue;
+
+    const labels = fresh.map((f) =>
+      f.tournament.name === f.category.categoryName
+        ? f.tournament.name
+        : `${f.tournament.name} — ${f.category.categoryName}`
+    );
     const title = "Log today's results 🏆";
     const body =
-      names.length === 1
-        ? `How did ${names[0]} go? Tap to log your medal and scores before the day ends.`
-        : `You had ${names.length} tournaments today — log your results while they're fresh.`;
+      labels.length === 1
+        ? `How did ${labels[0]} go? Tap to log your medal before the day ends.`
+        : `${labels.length} categories today — log your results while they're fresh.`;
 
     const payload = JSON.stringify({
       title,
       body,
       url: '/calendar',
-      tag: 'result-log-sameday',
+      tag: `result-log-${todayStr}`,
     });
     const userSubs = subscriptions.filter((s) => String(s.userId) === userId);
 
-    let ok = 0;
     for (const sub of userSubs) {
       try {
         await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload);
-        ok++;
         sent++;
       } catch (err) {
         if (err.statusCode === 410 || err.statusCode === 404) {
           await PushSubscription.deleteOne({ _id: sub._id }).catch(() => {});
         }
       }
-    }
-    if (ok > 0) {
-      await User.updateOne({ _id: userId }, { $set: { pushLastEveningResultNudgeLocalDate: todayStr } }).catch(() => {});
     }
   }
   return sent;

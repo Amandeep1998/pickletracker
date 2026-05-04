@@ -368,6 +368,8 @@ exports.getNotifications = async (req, res, next) => {
         actorName: n.actorName,
         tournamentName: n.tournamentName,
         tournamentId: n.tournamentId,
+        categoryName: n.categoryName || '',
+        categoryDate: n.categoryDate || null,
         commentText: n.commentText || null,
         read: n.read,
         createdAt: n.createdAt,
