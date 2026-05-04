@@ -33,6 +33,7 @@ const coachScheduleRoutes = require('./src/routes/coachSchedule.routes');
 const coachOverheadRoutes = require('./src/routes/coachOverhead.routes');
 const coachStudentRoutes = require('./src/routes/coachStudent.routes');
 const feedRoutes = require('./src/routes/feed.routes');
+const supportRoutes = require('./src/routes/support.routes');
 const errorHandler = require('./src/middleware/error.middleware');
 const { startMorningEmailJobs } = require('./src/jobs/morningEmailJobs');
 const { startWeeklySummaryJob } = require('./src/jobs/weeklySummary');
@@ -101,6 +102,7 @@ app.use('/api/coach-schedule', coachScheduleRoutes);
 app.use('/api/coach-overhead', coachOverheadRoutes);
 app.use('/api/coach-students', coachStudentRoutes);
 app.use('/api/feed', feedRoutes);
+app.use('/api/support', supportRoutes);
 
 app.use(Sentry.Handlers.errorHandler()); // captures unhandled errors and sends to Sentry
 app.use(errorHandler);

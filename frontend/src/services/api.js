@@ -96,6 +96,11 @@ export const getFeedComments = (tournamentId) => api.get(`/feed/${tournamentId}/
 export const addFeedComment = (tournamentId, text) => api.post(`/feed/${tournamentId}/comments`, { text });
 export const deleteFeedComment = (tournamentId, commentId) => api.delete(`/feed/${tournamentId}/comments/${commentId}`);
 
+// Support tickets
+export const submitSupport = (data) => api.post('/support', data);
+export const getMySupportTickets = () => api.get('/support');
+export const deleteSupportTicket = (id) => api.delete(`/support/${id}`);
+
 // Feed notifications
 export const getFeedNotifications = () => api.get('/feed/notifications');
 export const markFeedNotificationsRead = () => api.put('/feed/notifications/read-all');

@@ -92,6 +92,9 @@ export default function Navbar() {
               <NavLink to="/expenses" className={linkClass}>
                 Gear
               </NavLink>
+              <NavLink to="/support" className={linkClass}>
+                Support
+              </NavLink>
             </nav>
           </div>
 

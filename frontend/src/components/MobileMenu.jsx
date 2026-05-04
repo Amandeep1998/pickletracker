@@ -102,6 +102,7 @@ export default function MobileMenu({ onOpenLocationModal }) {
             </NavLink>
             <NavLink to="/coach"       className={navLinkClass} onClick={() => setIsOpen(false)}>AI Coach</NavLink>
             <NavLink to="/expenses"    className={navLinkClass} onClick={() => setIsOpen(false)}>Gear</NavLink>
+            <NavLink to="/support"     className={navLinkClass} onClick={() => setIsOpen(false)}>Support</NavLink>
             <NavLink to="/profile"     className={navLinkClass} onClick={() => setIsOpen(false)}>Profile</NavLink>
             {isAdmin && (
               <NavLink to="/admin" className={({ isActive }) =>

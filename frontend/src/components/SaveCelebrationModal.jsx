@@ -402,7 +402,7 @@ export default function SaveCelebrationModal({
                     started={statsStarted}
                   />
                   <CurrencyStat
-                    label={newNet >= 0 ? 'Net Profit' : 'Net Loss'}
+                    label="Net this month"
                     prev={prevMonthEarnings - prevMonthSpend}
                     target={newNet}
                     currency={currency}

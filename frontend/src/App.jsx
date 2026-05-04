@@ -22,6 +22,7 @@ import Players from './pages/Players';
 import Coach from './pages/Coach';
 import CoachHub from './pages/CoachHub';
 import Home from './pages/Home';
+import Support from './pages/Support';
 export default function App() {
   return (
     <AuthProvider>
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/coach" element={<Coach />} />
           <Route path="/coach-hub" element={<CoachHub />} />
           <Route path="/coaching-income" element={<Navigate to="/coach-hub" replace />} />
+          <Route path="/support" element={<Support />} />
           <Route path="/admin" element={<Admin />} />
         </Route>
 

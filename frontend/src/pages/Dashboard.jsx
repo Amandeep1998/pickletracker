@@ -314,12 +314,12 @@ export default function Dashboard() {
       }, 0);
 
       const totalExp = tournamentExp + sessionExp + gear + coachingCostsM;
-      const totalIn = monthTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0) + coachingGrossM;
+      const prizeEarned = monthTournaments.reduce((s, t) => s + (t.totalEarnings || 0), 0);
 
       return {
         month,
-        Expenses: +totalExp.toFixed(2),
-        Profit: +(totalIn - totalExp).toFixed(2),
+        Expense: +totalExp.toFixed(2),
+        'Prize Earned': +prizeEarned.toFixed(2),
       };
     });
   }, [tournaments, expenses, allSessions, coachingIncomes, tournamentDateMap, filterYear]);
@@ -332,12 +332,15 @@ export default function Dashboard() {
       for (const cat of t.categories) {
         if (!cat.categoryName) continue;
         if (!map[cat.categoryName]) {
-          map[cat.categoryName] = { entries: 0, earnings: 0, expenses: 0 };
+          map[cat.categoryName] = { entries: 0, earnings: 0, expenses: 0, gold: 0, silver: 0, bronze: 0 };
         }
         const row = map[cat.categoryName];
         row.entries += 1;
         row.earnings += cat.prizeAmount || 0;
         row.expenses += cat.entryFee || 0;
+        if (cat.medal === 'Gold') row.gold += 1;
+        else if (cat.medal === 'Silver') row.silver += 1;
+        else if (cat.medal === 'Bronze') row.bronze += 1;
       }
     }
 
@@ -348,8 +351,12 @@ export default function Dashboard() {
         earnings: data.earnings,
         expenses: data.expenses,
         profit: data.earnings - data.expenses,
+        gold: data.gold,
+        silver: data.silver,
+        bronze: data.bronze,
+        totalMedals: data.gold + data.silver + data.bronze,
       }))
-      .sort((a, b) => b.profit - a.profit);
+      .sort((a, b) => b.earnings - a.earnings);
   }, [filteredTournaments]);
 
   // Playing streak
@@ -446,7 +453,12 @@ export default function Dashboard() {
       gradient: 'from-violet-500 to-purple-600',
     },
     {
-      label: 'Net Profit/Loss',
+      label:
+        filterMonth !== ''
+          ? 'Net this month'
+          : filterYear
+            ? 'Net this year'
+            : 'Net total',
       value: (totals.net < 0 ? '-' : '+') + formatCurrency(Math.abs(totals.net), currency),
       gradient: totals.net >= 0 ? 'from-emerald-500 to-green-700' : 'from-rose-600 to-red-700',
     },
@@ -736,7 +748,9 @@ export default function Dashboard() {
               <span className="text-sm font-bold text-gray-800">{formatCurrency(totals.totalSpent, currency)}</span>
             </div>
             <div className="flex justify-between items-center rounded-xl px-3 py-2" style={{ background: totals.net >= 0 ? '#f0fdf4' : '#fff1f2', border: `1px solid ${totals.net >= 0 ? '#bbf7d0' : '#fecdd3'}` }}>
-              <span className="text-sm font-bold" style={{ color: totals.net >= 0 ? '#166534' : '#9f1239' }}>Net P&L</span>
+              <span className="text-sm font-bold" style={{ color: totals.net >= 0 ? '#166534' : '#9f1239' }}>
+                {filterMonth !== '' ? 'Net this month' : filterYear ? 'Net this year' : 'Net total'}
+              </span>
               <span className="text-base font-extrabold" style={{ color: totals.net >= 0 ? '#16a34a' : '#e11d48' }}>
                 {(totals.net < 0 ? '-' : '+') + formatCurrency(Math.abs(totals.net), currency)}
               </span>
@@ -874,7 +888,7 @@ export default function Dashboard() {
       {(tournaments.length > 0 || coachingIncomes.length > 0) && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-6 mb-6">
           <h2 className="text-sm sm:text-base font-semibold text-gray-700 mb-4">
-            Monthly Expenses vs Profit — {filterYear}
+            Monthly Prize Earned vs Expense — {filterYear}
           </h2>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={chartData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
@@ -892,8 +906,8 @@ export default function Dashboard() {
                 ]}
               />
               <Legend />
-              <Bar dataKey="Expenses" fill="#f87171" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Profit" fill="#91BE4D" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Prize Earned" fill="#91BE4D" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Expense" fill="#f87171" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -991,53 +1005,64 @@ export default function Dashboard() {
       {categoryBreakdown.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-6">
           <h2 className="text-sm sm:text-base font-semibold text-gray-700 mb-4">
-            Profit by Category — {filterYear}{filterMonth !== '' ? ` · ${MONTHS[Number(filterMonth)]}` : ''}
+            Best Category — {filterYear}{filterMonth !== '' ? ` · ${MONTHS[Number(filterMonth)]}` : ''}
           </h2>
+          <div className="flex items-center justify-between mb-2 px-0.5">
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Category</span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Total Prize Earned</span>
+          </div>
           <div className="space-y-3">
-            {categoryBreakdown.map((row) => {
-              const isProfit = row.profit >= 0;
-              const maxAbsProfit = Math.max(...categoryBreakdown.map((r) => Math.abs(r.profit)), 1);
-              const barWidth = Math.round((Math.abs(row.profit) / maxAbsProfit) * 100);
-
-              return (
-                <div key={row.name}>
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">{row.name}</span>
-                      <span className="text-xs text-gray-400 flex-shrink-0">
-                        {row.entries} {row.entries === 1 ? 'entry' : 'entries'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 flex-shrink-0 ml-2">
-                      <span className="text-xs text-gray-400 hidden sm:block">{formatCurrency(row.earnings, currency)} earned</span>
-                      <span className={`text-xs sm:text-sm font-semibold ${isProfit ? 'text-green-600' : 'text-red-500'}`}>
-                        {isProfit ? '+' : ''}{formatCurrency(row.profit, currency)}
-                      </span>
-                    </div>
+            {categoryBreakdown.map((row) => (
+              <div key={row.name}>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs sm:text-sm text-gray-700 font-medium truncate">{row.name}</span>
+                    <span className="text-xs text-gray-400 flex-shrink-0">
+                      {row.entries} {row.entries === 1 ? 'entry' : 'entries'}
+                    </span>
                   </div>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${isProfit ? 'bg-green-400' : 'bg-red-400'}`}
-                      style={{ width: `${barWidth}%` }}
-                    />
+                  <div className="flex items-center gap-3 flex-shrink-0 ml-2">
+                    <span className="text-xs sm:text-sm font-semibold text-green-600">
+                      {formatCurrency(row.earnings, currency)}
+                    </span>
                   </div>
                 </div>
-              );
-            })}
+                {row.totalMedals > 0 ? (
+                  <div className="flex items-center gap-2 text-[11px] sm:text-xs text-gray-500">
+                    {row.gold > 0 && (
+                      <span className="inline-flex items-center gap-0.5">
+                        <span aria-hidden>🥇</span>
+                        <span className="font-semibold text-yellow-700">×{row.gold}</span>
+                      </span>
+                    )}
+                    {row.silver > 0 && (
+                      <span className="inline-flex items-center gap-0.5">
+                        <span aria-hidden>🥈</span>
+                        <span className="font-semibold text-gray-600">×{row.silver}</span>
+                      </span>
+                    )}
+                    {row.bronze > 0 && (
+                      <span className="inline-flex items-center gap-0.5">
+                        <span aria-hidden>🥉</span>
+                        <span className="font-semibold text-amber-700">×{row.bronze}</span>
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-[11px] sm:text-xs text-gray-400">No medals yet</div>
+                )}
+              </div>
+            ))}
           </div>
 
-          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-4 text-xs text-gray-500">
-            <span>
-              Best:{' '}
-              <span className="font-medium text-green-600">{categoryBreakdown[0]?.name}</span>
-            </span>
-            {categoryBreakdown.length > 1 && categoryBreakdown[categoryBreakdown.length - 1].profit < 0 && (
+          {categoryBreakdown[0]?.earnings > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-4 text-xs text-gray-500">
               <span>
-                Worst:{' '}
-                <span className="font-medium text-red-500">{categoryBreakdown[categoryBreakdown.length - 1]?.name}</span>
+                Top earner:{' '}
+                <span className="font-medium text-green-600">{categoryBreakdown[0]?.name}</span>
               </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
