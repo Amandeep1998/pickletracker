@@ -170,6 +170,7 @@ export default function Welcome() {
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
+  const [checkingExisting, setCheckingExisting] = useState(true);
 
   // Users who already completed onboarding should not see this page
   useEffect(() => {
@@ -177,6 +178,33 @@ export default function Welcome() {
       navigate('/home', { replace: true });
     }
   }, [user, navigate]);
+
+  // Existing users with tournaments already logged should bypass onboarding
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) return;
+    if (user.onboardingDone) {
+      setCheckingExisting(false);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await api.getTournaments();
+        const list = res.data?.data || res.data || [];
+        if (cancelled) return;
+        if (Array.isArray(list) && list.length > 0) {
+          try {
+            const upd = await api.updateProfile({ onboardingDone: true });
+            if (upd.data?.data) refreshUser(upd.data.data);
+          } catch {}
+          navigate('/home', { replace: true });
+          return;
+        }
+      } catch {}
+      if (!cancelled) setCheckingExisting(false);
+    })();
+    return () => { cancelled = true; };
+  }, [user, navigate, refreshUser]);
 
   const markDone = async () => {
     try {
@@ -200,6 +228,7 @@ export default function Welcome() {
   const next = () => setStep((s) => Math.min(s + 1, TOTAL_STEPS - 1));
 
   if (!user) return null;
+  if (checkingExisting) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f4f8e8] via-white to-[#fff8ef] flex flex-col">
