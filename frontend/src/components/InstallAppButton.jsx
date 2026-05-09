@@ -1,5 +1,5 @@
-import { useState, useEffect, useSyncExternalStore } from 'react';
-import { isStandaloneDisplay, checkPwaInstalled } from '../utils/displayMode';
+import { useState, useSyncExternalStore } from 'react';
+import { isStandaloneDisplay, readPwaInstalled } from '../utils/displayMode';
 import {
   subscribePwaInstallPrompt,
   getPwaInstallPromptSnapshot,
@@ -54,17 +54,17 @@ function useInstallPrompt() {
     getPwaInstallPromptServerSnapshot
   );
   const { isAndroid, isChromeiOS, isSafariIOS, isAndroidFirefox, isStandalone } = detectBrowser();
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [installing, setInstalling] = useState(false);
 
-  useEffect(() => {
-    checkPwaInstalled().then(setIsInstalled);
-  }, []);
+  const isInstalled = readPwaInstalled();
 
   const hasNativePrompt = installSnapshot === 'native';
   const installFinished = installSnapshot === 'done';
 
   const trigger = async (onAccepted) => {
+    setInstalling(true);
     await invokePwaInstallPrompt(onAccepted);
+    setInstalling(false);
   };
 
   const browserType = isSafariIOS
@@ -84,7 +84,7 @@ function useInstallPrompt() {
         ? 'manual'
         : null;
 
-  return { action, browserType, trigger, isInstalled };
+  return { action, browserType, trigger, isInstalled, installing };
 }
 
 // ── Step-by-step install modal ────────────────────────────────────────────────
@@ -339,7 +339,7 @@ function writeBannerDismissed() {
 }
 
 export function InstallBanner() {
-  const { action, browserType, trigger, isInstalled } = useInstallPrompt();
+  const { action, browserType, trigger, isInstalled, installing } = useInstallPrompt();
   const [dismissed, setDismissed] = useState(readBannerDismissed);
   const [showModal, setShowModal] = useState(false);
 
@@ -352,6 +352,22 @@ export function InstallBanner() {
     if (action === 'native') { trigger(dismiss); return; }
     setShowModal(true);
   };
+
+  const subtitleText = installing
+    ? 'Installing…'
+    : isInstalled
+      ? 'Installed on this device'
+      : browserType === 'ios-safari' || browserType === 'ios-chrome'
+        ? 'Add to iPhone'
+        : browserType === 'android' || browserType === 'android-firefox'
+          ? 'Add to Android'
+          : 'Add to Desktop';
+
+  const buttonLabel = installing
+    ? 'Installing…'
+    : isInstalled
+      ? 'Open App'
+      : 'Use App';
 
   return (
     <>
@@ -375,15 +391,7 @@ export function InstallBanner() {
           </div>
           <div className="min-w-0">
             <p className="text-white font-bold text-xs leading-tight">PickleTracker</p>
-            <p className="text-[#91BE4D] text-[10px] leading-tight truncate">
-              {isInstalled
-                ? 'Installed on this device'
-                : browserType === 'ios-safari' || browserType === 'ios-chrome'
-                  ? 'Add to iPhone'
-                  : browserType === 'android' || browserType === 'android-firefox'
-                    ? 'Add to Android'
-                    : 'Add to Desktop'}
-            </p>
+            <p className="text-[#91BE4D] text-[10px] leading-tight truncate">{subtitleText}</p>
           </div>
         </div>
 
@@ -392,9 +400,16 @@ export function InstallBanner() {
           <button
             type="button"
             onClick={handleInstall}
-            className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-[#1c350a] bg-[#c8e875] hover:bg-[#d6f085] transition-colors whitespace-nowrap"
+            disabled={installing}
+            className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-[#1c350a] bg-[#c8e875] hover:bg-[#d6f085] transition-colors whitespace-nowrap disabled:opacity-60 disabled:cursor-wait flex items-center gap-1"
           >
-            {isInstalled ? 'Open App' : 'Use App'}
+            {installing && (
+              <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+            )}
+            {buttonLabel}
           </button>
           <button
             type="button"

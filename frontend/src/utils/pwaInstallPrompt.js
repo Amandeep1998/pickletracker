@@ -1,4 +1,4 @@
-import { isStandaloneDisplay } from './displayMode';
+import { isStandaloneDisplay, markPwaInstalled } from './displayMode';
 
 /**
  * Capture `beforeinstallprompt` as early as possible (before React effects run).
@@ -37,6 +37,7 @@ function onBeforeInstallPrompt(e) {
 function onAppInstalled() {
   deferredEvent = null;
   installDone = true;
+  markPwaInstalled();
   notify();
 }
 
@@ -80,6 +81,7 @@ export async function invokePwaInstallPrompt(onAccepted) {
     const choice = await e.userChoice;
     if (choice && choice.outcome === 'accepted') {
       installDone = true;
+      markPwaInstalled();
       onAccepted?.();
       notify();
     } else {

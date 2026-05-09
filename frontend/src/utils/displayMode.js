@@ -13,17 +13,14 @@ export function isStandaloneDisplay() {
   }
 }
 
-/**
- * Async check: returns true if the PWA is installed on this device.
- * Uses navigator.getInstalledRelatedApps() on Chromium; always false elsewhere.
- */
-export async function checkPwaInstalled() {
-  try {
-    if (typeof navigator === 'undefined') return false;
-    if (typeof navigator.getInstalledRelatedApps !== 'function') return false;
-    const apps = await navigator.getInstalledRelatedApps();
-    return apps.length > 0;
-  } catch {
-    return false;
-  }
+const PWA_INSTALLED_KEY = 'pwa_installed';
+
+/** Persist install flag — call this when appinstalled fires. */
+export function markPwaInstalled() {
+  try { localStorage.setItem(PWA_INSTALLED_KEY, '1'); } catch { /* ignore */ }
+}
+
+/** Sync check: was the app ever installed on this device? */
+export function readPwaInstalled() {
+  try { return localStorage.getItem(PWA_INSTALLED_KEY) === '1'; } catch { return false; }
 }
