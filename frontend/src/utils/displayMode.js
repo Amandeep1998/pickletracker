@@ -12,3 +12,18 @@ export function isStandaloneDisplay() {
     return false;
   }
 }
+
+/**
+ * Async check: returns true if the PWA is installed on this device.
+ * Uses navigator.getInstalledRelatedApps() on Chromium; always false elsewhere.
+ */
+export async function checkPwaInstalled() {
+  try {
+    if (typeof navigator === 'undefined') return false;
+    if (typeof navigator.getInstalledRelatedApps !== 'function') return false;
+    const apps = await navigator.getInstalledRelatedApps();
+    return apps.length > 0;
+  } catch {
+    return false;
+  }
+}

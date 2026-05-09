@@ -1,5 +1,5 @@
-import { useState, useSyncExternalStore } from 'react';
-import { isStandaloneDisplay } from '../utils/displayMode';
+import { useState, useEffect, useSyncExternalStore } from 'react';
+import { isStandaloneDisplay, checkPwaInstalled } from '../utils/displayMode';
 import {
   subscribePwaInstallPrompt,
   getPwaInstallPromptSnapshot,
@@ -54,6 +54,11 @@ function useInstallPrompt() {
     getPwaInstallPromptServerSnapshot
   );
   const { isAndroid, isChromeiOS, isSafariIOS, isAndroidFirefox, isStandalone } = detectBrowser();
+  const [isInstalled, setIsInstalled] = useState(false);
+
+  useEffect(() => {
+    checkPwaInstalled().then(setIsInstalled);
+  }, []);
 
   const hasNativePrompt = installSnapshot === 'native';
   const installFinished = installSnapshot === 'done';
@@ -79,7 +84,7 @@ function useInstallPrompt() {
         ? 'manual'
         : null;
 
-  return { action, browserType, trigger };
+  return { action, browserType, trigger, isInstalled };
 }
 
 // ── Step-by-step install modal ────────────────────────────────────────────────
@@ -334,15 +339,16 @@ function writeBannerDismissed() {
 }
 
 export function InstallBanner() {
-  const { action, browserType, trigger } = useInstallPrompt();
+  const { action, browserType, trigger, isInstalled } = useInstallPrompt();
   const [dismissed, setDismissed] = useState(readBannerDismissed);
   const [showModal, setShowModal] = useState(false);
 
-  if (!action || dismissed) return null;
+  if ((!action && !isInstalled) || dismissed) return null;
 
   const dismiss = () => { writeBannerDismissed(); setDismissed(true); };
 
   const handleInstall = () => {
+    if (isInstalled) { window.location.href = '/'; return; }
     if (action === 'native') { trigger(dismiss); return; }
     setShowModal(true);
   };
@@ -370,11 +376,13 @@ export function InstallBanner() {
           <div className="min-w-0">
             <p className="text-white font-bold text-xs leading-tight">PickleTracker</p>
             <p className="text-[#91BE4D] text-[10px] leading-tight truncate">
-              {browserType === 'ios-safari' || browserType === 'ios-chrome'
-                ? 'Add to iPhone'
-                : browserType === 'android' || browserType === 'android-firefox'
-                  ? 'Add to Android'
-                  : 'Add to Desktop'}
+              {isInstalled
+                ? 'Installed on this device'
+                : browserType === 'ios-safari' || browserType === 'ios-chrome'
+                  ? 'Add to iPhone'
+                  : browserType === 'android' || browserType === 'android-firefox'
+                    ? 'Add to Android'
+                    : 'Add to Desktop'}
             </p>
           </div>
         </div>
@@ -386,7 +394,7 @@ export function InstallBanner() {
             onClick={handleInstall}
             className="px-3 py-1.5 rounded-lg text-[11px] font-bold text-[#1c350a] bg-[#c8e875] hover:bg-[#d6f085] transition-colors whitespace-nowrap"
           >
-            Use App
+            {isInstalled ? 'Open App' : 'Use App'}
           </button>
           <button
             type="button"
