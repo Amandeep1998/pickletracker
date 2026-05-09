@@ -352,8 +352,18 @@ export function InstallBanner() {
 
   const handleInstall = () => {
     if (isInstalled) {
-      // Open a new tab/window at the origin — the browser will route it to the installed PWA
-      window.open(window.location.origin, '_blank', 'noreferrer');
+      const ua = navigator.userAgent || '';
+      const isAndroidUA = /Android/i.test(ua);
+      const origin = window.location.origin;
+      if (isAndroidUA) {
+        // Android intent — Chrome routes to installed PWA window. Falls back to origin if intent fails.
+        const host = window.location.host;
+        const intentUrl = `intent://${host}/#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(origin)};end`;
+        window.location.href = intentUrl;
+        return;
+      }
+      // Desktop / iOS — open in new window. Chrome desktop will use the installed PWA window.
+      window.open(origin, '_blank', 'noreferrer');
       return;
     }
     if (action === 'native') { trigger(dismiss); return; }
