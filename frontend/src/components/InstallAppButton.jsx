@@ -34,6 +34,89 @@ function PTLogo({ size = 44 }) {
   );
 }
 
+// ── Open installed PWA helper ────────────────────────────────────────────────
+// Browsers cannot directly launch an installed PWA from an in-tab navigation.
+// window.open with _blank gives Chromium a chance to route to the standalone
+// PWA window when scope matches; if the user is still in-browser after a beat
+// we show a toast telling them to open from their home screen / app drawer.
+let openToastTimer = null;
+function showOpenAppToast() {
+  if (typeof document === 'undefined') return;
+  const existing = document.getElementById('pt-open-app-toast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.id = 'pt-open-app-toast';
+  toast.setAttribute('role', 'status');
+  toast.style.cssText = [
+    'position:fixed', 'left:50%', 'bottom:24px', 'transform:translateX(-50%)',
+    'z-index:9999', 'max-width:90vw', 'padding:12px 16px',
+    'background:#1c350a', 'color:#c8e875',
+    'border:1px solid rgba(145,190,77,0.5)', 'border-radius:12px',
+    'box-shadow:0 6px 24px rgba(0,0,0,0.25)',
+    'font-size:13px', 'font-weight:600', 'line-height:1.4',
+    'text-align:center',
+  ].join(';');
+  toast.textContent = 'PickleTracker is installed — open it from your home screen or app drawer.';
+
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.remove(); }, 4500);
+}
+
+function openInstalledPwa() {
+  if (typeof window === 'undefined') return;
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
+  const isAndroid = /Android/i.test(ua);
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const origin = window.location.origin;
+  const fallbackUrl = `${origin}/?source=pwa`;
+
+  const armToast = () => {
+    if (openToastTimer) clearTimeout(openToastTimer);
+    openToastTimer = setTimeout(() => {
+      if (typeof document === 'undefined') return;
+      if (document.visibilityState === 'visible' && document.hasFocus()) {
+        showOpenAppToast();
+      }
+    }, 1500);
+  };
+
+  if (isAndroid) {
+    // Android intent without forced package — OS shows the installed WebAPK
+    // alongside Chrome in the chooser, letting the user pick the PWA.
+    const host = window.location.host;
+    const intentUrl = `intent://${host}/?source=pwa#Intent;scheme=https;S.browser_fallback_url=${encodeURIComponent(fallbackUrl)};end`;
+    try {
+      window.location.href = intentUrl;
+    } catch {
+      window.location.href = fallbackUrl;
+    }
+    armToast();
+    return;
+  }
+
+  if (isIOS) {
+    // iOS Safari has no API to launch an installed PWA. Just hint the user.
+    showOpenAppToast();
+    return;
+  }
+
+  // Desktop Chrome / Edge: opening in a new top-level window can route to the
+  // installed PWA window when scope matches; if it ends up as a normal tab,
+  // the toast tells the user to launch from their app drawer.
+  try {
+    const win = window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+    if (!win) {
+      window.location.href = fallbackUrl;
+      return;
+    }
+  } catch {
+    window.location.href = fallbackUrl;
+    return;
+  }
+  armToast();
+}
+
 // ── Browser detection ─────────────────────────────────────────────────────────
 function detectBrowser() {
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
@@ -280,7 +363,7 @@ export default function InstallAppButton({ variant = 'default', compact = false 
   if (!action && !isInstalled) return null;
 
   const handleClick = () => {
-    if (isInstalled) { window.location.href = '/'; return; }
+    if (isInstalled) { openInstalledPwa(); return; }
     if (action === 'native') { trigger(); return; }
     setShowModal(true);
   };
@@ -370,21 +453,7 @@ export function InstallBanner() {
   const dismiss = () => { writeBannerDismissed(); setDismissed(true); };
 
   const handleInstall = () => {
-    if (isInstalled) {
-      const ua = navigator.userAgent || '';
-      const isAndroidUA = /Android/i.test(ua);
-      const origin = window.location.origin;
-      if (isAndroidUA) {
-        // Android intent — Chrome routes to installed PWA window. Falls back to origin if intent fails.
-        const host = window.location.host;
-        const intentUrl = `intent://${host}/#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(origin)};end`;
-        window.location.href = intentUrl;
-        return;
-      }
-      // Desktop / iOS — open in new window. Chrome desktop will use the installed PWA window.
-      window.open(origin, '_blank', 'noreferrer');
-      return;
-    }
+    if (isInstalled) { openInstalledPwa(); return; }
     if (action === 'native') { trigger(dismiss); return; }
     setShowModal(true);
   };
@@ -492,7 +561,7 @@ export function InstallAppCard() {
   };
 
   const handleInstall = () => {
-    if (isInstalled) { window.location.href = '/'; return; }
+    if (isInstalled) { openInstalledPwa(); return; }
     if (action === 'native') { trigger(dismiss); return; }
     setShowModal(true);
   };
