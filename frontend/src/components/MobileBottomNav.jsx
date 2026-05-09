@@ -3,7 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const HomeIcon = ({ active }) => (
-  <svg className={`w-5 h-5 ${active ? 'text-[#91BE4D]' : 'text-gray-400'}`} fill={active ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 0 : 1.8}>
+  <svg className={`w-6 h-6 ${active ? 'text-[#91BE4D]' : 'text-gray-400'}`} fill={active ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 0 : 1.8}>
     {active
       ? <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
       : <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -12,7 +12,7 @@ const HomeIcon = ({ active }) => (
 );
 
 const CalendarIcon = ({ active }) => (
-  <svg className={`w-5 h-5 ${active ? 'text-[#91BE4D]' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
+  <svg className={`w-6 h-6 ${active ? 'text-[#91BE4D]' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
     <rect x="3" y="4" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M16 2v4M8 2v4M3 10h18" />
     {active && <path strokeLinecap="round" strokeLinejoin="round" d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" />}
@@ -20,7 +20,7 @@ const CalendarIcon = ({ active }) => (
 );
 
 const ChartIcon = ({ active }) => (
-  <svg className={`w-5 h-5 ${active ? 'text-[#91BE4D]' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
+  <svg className={`w-6 h-6 ${active ? 'text-[#91BE4D]' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
   </svg>
 );
@@ -31,13 +31,13 @@ const UserIcon = ({ photoUrl, name, active }) => {
       <img
         src={photoUrl}
         alt={name || ''}
-        className={`w-6 h-6 rounded-full object-cover ${active ? 'ring-2 ring-[#91BE4D]' : 'ring-1 ring-gray-200'}`}
+        className={`w-7 h-7 rounded-full object-cover ${active ? 'ring-2 ring-[#91BE4D]' : 'ring-1 ring-gray-200'}`}
       />
     );
   }
   return (
     <span
-      className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${active ? 'ring-2 ring-[#91BE4D]' : ''}`}
+      className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${active ? 'ring-2 ring-[#91BE4D]' : ''}`}
       style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
     >
       {name?.[0]?.toUpperCase() || '?'}
@@ -71,7 +71,7 @@ export default function MobileBottomNav() {
       aria-label={label}
     >
       {icon}
-      <span className={`text-[9px] font-semibold leading-none ${isActive(to) ? 'text-[#91BE4D]' : 'text-gray-400'}`}>
+      <span className={`text-[11px] font-semibold leading-none ${isActive(to) ? 'text-[#91BE4D]' : 'text-gray-400'}`}>
         {label}
       </span>
     </NavLink>
@@ -146,7 +146,7 @@ export default function MobileBottomNav() {
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
         aria-label="Mobile navigation"
       >
-        <div className="flex items-end h-14 px-1">
+        <div className="flex items-end h-16 px-1">
           {navItem('/home', 'Home', <HomeIcon active={isActive('/home')} />)}
           {navItem('/calendar', 'Calendar', <CalendarIcon active={isActive('/calendar')} />)}
 
@@ -177,7 +177,7 @@ export default function MobileBottomNav() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
             </button>
-            <span className={`text-[9px] font-semibold leading-none ${sheetOpen ? 'text-[#91BE4D]' : 'text-gray-400'}`}>Log</span>
+            <span className={`text-[11px] font-semibold leading-none ${sheetOpen ? 'text-[#91BE4D]' : 'text-gray-400'}`}>Log</span>
           </div>
 
           {navItem('/dashboard', 'Stats', <ChartIcon active={isActive('/dashboard')} />)}

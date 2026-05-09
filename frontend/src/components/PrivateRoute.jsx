@@ -26,7 +26,7 @@ export default function PrivateRoute() {
     <div className="min-h-screen flex flex-col">
       <InstallBanner />
       <Navbar />
-      <main className="flex-1 pb-16 lg:pb-0">
+      <main className="flex-1 pb-20 lg:pb-0">
         <Outlet />
       </main>
       <div className="hidden lg:block">
