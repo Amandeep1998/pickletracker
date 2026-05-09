@@ -56,7 +56,9 @@ function useInstallPrompt() {
   const { isAndroid, isChromeiOS, isSafariIOS, isAndroidFirefox, isStandalone } = detectBrowser();
   const [installing, setInstalling] = useState(false);
 
-  const isInstalled = readPwaInstalled();
+  const isInstalledFlag = readPwaInstalled();
+  // Only show "Open App" when browsing in regular browser AND app is known installed
+  const isInstalled = isInstalledFlag && !isStandalone;
 
   const hasNativePrompt = installSnapshot === 'native';
   const installFinished = installSnapshot === 'done';
@@ -84,7 +86,7 @@ function useInstallPrompt() {
         ? 'manual'
         : null;
 
-  return { action, browserType, trigger, isInstalled, installing };
+  return { action, browserType, trigger, isInstalled, installing, isStandalone };
 }
 
 // ── Step-by-step install modal ────────────────────────────────────────────────
@@ -339,16 +341,21 @@ function writeBannerDismissed() {
 }
 
 export function InstallBanner() {
-  const { action, browserType, trigger, isInstalled, installing } = useInstallPrompt();
+  const { action, browserType, trigger, isInstalled, installing, isStandalone } = useInstallPrompt();
   const [dismissed, setDismissed] = useState(readBannerDismissed);
   const [showModal, setShowModal] = useState(false);
 
-  if ((!action && !isInstalled) || dismissed) return null;
+  // Never show banner when already running as installed PWA
+  if (isStandalone || (!action && !isInstalled) || dismissed) return null;
 
   const dismiss = () => { writeBannerDismissed(); setDismissed(true); };
 
   const handleInstall = () => {
-    if (isInstalled) { window.location.href = '/'; return; }
+    if (isInstalled) {
+      // Open a new tab/window at the origin — the browser will route it to the installed PWA
+      window.open(window.location.origin, '_blank', 'noreferrer');
+      return;
+    }
     if (action === 'native') { trigger(dismiss); return; }
     setShowModal(true);
   };
