@@ -274,12 +274,13 @@ function InstallModal({ browserType, onClose }) {
 
 // ── Compact button (Navbar / MobileMenu) ──────────────────────────────────────
 export default function InstallAppButton({ variant = 'default', compact = false }) {
-  const { action, browserType, trigger } = useInstallPrompt();
+  const { action, browserType, trigger, isInstalled, installing } = useInstallPrompt();
   const [showModal, setShowModal] = useState(false);
 
-  if (!action) return null;
+  if (!action && !isInstalled) return null;
 
   const handleClick = () => {
+    if (isInstalled) { window.location.href = '/'; return; }
     if (action === 'native') { trigger(); return; }
     setShowModal(true);
   };
@@ -287,18 +288,34 @@ export default function InstallAppButton({ variant = 'default', compact = false 
   const nativeHint =
     'Opens your browser install prompt (add PickleTracker to your device).';
   const manualHint = 'Shows steps to add PickleTracker to your home screen.';
+  const openHint = 'Open PickleTracker in the installed app.';
+
+  const label = installing ? 'Installing…' : isInstalled ? 'Open App' : 'Install App';
 
   const inner = (
     <>
-      <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-      </svg>
-      <span className={compact ? 'hidden xl:inline' : ''}>Install App</span>
+      {installing ? (
+        <svg className="w-4 h-4 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+        </svg>
+      ) : (
+        <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          {isInstalled ? (
+            <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          )}
+        </svg>
+      )}
+      <span className={compact ? 'hidden xl:inline' : ''}>{label}</span>
     </>
   );
 
-  const installAria =
-    action === 'native'
+  const tooltip = isInstalled ? openHint : action === 'native' ? nativeHint : manualHint;
+  const installAria = isInstalled
+    ? 'Open PickleTracker in the installed app'
+    : action === 'native'
       ? 'Install PickleTracker using the browser install prompt'
       : 'Install PickleTracker — show how-to steps';
 
@@ -308,9 +325,10 @@ export default function InstallAppButton({ variant = 'default', compact = false 
         <button
           type="button"
           onClick={handleClick}
-          title={action === 'native' ? nativeHint : manualHint}
+          disabled={installing}
+          title={tooltip}
           aria-label={installAria}
-          className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl border border-[#91BE4D]/40 bg-[#f4f8e8] hover:bg-[#eaf3d4] transition-colors text-left text-sm font-semibold text-[#4a6e10]"
+          className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl border border-[#91BE4D]/40 bg-[#f4f8e8] hover:bg-[#eaf3d4] transition-colors text-left text-sm font-semibold text-[#4a6e10] disabled:opacity-60 disabled:cursor-wait"
         >
           {inner}
         </button>
@@ -318,9 +336,10 @@ export default function InstallAppButton({ variant = 'default', compact = false 
         <button
           type="button"
           onClick={handleClick}
-          title={action === 'native' ? nativeHint : manualHint}
+          disabled={installing}
+          title={tooltip}
           aria-label={installAria}
-          className={`flex items-center gap-1.5 text-xs font-semibold rounded-lg border border-[#91BE4D]/40 bg-[#f4f8e8] hover:bg-[#eaf3d4] text-[#4a6e10] transition-colors whitespace-nowrap ${
+          className={`flex items-center gap-1.5 text-xs font-semibold rounded-lg border border-[#91BE4D]/40 bg-[#f4f8e8] hover:bg-[#eaf3d4] text-[#4a6e10] transition-colors whitespace-nowrap disabled:opacity-60 disabled:cursor-wait ${
             compact ? 'px-2 py-1.5 xl:px-3' : 'px-3 py-1.5'
           }`}
         >
@@ -461,11 +480,11 @@ function writeInstallCardDismissed() {
 }
 
 export function InstallAppCard() {
-  const { action, browserType, trigger } = useInstallPrompt();
+  const { action, browserType, trigger, isInstalled, installing } = useInstallPrompt();
   const [showModal, setShowModal] = useState(false);
   const [dismissed, setDismissed] = useState(readInstallCardDismissed);
 
-  if (!action || dismissed) return null;
+  if ((!action && !isInstalled) || dismissed) return null;
 
   const dismiss = () => {
     writeInstallCardDismissed();
@@ -473,28 +492,44 @@ export function InstallAppCard() {
   };
 
   const handleInstall = () => {
+    if (isInstalled) { window.location.href = '/'; return; }
     if (action === 'native') { trigger(dismiss); return; }
     setShowModal(true);
   };
 
   const isIOS = browserType === 'ios-safari' || browserType === 'ios-chrome';
 
-  const cardSubtitle =
-    action === 'native'
-      ? "Tap Install to open your browser's install prompt (Chrome, Edge, Samsung Internet, and similar)."
-      : isIOS
-        ? 'Add to Home Screen for a full-screen experience. Tap How to for steps.'
-        : 'Install for faster load times and a native app feel. Tap How to if your browser does not show a one-tap install yet.';
+  const cardSubtitle = installing
+    ? 'Installing PickleTracker — confirm in your browser dialog…'
+    : isInstalled
+      ? 'PickleTracker is installed on this device. Tap Open App to launch it.'
+      : action === 'native'
+        ? "Tap Install to open your browser's install prompt (Chrome, Edge, Samsung Internet, and similar)."
+        : isIOS
+          ? 'Add to Home Screen for a full-screen experience. Tap How to for steps.'
+          : 'Install for faster load times and a native app feel. Tap How to if your browser does not show a one-tap install yet.';
 
-  const primaryTitle =
-    action === 'native'
+  const primaryTitle = isInstalled
+    ? 'Open PickleTracker in the installed app'
+    : action === 'native'
       ? "Opens your browser's install dialog to add PickleTracker"
       : 'Show step-by-step instructions to add PickleTracker';
 
-  const primaryAria =
-    action === 'native'
+  const primaryAria = isInstalled
+    ? 'Open PickleTracker in the installed app'
+    : action === 'native'
       ? 'Install PickleTracker using the browser install prompt'
       : 'Show how to install PickleTracker on this device';
+
+  const primaryLabel = installing
+    ? 'Installing…'
+    : isInstalled
+      ? 'Open App'
+      : action === 'native'
+        ? 'Install'
+        : 'How to';
+
+  const cardTitle = isInstalled ? 'Open the PickleTracker app' : 'Get the PickleTracker app';
 
   return (
     <>
@@ -508,7 +543,7 @@ export function InstallAppCard() {
           <PTLogo size={44} />
 
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-bold leading-tight">Get the PickleTracker app</p>
+            <p className="text-white text-sm font-bold leading-tight">{cardTitle}</p>
             <p className="text-[#91BE4D] text-xs mt-0.5 leading-snug">
               {cardSubtitle}
             </p>
@@ -518,15 +553,27 @@ export function InstallAppCard() {
             <button
               type="button"
               onClick={handleInstall}
+              disabled={installing}
               title={primaryTitle}
               aria-label={primaryAria}
-              className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#1c350a] transition-opacity hover:opacity-90 whitespace-nowrap"
+              className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#1c350a] transition-opacity hover:opacity-90 whitespace-nowrap disabled:opacity-60 disabled:cursor-wait"
               style={{ background: 'linear-gradient(to right, #c8e875, #91BE4D)' }}
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              {action === 'native' ? 'Install' : 'How to'}
+              {installing ? (
+                <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  {isInstalled ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  )}
+                </svg>
+              )}
+              {primaryLabel}
             </button>
             <button
               onClick={dismiss}
