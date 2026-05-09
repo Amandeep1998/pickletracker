@@ -345,6 +345,20 @@ export default function NotificationBell() {
   const socket = useSocket();
   const [friendOpen, setFriendOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [mobilePanelTop, setMobilePanelTop] = useState(0);
+
+  const computeMobilePanelTop = useCallback(() => {
+    if (!containerRef.current) return;
+    let el = containerRef.current.parentElement;
+    while (el && el !== document.body) {
+      if (getComputedStyle(el).position === 'sticky') {
+        setMobilePanelTop(el.getBoundingClientRect().bottom);
+        return;
+      }
+      el = el.parentElement;
+    }
+    setMobilePanelTop(containerRef.current.getBoundingClientRect().bottom + 8);
+  }, []);
   const [isMobileLayout, setIsMobileLayout] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches
   );
@@ -517,6 +531,7 @@ export default function NotificationBell() {
       setFriendOpen(false);
       return;
     }
+    computeMobilePanelTop();
     setNotifOpen(false);
     setFriendOpen(true);
     const hasCached = incomingFriendRequests.length > 0 || notifications.length > 0;
@@ -535,6 +550,7 @@ export default function NotificationBell() {
       setNotifOpen(false);
       return;
     }
+    computeMobilePanelTop();
     setFriendOpen(false);
     setNotifOpen(true);
     const hasCached = notifications.length > 0 || incomingFriendRequests.length > 0;
@@ -707,8 +723,9 @@ export default function NotificationBell() {
     'absolute right-0 mt-2 w-80 max-w-[calc(100vw-1.5rem)] bg-white rounded-2xl shadow-xl border border-gray-100 z-[100] overflow-hidden flex flex-col min-w-0';
 
   const mobilePanelClass =
-    'fixed z-[200] top-[calc(4rem+env(safe-area-inset-top,0px))] max-h-[min(85dvh,640px)] flex flex-col min-w-0 overflow-hidden bg-white rounded-2xl shadow-xl border border-gray-100 ' +
+    'fixed z-[200] max-h-[min(85dvh,640px)] flex flex-col min-w-0 overflow-hidden bg-white rounded-2xl shadow-xl border border-gray-100 ' +
     'left-[max(0.75rem,env(safe-area-inset-left,0px))] right-[max(0.75rem,env(safe-area-inset-right,0px))]';
+  const mobilePanelStyle = { top: mobilePanelTop || 0 };
 
   return (
     <div ref={containerRef} className="flex items-center gap-0.5">
@@ -748,7 +765,7 @@ export default function NotificationBell() {
           isMobileLayout &&
           typeof document !== 'undefined' &&
           createPortal(
-            <div ref={friendPanelRef} className={mobilePanelClass} role="dialog" aria-label="Friend requests">
+            <div ref={friendPanelRef} className={mobilePanelClass} style={mobilePanelStyle} role="dialog" aria-label="Friend requests">
               {friendDropdownBody}
             </div>,
             document.body,
@@ -787,7 +804,7 @@ export default function NotificationBell() {
           isMobileLayout &&
           typeof document !== 'undefined' &&
           createPortal(
-            <div ref={notifPanelRef} className={mobilePanelClass} role="dialog" aria-label="Notifications">
+            <div ref={notifPanelRef} className={mobilePanelClass} style={mobilePanelStyle} role="dialog" aria-label="Notifications">
               {notifDropdownBody}
             </div>,
             document.body,

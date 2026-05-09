@@ -462,7 +462,19 @@ export default function Tournaments() {
             { label: 'Upcoming', list: upcomingTournaments, upcoming: true },
             { label: 'Past', list: pastTournaments, upcoming: false },
           ].map(({ label, list, upcoming }) =>
-            list.length === 0 ? null : (
+            list.length === 0 ? (
+              <div key={label} className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <span className={`text-xs font-bold uppercase tracking-widest ${upcoming ? 'text-green-700' : 'text-gray-400'}`}>
+                    {label}
+                  </span>
+                  <div className={`flex-1 h-px ${upcoming ? 'bg-green-100' : 'bg-gray-200'}`} />
+                </div>
+                <p className="text-xs text-gray-400 text-center py-3">
+                  {upcoming ? 'No upcoming tournaments — add one to plan ahead.' : 'No past tournaments yet.'}
+                </p>
+              </div>
+            ) : (
               <div key={label} className="space-y-3 sm:space-y-4">
                 {/* Section header */}
                 <div className="flex items-center gap-3">

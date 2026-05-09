@@ -1,6 +1,9 @@
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
+import GoogleSignInButton from '../components/GoogleSignInButton';
+import LandingTournamentForm from '../components/LandingTournamentForm';
+import { InstallBanner } from '../components/InstallAppButton';
 
 const ArrowRight = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -84,6 +87,7 @@ const VisualCard = ({ src, alt }) => (
 /* ─── Landing Page ─────────────────────────────────────────── */
 export default function Landing() {
   const { user, authInitializing } = useAuth();
+  const navigate = useNavigate();
   const year = new Date().getFullYear();
   const supportEmail = 'pickletracker.app@gmail.com';
   const instagramUrl = 'https://www.instagram.com/pickletracker/';
@@ -96,10 +100,14 @@ export default function Landing() {
     );
   }
 
-  if (user) return <Navigate to="/home" replace />;
+  if (user) {
+    const pending = localStorage.getItem('pt_pending_tournament');
+    return <Navigate to={pending ? '/calendar' : '/home'} replace />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-white" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <InstallBanner />
 
       {/* ── Navbar ──────────────────────────────────────────── */}
       <header className="bg-white sticky top-0 z-20 border-b border-gray-100">
@@ -143,9 +151,23 @@ export default function Landing() {
                 </h1>
 
                 <p className="text-base sm:text-[1.1rem] text-slate-300 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
-                  Log every tournament, see your full schedule on a calendar, and get reminded the day before.{' '}
-                  <span className="text-white font-semibold">All in one place. Free forever.</span>
+                  Know exactly what pickleball is costing you — entry fees, travel, coaching — and whether your prize money covers it.{' '}
+                  <span className="text-white font-semibold">Free forever.</span>
                 </p>
+
+                {/* Google CTA — one-click, no form */}
+                <div className="max-w-xs mx-auto lg:mx-0 mb-4">
+                  <GoogleSignInButton
+                    onBegin={() => {}}
+                    onSuccess={() => navigate('/home')}
+                  />
+                </div>
+
+                <div className="flex items-center gap-3 justify-center lg:justify-start mb-4">
+                  <div className="flex-1 h-px bg-white/10 max-w-[80px]" />
+                  <span className="text-slate-500 text-xs">or</span>
+                  <div className="flex-1 h-px bg-white/10 max-w-[80px]" />
+                </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
                   <Link
@@ -153,7 +175,7 @@ export default function Landing() {
                     className="inline-flex items-center justify-center gap-2 hover:opacity-90 text-white font-bold px-8 py-3.5 rounded-lg text-sm tracking-wide transition-opacity shadow-lg shadow-black/30"
                     style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
                   >
-                    Start tracking free
+                    Sign up with email
                     <ArrowRight />
                   </Link>
                   <Link
@@ -163,14 +185,38 @@ export default function Landing() {
                     Sign in
                   </Link>
                 </div>
-                <p className="text-slate-500 text-xs mt-4">No credit card · No catch · Mobile-first</p>
+                <p className="text-slate-500 text-xs mt-4">Join 200+ players tracking their season · Free forever · No credit card</p>
               </div>
 
-              {/* Hero visual: calendar screenshot */}
+              {/* Hero visual: dashboard screenshot */}
               <div className="flex-shrink-0">
-                <VisualCard src="/landing/calendar.png" alt="PickleTracker calendar showing tournaments and sessions" />
+                <VisualCard src="/landing/dashboard.png" alt="PickleTracker dashboard showing profit, medal tally and monthly chart" />
               </div>
 
+            </div>
+          </div>
+        </section>
+
+        {/* ── HOW IT WORKS ────────────────────────────────────── */}
+        <section className="bg-white border-b border-gray-100 py-14 sm:py-16">
+          <div className="max-w-4xl mx-auto px-5 sm:px-8 text-center">
+            <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-[0.15em] mb-3">How it works</p>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#272702] mb-10 tracking-tight">Up and running in 60 seconds</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
+              {[
+                { step: '1', icon: '📝', title: 'Log a tournament', desc: 'Add the name, date, entry fee, category, and prize money. Takes under a minute.' },
+                { step: '2', icon: '📊', title: 'See your real numbers', desc: 'Dashboard shows profit vs. spend, medal tally, and monthly chart — instantly.' },
+                { step: '3', icon: '🔔', title: 'Get reminded automatically', desc: 'Day-before email + push notification so you never miss a tournament start.' },
+              ].map(({ step, icon, title, desc }) => (
+                <div key={step} className="flex flex-col items-center">
+                  <div className="w-12 h-12 rounded-full bg-[#f4f8e8] border-2 border-[#91BE4D]/30 flex items-center justify-center mb-3 text-xl">
+                    {icon}
+                  </div>
+                  <div className="text-[10px] font-black text-[#91BE4D] uppercase tracking-widest mb-1">Step {step}</div>
+                  <h3 className="text-base font-bold text-[#272702] mb-1.5">{title}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed max-w-xs">{desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -313,66 +359,51 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* ── Who It's For ─────────────────────────────────────── */}
-        <section className="bg-white py-16 sm:py-20">
-          <div className="max-w-6xl mx-auto px-5 sm:px-8">
-            <div className="text-center mb-10">
-              <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-[0.15em] mb-3">Who it's for</p>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#272702] leading-tight tracking-tight">
-                Your role. Your features.
-              </h2>
-              <p className="text-gray-500 text-sm mt-3 max-w-xl mx-auto leading-relaxed">
-                Pick your role on signup — the app shows only what's relevant to you.
-              </p>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-3xl mx-auto">
-              <div className="bg-white rounded-2xl border-2 border-[#91BE4D]/30 p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-28 h-28 bg-[#91BE4D] opacity-5 rounded-full blur-2xl" />
-                <div className="w-11 h-11 rounded-xl bg-[#f4f8e8] flex items-center justify-center mb-4">
-                  <svg className="w-6 h-6 text-[#4a6e10]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                    <circle cx="12" cy="8" r="4" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                  </svg>
-                </div>
-                <div className="inline-block bg-[#91BE4D] text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider mb-3">Player</div>
-                <h3 className="text-lg font-extrabold text-[#1c350a] mb-2 leading-snug">Know if pickleball is paying you — or costing you</h3>
-                <ul className="space-y-2 mb-5">
-                  {['Track prize money vs. entry fees', 'See which category earns more', 'Log practice sessions, court fees & travel', 'Track gear spend — paddles, shoes', 'Full calendar view of your season'].map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
-                      <Check />{f}
-                    </li>
-                  ))}
-                </ul>
-                <Link to="/signup" className="inline-flex items-center gap-1.5 text-sm font-bold text-[#4a6e10] hover:text-[#2d7005] transition-colors">
-                  Get started as a Player <ArrowRight />
-                </Link>
-              </div>
+        {/* ── Log First Tournament CTA ────────────────────────── */}
+        <section className="bg-[#1c350a] py-16 sm:py-20 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-[#91BE4D] opacity-[0.07] rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#ec9937] opacity-[0.06] rounded-full blur-3xl" />
+          <div className="relative max-w-5xl mx-auto px-5 sm:px-8">
+            <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
 
-              <div className="bg-white rounded-2xl border-2 border-green-200 p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-28 h-28 bg-green-400 opacity-5 rounded-full blur-2xl" />
-                <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center mb-4">
-                  <svg className="w-6 h-6 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422A12.083 12.083 0 0121 13c0 3.314-4.03 6-9 6S3 16.314 3 13c0-.235.01-.469.03-.7L9 14z" />
-                  </svg>
-                </div>
-                <div className="inline-block bg-green-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider mb-3">Coach</div>
-                <h3 className="text-lg font-extrabold text-[#1c350a] mb-2 leading-snug">Know exactly what your coaching is worth</h3>
-                <ul className="space-y-2 mb-5">
-                  {['Log private, group, or monthly coaching', 'Record income and any costs', 'See coaching in dashboard totals', 'Optionally track totals by student', 'Everything a player gets — plus coaching'].map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
-                      <svg className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              {/* Left: copy */}
+              <div className="flex-1 text-center lg:text-left">
+                <span className="inline-block bg-[#91BE4D]/15 border border-[#91BE4D]/25 text-[#91BE4D] text-[11px] font-bold px-3 py-1.5 rounded-full mb-5 tracking-[0.12em] uppercase">
+                  Try it right now — no account needed
+                </span>
+                <h2 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight tracking-tight mb-4">
+                  Log your next tournament<br />
+                  <span className="text-[#ec9937]">before you sign up.</span>
+                </h2>
+                <p className="text-slate-300 text-base sm:text-lg leading-relaxed mb-6 max-w-md mx-auto lg:mx-0">
+                  Fill in the details below. We'll save your tournament automatically when you sign in with Google — your data is ready the moment you land in the app.
+                </p>
+                <ul className="space-y-2 max-w-xs mx-auto lg:mx-0 text-left">
+                  {[
+                    'Tournament saved instantly after login',
+                    'No password, no forms — just Google',
+                    'Free forever, nothing to pay',
+                  ].map((item) => (
+                    <li key={item} className="flex items-center gap-2.5 text-sm text-slate-300">
+                      <svg className="w-4 h-4 text-[#91BE4D] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
-                      {f}
+                      {item}
                     </li>
                   ))}
                 </ul>
-                <Link to="/signup" className="inline-flex items-center gap-1.5 text-sm font-bold text-green-700 hover:text-green-800 transition-colors">
-                  Get started as a Coach <ArrowRight />
-                </Link>
               </div>
+
+              {/* Right: form card */}
+              <div className="w-full max-w-sm flex-shrink-0">
+                <div className="bg-white rounded-2xl shadow-2xl shadow-black/30 p-6">
+                  <h3 className="text-base font-bold text-[#272702] mb-1">Log your tournament</h3>
+                  <p className="text-xs text-gray-400 mb-5">Takes 30 seconds. Data saves on sign-in.</p>
+                  <LandingTournamentForm />
+                </div>
+              </div>
+
             </div>
           </div>
         </section>

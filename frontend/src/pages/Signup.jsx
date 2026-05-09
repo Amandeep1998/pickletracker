@@ -59,7 +59,7 @@ export default function Signup() {
   const strength = useMemo(() => evaluatePasswordStrength(form.password), [form.password]);
 
   useEffect(() => {
-    if (user) navigate('/home', { replace: true });
+    if (user) navigate(user.onboardingDone ? '/home' : '/welcome', { replace: true });
   }, [user, navigate]);
 
   const handleChange = (e) => {
@@ -129,7 +129,7 @@ export default function Signup() {
                     setError('');
                     clearError();
                   }}
-                  onSuccess={() => navigate('/home')}
+                  onSuccess={() => {/* useEffect handles redirect based on onboardingDone */}}
                 />
               </div>
             </div>

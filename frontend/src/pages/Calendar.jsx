@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import posthog from 'posthog-js';
 import * as api from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -56,6 +57,7 @@ const SESSION_LABEL = { casual: 'Casual', practice: 'Drill', tournament: 'Tourna
 
 export default function Calendar() {
   const { user } = useAuth();
+  const location = useLocation();
   const currency = useCurrency();
   const symbol = getCurrencySymbol(currency);
   const today = new Date();
@@ -85,6 +87,18 @@ export default function Calendar() {
   // Add tournament modal
   const [addModal, setAddModal] = useState({ open: false, date: null });
   const [addError, setAddError] = useState('');
+
+  // Auto-open modal when navigated from mobile bottom nav FAB
+  useEffect(() => {
+    const openAdd = location.state?.openAdd;
+    if (openAdd === 'tournament') {
+      setAddModal({ open: true, date: todayStr });
+    } else if (openAdd === 'session') {
+      setAddSessionModal({ open: true, date: todayStr, sessionType: null });
+    }
+  // Run once on mount only — todayStr is stable
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Add session modal
   const [addSessionModal, setAddSessionModal] = useState({ open: false, date: null, sessionType: null });
@@ -736,131 +750,6 @@ export default function Calendar() {
         </div>
       )}
 
-      {/* Hero — layered gradient, glass accents, month chip */}
-      <div className="relative mb-4 rounded-3xl overflow-hidden shadow-xl shadow-[#0f2006]/25 ring-1 ring-white/15">
-        <div
-          className="absolute inset-0"
-          style={{
-            background: 'linear-gradient(145deg, #0a1404 0%, #1c350a 38%, #2d6e05 62%, #6b3d0a 100%)',
-          }}
-        />
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%2280%22%20height=%2280%22%3E%3Cfilter%20id=%22n%22%3E%3CfeTurbulence%20type=%22fractalNoise%22%20baseFrequency=%220.9%22%20numOctaves=%223%22%20stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect%20width=%2280%22%20height=%2280%22%20filter=%22url(%23n)%22%20opacity=%220.04%22/%3E%3C/svg%3E')]" />
-        <div className="absolute -right-24 -top-20 w-72 h-72 rounded-full bg-[#91BE4D]/25 blur-3xl pointer-events-none" />
-        <div className="absolute -left-20 top-1/2 -translate-y-1/2 w-56 h-56 rounded-full bg-[#ec9937]/20 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
-
-        <div className="relative px-5 py-5 sm:px-8 sm:py-7">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-5">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                <span className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-[#c8e875]">PickleTracker</span>
-                <span className="text-white/25 hidden sm:inline">·</span>
-                <span className="inline-flex items-center rounded-full bg-white/10 border border-white/20 px-2.5 py-0.5 text-[10px] sm:text-xs font-bold text-white/90 backdrop-blur-sm">
-                  {monthName}
-                </span>
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight leading-[1.1]">
-                Calendar
-              </h1>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-              <div className="hidden sm:flex h-24 w-24 rounded-2xl bg-white/[0.07] border border-white/15 items-center justify-center backdrop-blur-md shadow-inner">
-                <svg width="56" height="56" viewBox="0 0 64 64" fill="none" aria-hidden="true" className="opacity-90">
-                  <rect x="4" y="10" width="56" height="50" rx="8" stroke="white" strokeOpacity="0.35" strokeWidth="1.5"/>
-                  <path d="M4 24h56" stroke="white" strokeOpacity="0.3" strokeWidth="1.5"/>
-                  <path d="M22 4v12M42 4v12" stroke="#c8e875" strokeOpacity="0.9" strokeWidth="2" strokeLinecap="round"/>
-                  <rect x="14" y="30" width="10" height="10" rx="2" fill="#91BE4D" fillOpacity="0.85"/>
-                  <rect x="27" y="30" width="10" height="10" rx="2" fill="#ec9937" fillOpacity="0.75"/>
-                  <rect x="40" y="30" width="10" height="10" rx="2" fill="#60a5fa" fillOpacity="0.7"/>
-                  <rect x="14" y="44" width="10" height="10" rx="2" fill="#a78bfa" fillOpacity="0.65"/>
-                </svg>
-              </div>
-
-              {pushSupported && pushPermission !== 'denied' && pushChecking && (
-                <div
-                  className="inline-flex items-center gap-3 rounded-2xl px-4 py-3 border border-white/15 bg-white/5 w-full sm:w-auto justify-between sm:justify-start animate-pulse"
-                  aria-busy="true"
-                  aria-label="Loading reminder settings"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-xl bg-white/15 flex-shrink-0" />
-                    <div className="space-y-2 min-w-0 flex-1 text-left">
-                      <div className="h-3.5 rounded-md bg-white/20 w-28 max-w-full" />
-                      <div className="h-2.5 rounded-md bg-white/12 w-[min(100%,11rem)]" />
-                    </div>
-                  </div>
-                  <div className="h-7 w-12 shrink-0 rounded-full bg-white/15" />
-                </div>
-              )}
-              {pushSupported && pushPermission !== 'denied' && !pushChecking && (
-                <button
-                  type="button"
-                  aria-pressed={isReminderOn}
-                  aria-label={
-                    pushLoading
-                      ? 'Updating reminders'
-                      : isReminderOn
-                        ? 'Turn off tournament reminders'
-                        : 'Turn on tournament reminders'
-                  }
-                  onClick={handleTogglePush}
-                  disabled={pushLoading}
-                  className={`inline-flex items-center gap-3 rounded-2xl px-4 py-3 transition-all active:scale-[0.98] disabled:opacity-60 border w-full sm:w-auto justify-between sm:justify-start ${
-                    isReminderOn
-                      ? 'bg-white/10 border-white/20 hover:bg-white/15'
-                      : 'bg-amber-500/15 border-amber-300/35 hover:bg-amber-500/25'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${isReminderOn ? 'bg-[#91BE4D]/35' : 'bg-amber-400/30'}`}>
-                      <span className="text-lg leading-none">{isReminderOn ? '🔔' : '🔕'}</span>
-                    </div>
-                    <div className="text-left min-w-0">
-                      <p className={`text-xs font-extrabold leading-tight ${isReminderOn ? 'text-[#d4f5a8]' : 'text-amber-100'}`}>
-                        {pushLoading
-                          ? (isReminderOn ? 'Turning off…' : 'Enabling…')
-                          : isReminderOn
-                            ? 'Reminders on'
-                            : 'Tournament reminders'}
-                      </p>
-                      <p className="text-[10px] text-white/45 leading-snug mt-0.5">
-                        {isReminderOn ? 'Tap or use switch to turn off' : 'Day-before alerts for upcoming events'}
-                      </p>
-                    </div>
-                  </div>
-                  {/* Visible on/off switch */}
-                  <span
-                    className={`relative ml-1 h-7 w-12 shrink-0 rounded-full p-0.5 transition-colors duration-200 ease-out pointer-events-none ${
-                      isReminderOn ? 'bg-[#91BE4D] ring-1 ring-white/30' : 'bg-white/20 ring-1 ring-white/25'
-                    }`}
-                    aria-hidden
-                  >
-                    <span
-                      className={`block h-6 w-6 rounded-full bg-white shadow-md transition-transform duration-200 ease-out ${
-                        isReminderOn ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </span>
-                </button>
-              )}
-              {!pushSupported && pushSupportMessage && (
-                <div
-                  className="inline-flex items-start gap-2.5 rounded-2xl px-3.5 py-2.5 border border-amber-300/35 bg-amber-950/25 w-full sm:max-w-md text-left"
-                  role="status"
-                >
-                  <span className="text-base leading-none mt-0.5 flex-shrink-0" aria-hidden>ℹ️</span>
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-bold text-amber-100">Reminders unavailable in this view</p>
-                    <p className="text-[10px] text-amber-50/85 leading-snug mt-1">{pushSupportMessage}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Monthly money summary — accordion (collapsed by default) */}
       <div className="bg-white rounded-2xl border border-gray-200/90 shadow-sm mb-4 overflow-hidden">
         <button
@@ -1144,6 +1033,17 @@ export default function Calendar() {
         </div>
 
       </div>
+
+      {/* ── No upcoming events nudge ── */}
+      {upcomingEvents.length === 0 && (sessions.length > 0 || tournaments.length > 0) && (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-200 px-4 py-5 mb-4 flex flex-col items-center text-center">
+          <p className="text-2xl mb-2">📅</p>
+          <p className="text-sm font-bold text-gray-700 mb-1">Nothing coming up</p>
+          <p className="text-xs text-gray-400 mb-3">
+            No sessions or tournaments scheduled ahead. Tap any future date to add one.
+          </p>
+        </div>
+      )}
 
       {/* ── Upcoming Events ── */}
       {upcomingEvents.length > 0 && (
@@ -1767,7 +1667,7 @@ export default function Calendar() {
       )}
 
       <div
-        className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 flex flex-col items-end gap-2.5 z-50"
+        className="hidden lg:flex fixed bottom-5 right-5 sm:bottom-6 sm:right-6 flex-col items-end gap-2.5 z-50"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Speed-dial options */}

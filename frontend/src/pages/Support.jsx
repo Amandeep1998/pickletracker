@@ -101,6 +101,19 @@ export default function Support() {
     }
   };
 
+  const handleDelete = async (id) => {
+    setDeletingId(id);
+    try {
+      await api.deleteSupportTicket(id);
+      setTickets((prev) => prev.filter((t) => t._id !== id));
+      setConfirmDeleteId(null);
+    } catch {
+      // silent — user can retry
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const charsLeft = 4000 - message.length;
 
   return (
@@ -263,9 +276,39 @@ export default function Support() {
                       </p>
                     </div>
                   )}
-                  <p className="text-[11px] text-gray-400 mt-2">
-                    Sent {formatTimestamp(t.createdAt)}
-                  </p>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-[11px] text-gray-400">
+                      Sent {formatTimestamp(t.createdAt)}
+                    </p>
+                    {confirmDeleteId === t._id ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-gray-500">Delete this?</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(t._id)}
+                          disabled={deletingId === t._id}
+                          className="text-[11px] font-bold text-red-600 hover:text-red-700 disabled:opacity-50"
+                        >
+                          {deletingId === t._id ? 'Deleting…' : 'Yes, delete'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="text-[11px] text-gray-400 hover:text-gray-600"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(t._id)}
+                        className="text-[11px] text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </li>
               );
             })}

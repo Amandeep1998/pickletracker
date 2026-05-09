@@ -119,7 +119,7 @@ export default function MobileMenu({ onOpenLocationModal }) {
         </div>
 
         {/* Footer — minimal: city + install + logout */}
-        <div className="flex-shrink-0 border-t border-gray-100 bg-gray-50/60 px-4 py-2.5 space-y-1.5">
+        <div className="flex-shrink-0 border-t border-gray-100 bg-gray-50/60 px-4 pt-2.5 space-y-1.5" style={{ paddingBottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))' }}>
           <button
             onClick={() => { setIsOpen(false); onOpenLocationModal?.(); }}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white hover:border-[#91BE4D] hover:bg-[#f4f8e8] transition-colors text-left"

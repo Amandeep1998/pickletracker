@@ -884,6 +884,20 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* Filtered period empty state */}
+      {(tournaments.length > 0 || coachingIncomes.length > 0 || allSessions.length > 0 || expenses.length > 0) &&
+        filteredTournaments.length === 0 && filteredSessions.length === 0 && filteredCoachingIncomes.length === 0 && filteredExpenses.length === 0 && (
+        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-6 text-center mb-6">
+          <p className="text-2xl mb-2">📭</p>
+          <p className="text-sm font-bold text-gray-700 mb-1">
+            No data for {filterMonth !== '' ? `${MONTHS[Number(filterMonth)]} ` : ''}{filterYear}
+          </p>
+          <p className="text-xs text-gray-400">
+            Nothing recorded in this period. Try a different year or month.
+          </p>
+        </div>
+      )}
+
       {/* Monthly Chart */}
       {(tournaments.length > 0 || coachingIncomes.length > 0) && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-6 mb-6">
@@ -1066,11 +1080,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {tournaments.length > 0 && filteredTournaments.length === 0 && (
-        <div className="mt-6 text-center text-gray-400 text-sm">
-          No tournaments found for the selected period.
-        </div>
-      )}
 
       {shareModalOpen && (
         <TournamentShareModal

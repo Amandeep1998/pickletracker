@@ -23,6 +23,7 @@ import Coach from './pages/Coach';
 import CoachHub from './pages/CoachHub';
 import Home from './pages/Home';
 import Support from './pages/Support';
+import Welcome from './pages/Welcome';
 export default function App() {
   return (
     <AuthProvider>
@@ -39,6 +40,7 @@ export default function App() {
 
         {/* Protected routes */}
         <Route element={<PrivateRoute />}>
+          <Route path="/welcome" element={<Welcome />} />
           <Route path="/home" element={<Home />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/tournaments" element={<Tournaments />} />
