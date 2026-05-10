@@ -1,5 +1,5 @@
-import { useState, useSyncExternalStore } from 'react';
-import { isStandaloneDisplay, readPwaInstalled } from '../utils/displayMode';
+import { useState, useEffect, useSyncExternalStore } from 'react';
+import { isStandaloneDisplay, readPwaInstalled, markPwaInstalled } from '../utils/displayMode';
 import {
   subscribePwaInstallPrompt,
   getPwaInstallPromptSnapshot,
@@ -138,8 +138,22 @@ function useInstallPrompt() {
   );
   const { isAndroid, isChromeiOS, isSafariIOS, isAndroidFirefox, isStandalone } = detectBrowser();
   const [installing, setInstalling] = useState(false);
+  const [detectedByApi, setDetectedByApi] = useState(false);
 
-  const isInstalledFlag = readPwaInstalled();
+  // Async check via getInstalledRelatedApps (Chrome Android/Desktop 84+).
+  // Catches installs that happened without our banner (ambient badge, different tab, etc.)
+  useEffect(() => {
+    if (isStandalone) return;
+    if (typeof navigator === 'undefined' || typeof navigator.getInstalledRelatedApps !== 'function') return;
+    navigator.getInstalledRelatedApps().then((apps) => {
+      if (apps && apps.length > 0) {
+        markPwaInstalled();
+        setDetectedByApi(true);
+      }
+    }).catch(() => {});
+  }, [isStandalone]);
+
+  const isInstalledFlag = readPwaInstalled() || detectedByApi;
   // Only show "Open App" when browsing in regular browser AND app is known installed
   const isInstalled = isInstalledFlag && !isStandalone;
 
@@ -276,14 +290,19 @@ const STEPS = {
   },
 };
 
-function InstallModal({ browserType, onClose }) {
+function InstallModal({ browserType, onClose, onInstalled }) {
   const config = STEPS[browserType];
   if (!config) return null;
+
+  const handleClose = () => {
+    onInstalled?.();
+    onClose();
+  };
 
   return (
     <div
       className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={handleClose}
       role="presentation"
     >
       <div
@@ -304,7 +323,7 @@ function InstallModal({ browserType, onClose }) {
             <p className="text-[#91BE4D] text-xs font-medium mt-0.5">{config.label}</p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="flex-shrink-0 text-white/50 hover:text-white p-1.5 rounded-lg transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -343,7 +362,7 @@ function InstallModal({ browserType, onClose }) {
         {/* Footer — .install-modal-footer: cascade safe-area for older WebKit */}
         <div className="px-5 install-modal-footer">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-full py-3 rounded-xl text-sm font-bold text-white transition-opacity hover:opacity-90"
             style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
           >
@@ -357,8 +376,11 @@ function InstallModal({ browserType, onClose }) {
 
 // ── Compact button (Navbar / MobileMenu) ──────────────────────────────────────
 export default function InstallAppButton({ variant = 'default', compact = false }) {
-  const { action, browserType, trigger, isInstalled, installing } = useInstallPrompt();
+  const { action, browserType, trigger, isInstalled: isInstalledFromHook, installing } = useInstallPrompt();
   const [showModal, setShowModal] = useState(false);
+  const [manuallyMarkedInstalled, setManuallyMarkedInstalled] = useState(false);
+
+  const isInstalled = isInstalledFromHook || manuallyMarkedInstalled;
 
   if (!action && !isInstalled) return null;
 
@@ -366,6 +388,11 @@ export default function InstallAppButton({ variant = 'default', compact = false 
     if (isInstalled) { openInstalledPwa(); return; }
     if (action === 'native') { trigger(); return; }
     setShowModal(true);
+  };
+
+  const handleModalInstalled = () => {
+    markPwaInstalled();
+    setManuallyMarkedInstalled(true);
   };
 
   const nativeHint =
@@ -429,7 +456,7 @@ export default function InstallAppButton({ variant = 'default', compact = false 
           {inner}
         </button>
       )}
-      {showModal && <InstallModal browserType={browserType} onClose={() => setShowModal(false)} />}
+      {showModal && <InstallModal browserType={browserType} onClose={() => setShowModal(false)} onInstalled={handleModalInstalled} />}
     </>
   );
 }
@@ -443,9 +470,12 @@ function writeBannerDismissed() {
 }
 
 export function InstallBanner() {
-  const { action, browserType, trigger, isInstalled, installing, isStandalone } = useInstallPrompt();
+  const { action, browserType, trigger, isInstalled: isInstalledFromHook, installing, isStandalone } = useInstallPrompt();
   const [dismissed, setDismissed] = useState(readBannerDismissed);
   const [showModal, setShowModal] = useState(false);
+  const [manuallyMarkedInstalled, setManuallyMarkedInstalled] = useState(false);
+
+  const isInstalled = isInstalledFromHook || manuallyMarkedInstalled;
 
   // Never show banner when already running as installed PWA
   if (isStandalone || (!action && !isInstalled) || dismissed) return null;
@@ -456,6 +486,11 @@ export function InstallBanner() {
     if (isInstalled) { openInstalledPwa(); return; }
     if (action === 'native') { trigger(dismiss); return; }
     setShowModal(true);
+  };
+
+  const handleModalInstalled = () => {
+    markPwaInstalled();
+    setManuallyMarkedInstalled(true);
   };
 
   const subtitleText = installing
@@ -472,7 +507,7 @@ export function InstallBanner() {
     ? 'Installing…'
     : isInstalled
       ? 'Open App'
-      : 'Use App';
+      : 'Install';
 
   return (
     <>
@@ -528,7 +563,7 @@ export function InstallBanner() {
           </button>
         </div>
       </div>
-      {showModal && <InstallModal browserType={browserType} onClose={() => setShowModal(false)} />}
+      {showModal && <InstallModal browserType={browserType} onClose={() => setShowModal(false)} onInstalled={handleModalInstalled} />}
     </>
   );
 }
@@ -549,9 +584,12 @@ function writeInstallCardDismissed() {
 }
 
 export function InstallAppCard() {
-  const { action, browserType, trigger, isInstalled, installing } = useInstallPrompt();
+  const { action, browserType, trigger, isInstalled: isInstalledFromHook, installing } = useInstallPrompt();
   const [showModal, setShowModal] = useState(false);
   const [dismissed, setDismissed] = useState(readInstallCardDismissed);
+  const [manuallyMarkedInstalled, setManuallyMarkedInstalled] = useState(false);
+
+  const isInstalled = isInstalledFromHook || manuallyMarkedInstalled;
 
   if ((!action && !isInstalled) || dismissed) return null;
 
@@ -564,6 +602,11 @@ export function InstallAppCard() {
     if (isInstalled) { openInstalledPwa(); return; }
     if (action === 'native') { trigger(dismiss); return; }
     setShowModal(true);
+  };
+
+  const handleModalInstalled = () => {
+    markPwaInstalled();
+    setManuallyMarkedInstalled(true);
   };
 
   const isIOS = browserType === 'ios-safari' || browserType === 'ios-chrome';
@@ -657,7 +700,7 @@ export function InstallAppCard() {
         </div>
       </div>
 
-      {showModal && <InstallModal browserType={browserType} onClose={() => setShowModal(false)} />}
+      {showModal && <InstallModal browserType={browserType} onClose={() => setShowModal(false)} onInstalled={handleModalInstalled} />}
     </>
   );
 }
