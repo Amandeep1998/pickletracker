@@ -92,10 +92,10 @@ export default function MobileMenu({ onOpenLocationModal }) {
         <div className="relative flex-1 min-h-0">
           <nav className="h-full overflow-y-auto pt-1 pb-1 space-y-0">
             <NavLink to="/home"        className={navLinkClass} onClick={() => setIsOpen(false)}>Home</NavLink>
-            <NavLink to="/achievements" className={navLinkClass} onClick={() => setIsOpen(false)}>Trophies</NavLink>
             <NavLink to="/dashboard"   className={navLinkClass} onClick={() => setIsOpen(false)}>Dashboard</NavLink>
             <NavLink to="/tournaments" className={navLinkClass} onClick={() => setIsOpen(false)}>Tournaments</NavLink>
             <NavLink to="/calendar"    className={navLinkClass} onClick={() => setIsOpen(false)}>Calendar</NavLink>
+            <NavLink to="/achievements" className={navLinkClass} onClick={() => setIsOpen(false)}>Rewards</NavLink>
             <NavLink to="/players"     className={navLinkClass} onClick={() => setIsOpen(false)}>Nearby Players</NavLink>
             <NavLink to="/sessions"    className={navLinkClass} onClick={() => setIsOpen(false)}>Performance Journal</NavLink>
             <NavLink to="/coach-hub" className={navLinkClass} onClick={() => setIsOpen(false)}>

@@ -128,6 +128,21 @@ export default function MobileBottomNav() {
                 <p className="text-xs text-gray-500 mt-0.5">Practice, drills, court fees</p>
               </div>
             </button>
+
+            <button
+              onClick={() => { setSheetOpen(false); navigate('/expenses', { state: { openAdd: true } }); }}
+              className="w-full flex items-center gap-3.5 p-3.5 rounded-xl hover:bg-blue-50 active:bg-blue-100 transition-colors text-left"
+            >
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #3b82f6, #60a5fa)' }}>
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-[#1c350a]">Log Gear Expense</p>
+                <p className="text-xs text-gray-500 mt-0.5">Paddle, shoes, equipment</p>
+              </div>
+            </button>
           </div>
           <div className="px-4 pb-3">
             <button
@@ -181,7 +196,7 @@ export default function MobileBottomNav() {
           </div>
 
           {navItem('/dashboard', 'Stats', <ChartIcon active={isActive('/dashboard')} />)}
-          {navItem('/profile', 'Profile', <UserIcon photoUrl={user?.profilePhoto} name={user?.name} active={isActive('/profile')} />)}
+          {navItem('/you', 'You', <UserIcon photoUrl={user?.profilePhoto} name={user?.name} active={isActive('/you')} />)}
         </div>
       </nav>
     </>

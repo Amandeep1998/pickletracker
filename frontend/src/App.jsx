@@ -25,6 +25,7 @@ import Home from './pages/Home';
 import Support from './pages/Support';
 import Welcome from './pages/Welcome';
 import Achievements from './pages/Achievements';
+import You from './pages/You';
 import AchievementUnlockModal from './components/AchievementUnlockModal';
 export default function App() {
   return (
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="/coaching-income" element={<Navigate to="/coach-hub" replace />} />
           <Route path="/support" element={<Support />} />
           <Route path="/achievements" element={<Achievements />} />
+          <Route path="/you" element={<You />} />
           <Route path="/admin" element={<Admin />} />
         </Route>
 

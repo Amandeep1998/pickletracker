@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import * as api from '../services/api';
 import Modal from '../components/Modal';
 import ExpenseForm from '../components/ExpenseForm';
@@ -8,6 +9,7 @@ import PaddleLoader from '../components/PaddleLoader';
 
 export default function Expenses() {
   const currency = useCurrency();
+  const location = useLocation();
   const [expenses, setExpenses] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
@@ -30,6 +32,11 @@ export default function Expenses() {
   };
 
   useEffect(() => { fetchExpenses(); }, []);
+
+  useEffect(() => {
+    if (location.state?.openAdd) setModalOpen(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openAdd  = () => { setMode('add');  setSelectedExpense(null); setApiError(''); setModalOpen(true); };
   const openEdit = (e) => { setMode('edit'); setSelectedExpense(e);    setApiError(''); setModalOpen(true); };
