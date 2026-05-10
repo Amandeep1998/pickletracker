@@ -155,7 +155,7 @@ function AchievementSlide({ achievement, index, total, onNext, onClose }) {
           className="w-full py-3 rounded-xl font-bold text-sm text-white transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 60%, #ec9937)' }}
         >
-          {isLast ? 'Close' : `Next  (${index + 2} of ${total})`}
+          {isLast ? 'Close' : 'Next →'}
         </button>
 
         <button
