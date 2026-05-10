@@ -762,14 +762,14 @@ export default function Dashboard() {
       {/* Quick Actions */}
       <div className="grid gap-2 mb-4 grid-cols-3">
         <button
-          onClick={() => navigate('/sessions')}
+          onClick={() => navigate('/calendar', { state: { openAdd: 'session' } })}
           className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-[#91BE4D]/30 bg-[#91BE4D]/5 hover:bg-[#91BE4D]/10 transition-colors text-center"
         >
           <span className="text-xl">🎯</span>
           <span className="text-xs font-bold text-[#4a6e10] leading-tight text-center">Casual Play / Drill</span>
         </button>
         <button
-          onClick={() => navigate('/tournaments')}
+          onClick={() => navigate('/calendar', { state: { openAdd: 'tournament' } })}
           className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-[#ec9937]/30 bg-[#ec9937]/5 hover:bg-[#ec9937]/10 transition-colors text-center"
         >
           <span className="text-xl">🏆</span>
@@ -832,13 +832,13 @@ export default function Dashboard() {
 
         <div className="relative px-4 pb-3 space-y-2">
           {upcomingTournaments.length === 0 ? (
-            <NavLink
-              to="/tournaments"
-              className="block text-center text-xs font-bold py-2.5 rounded-xl transition-colors"
+            <button
+              onClick={() => navigate('/calendar', { state: { openAdd: 'tournament' } })}
+              className="block w-full text-center text-xs font-bold py-2.5 rounded-xl transition-colors"
               style={{ color: '#c8e875', border: '1px solid rgba(145,190,77,0.3)', background: 'rgba(255,255,255,0.04)' }}
             >
               + Add a tournament
-            </NavLink>
+            </button>
           ) : (
             upcomingTournaments.slice(0, 4).map((item, i) => {
               const d = new Date(item.earliestDate + 'T00:00:00');
@@ -999,14 +999,14 @@ export default function Dashboard() {
           </p>
           <div className="flex gap-2 justify-center flex-wrap">
             <button
-              onClick={() => navigate('/tournaments')}
+              onClick={() => navigate('/calendar', { state: { openAdd: 'tournament' } })}
               className="text-xs font-bold px-4 py-2 rounded-lg text-white hover:opacity-90 transition-opacity"
               style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}
             >
               + Add Tournament
             </button>
             <button
-              onClick={() => navigate('/sessions')}
+              onClick={() => navigate('/calendar', { state: { openAdd: 'session' } })}
               className="text-xs font-bold px-4 py-2 rounded-lg border-2 border-[#91BE4D]/40 text-[#4a6e10] hover:bg-[#91BE4D]/5 transition-colors"
             >
               + Casual Play / Drill

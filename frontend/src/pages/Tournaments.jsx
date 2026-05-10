@@ -6,7 +6,7 @@ import { formatCurrency, MEDAL_COLORS } from '../utils/format';
 import useCurrency from '../hooks/useCurrency';
 import { getMapUrl } from '../utils/mapUrl';
 import { syncTournamentToCalendar, deleteTournamentFromCalendar, isCalendarConnected } from '../services/googleCalendar';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import PaddleLoader from '../components/PaddleLoader';
 import SaveCelebrationModal from '../components/SaveCelebrationModal';
@@ -19,6 +19,7 @@ import {
 
 export default function Tournaments() {
   const currency = useCurrency();
+  const navigate = useNavigate();
   const [tournaments, setTournaments] = useState([]);
   const [loadingList, setLoadingList] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
@@ -396,7 +397,7 @@ export default function Tournaments() {
             </button>
           )}
           <button
-            onClick={openAddModal}
+            onClick={() => navigate('/calendar', { state: { openAdd: 'tournament' } })}
             className="hover:opacity-90 text-white text-xs sm:text-sm font-bold px-4 py-2 min-h-[40px] rounded tracking-wide transition-opacity shadow-lg shadow-black/30"
             style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
           >
@@ -444,7 +445,7 @@ export default function Tournaments() {
             Add your first tournament to start tracking your matches, entry fees, and prize money.
           </p>
           <button
-            onClick={openAddModal}
+            onClick={() => navigate('/calendar', { state: { openAdd: 'tournament' } })}
             className="hover:opacity-90 text-white font-bold px-6 py-3 rounded-xl text-sm tracking-wide transition-opacity shadow-md"
             style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
           >
