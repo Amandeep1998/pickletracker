@@ -148,6 +148,14 @@ export const getCoachStudents = () => api.get('/coach-students');
 export const upsertCoachStudents = (names) => api.post('/coach-students/upsert', { names });
 export const deleteCoachStudent = (id) => api.delete(`/coach-students/${id}`);
 
+// Gamification
+export const getGamificationProgress = () => api.get('/gamification/progress');
+export const getAchievements = () => api.get('/gamification/achievements');
+export const triggerAchievementCheck = () => api.post('/gamification/check');
+export const markAchievementShared = (id) => api.post(`/gamification/achievements/${id}/share`);
+export const getGamificationFeed = (params) => api.get('/gamification/feed', { params });
+export const toggleGamificationReaction = (itemId, emoji) => api.post(`/gamification/feed/${itemId}/react`, { emoji });
+
 // AI — document (URL or file)
 export const parseFromFile = (file, currentForm) => {
   const formData = new FormData();

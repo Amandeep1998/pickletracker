@@ -1,4 +1,5 @@
 const Expense = require('../models/Expense');
+const achievementService = require('../services/achievement.service');
 
 const getExpenses = async (req, res, next) => {
   try {
@@ -13,6 +14,7 @@ const createExpense = async (req, res, next) => {
   try {
     const expense = await Expense.create({ ...req.body, userId: req.user.id });
     res.status(201).json({ success: true, data: expense });
+    achievementService.checkAchievements(req.user.id).catch(() => {});
   } catch (err) {
     next(err);
   }

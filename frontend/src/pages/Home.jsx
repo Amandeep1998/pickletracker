@@ -172,6 +172,7 @@ export default function Home() {
   const [showSharePlayerCard, setShowSharePlayerCard] = useState(false);
   const [publicCardPlayer, setPublicCardPlayer] = useState(null);
   const [cardLoading, setCardLoading] = useState(false);
+  const [achievementFeed, setAchievementFeed] = useState([]);
 
   const loadPublicCardPreview = useCallback(async () => {
     if (!user?.id) return;
@@ -189,6 +190,12 @@ export default function Home() {
   useEffect(() => {
     loadPublicCardPreview();
   }, [loadPublicCardPreview]);
+
+  useEffect(() => {
+    api.getGamificationFeed()
+      .then((res) => setAchievementFeed((res.data.items || []).slice(0, 3)))
+      .catch(() => {});
+  }, []);
 
   const fetchFriendData = useCallback(async () => {
     try {
@@ -477,6 +484,49 @@ export default function Home() {
                 Log Tournament
               </button>
             ) : null}
+          </div>
+        )}
+
+        {/* Friends' Achievements */}
+        {achievementFeed.length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Friends' Achievements</p>
+            <div className="space-y-2">
+              {achievementFeed.map((item) => (
+                <div key={item._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
+                    style={{
+                      background: item.achievementTier === 'legendary' ? '#111'
+                        : item.achievementTier === 'epic' ? '#7c3aed'
+                        : item.achievementTier === 'rare' ? '#d97706'
+                        : '#e5e7eb'
+                    }}
+                  >
+                    {item.type === 'level_up' ? '⬆️' : (item.achievement?.icon || '🏆')}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-bold text-gray-900 truncate">{item.user?.name || 'Player'}</span>
+                      <span className="text-xs text-gray-500">
+                        {item.type === 'level_up' ? `reached Level ${item.newLevel}` : `unlocked ${item.achievement?.name || 'achievement'}`}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-0.5">
+                      {new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      {item.achievementTier && (
+                        <span className={`ml-2 font-bold uppercase ${
+                          item.achievementTier === 'legendary' ? 'text-yellow-500'
+                          : item.achievementTier === 'epic' ? 'text-purple-500'
+                          : item.achievementTier === 'rare' ? 'text-yellow-600'
+                          : 'text-gray-400'
+                        }`}>{item.achievementTier}</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

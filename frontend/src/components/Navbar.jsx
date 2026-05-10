@@ -66,6 +66,9 @@ export default function Navbar() {
               <NavLink to="/home" className={linkClass}>
                 Home
               </NavLink>
+              <NavLink to="/achievements" className={linkClass}>
+                Trophies
+              </NavLink>
               <NavLink to="/dashboard" className={linkClass}>
                 Dashboard
               </NavLink>

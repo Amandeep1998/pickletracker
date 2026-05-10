@@ -1,5 +1,6 @@
 const Tournament = require('../models/Tournament');
 const Expense = require('../models/Expense');
+const achievementService = require('../services/achievement.service');
 
 const getTournaments = async (req, res, next) => {
   try {
@@ -29,6 +30,7 @@ const createTournament = async (req, res, next) => {
   try {
     const tournament = await Tournament.create({ ...req.body, userId: req.user.id });
     res.status(201).json({ success: true, data: tournament });
+    achievementService.checkAchievements(req.user.id).catch(() => {});
   } catch (err) {
     next(err);
   }
@@ -47,6 +49,7 @@ const updateTournament = async (req, res, next) => {
     }
 
     res.status(200).json({ success: true, data: tournament });
+    achievementService.checkAchievements(req.user.id).catch(() => {});
   } catch (err) {
     next(err);
   }

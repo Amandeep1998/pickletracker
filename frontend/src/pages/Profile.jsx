@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import posthog from 'posthog-js';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import CityAutocomplete from '../components/CityAutocomplete';
@@ -37,6 +38,7 @@ const resizeImage = (file) =>
 
 export default function Profile() {
   const { user, refreshUser, handleLogout } = useAuth();
+  const navigate = useNavigate();
   const fileInputRef = useRef(null);
   const { permission, subscribed, checking: pushChecking, isSupported, pushSupportMessage, requestAndSubscribe, unsubscribe } = usePushNotifications();
   const [pushLoading, setPushLoading] = useState(false);
@@ -97,6 +99,7 @@ export default function Profile() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [gamificationProgress, setGamificationProgress] = useState(null);
 
   useEffect(() => {
     api.getProfile()
@@ -116,6 +119,12 @@ export default function Profile() {
       })
       .catch(() => setSaveError('Could not load profile.'))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    api.getGamificationProgress()
+      .then((res) => setGamificationProgress(res.data))
+      .catch(() => {});
   }, []);
 
   const handlePhotoChange = async (e) => {
@@ -382,6 +391,70 @@ export default function Profile() {
           )}
         </div>
       </div>
+
+      {/* Gamification — Level & XP */}
+      {gamificationProgress && (
+        <div
+          className="rounded-2xl px-5 py-4 mb-5 border border-[#91BE4D]/30"
+          style={{ background: 'linear-gradient(135deg, #f0f7e6 0%, #fef9ec 100%)' }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-12 h-12 rounded-xl flex flex-col items-center justify-center flex-shrink-0 shadow-sm"
+                style={{ background: 'linear-gradient(135deg, #2d7005, #91BE4D)' }}
+              >
+                <span className="text-white font-black text-lg leading-none">{gamificationProgress.level}</span>
+                <span className="text-white/70 text-[8px] uppercase tracking-wider leading-none">lvl</span>
+              </div>
+              <div>
+                <p className="text-sm font-extrabold text-[#1c350a]">{gamificationProgress.levelTitle}</p>
+                <p className="text-xs text-gray-500">{gamificationProgress.xp?.toLocaleString()} XP total</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/achievements')}
+              className="text-xs font-bold text-[#2d7005] hover:text-[#91BE4D] transition-colors flex items-center gap-1"
+            >
+              Achievements
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+          {/* XP progress bar */}
+          <div className="mb-2">
+            <div className="flex items-center justify-between text-[10px] text-gray-500 mb-1">
+              <span>Level {gamificationProgress.level}</span>
+              <span>{gamificationProgress.xpToNextLevel != null ? `${gamificationProgress.xpToNextLevel} XP to next level` : 'Max level!'}</span>
+              <span>Level {Math.min(gamificationProgress.level + 1, 20)}</span>
+            </div>
+            <div className="h-2 bg-white rounded-full overflow-hidden border border-[#91BE4D]/20">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: `${gamificationProgress.xpToNextLevel != null
+                    ? Math.min(100, Math.round(((gamificationProgress.xp - gamificationProgress.currentLevelXP) / (gamificationProgress.nextLevelXP - gamificationProgress.currentLevelXP)) * 100))
+                    : 100}%`,
+                  background: 'linear-gradient(to right, #2d7005, #91BE4D)',
+                }}
+              />
+            </div>
+          </div>
+          {/* Momentum badge */}
+          <div className="flex items-center gap-2 mt-2">
+            {gamificationProgress.momentum >= 70 ? (
+              <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2.5 py-1 rounded-full border border-orange-200">🔥 High Momentum</span>
+            ) : gamificationProgress.momentum >= 40 ? (
+              <span className="text-xs font-bold text-yellow-700 bg-yellow-50 px-2.5 py-1 rounded-full border border-yellow-200">⚡ Building</span>
+            ) : (
+              <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">😴 Resting</span>
+            )}
+            <span className="text-[10px] text-gray-400">Activity momentum</span>
+          </div>
+        </div>
+      )}
 
       {/* Profile strength — weighted 1–100% (email & phone count, never shown on public card) */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 mb-5">

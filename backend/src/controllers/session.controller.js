@@ -1,4 +1,5 @@
 const Session = require('../models/Session');
+const achievementService = require('../services/achievement.service');
 
 const getSessions = async (req, res, next) => {
   try {
@@ -13,6 +14,7 @@ const createSession = async (req, res, next) => {
   try {
     const session = await Session.create({ ...req.body, userId: req.user.id });
     res.status(201).json({ success: true, data: session });
+    achievementService.checkAchievements(req.user.id).catch(() => {});
   } catch (err) {
     next(err);
   }

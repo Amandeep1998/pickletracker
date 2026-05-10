@@ -24,11 +24,14 @@ import CoachHub from './pages/CoachHub';
 import Home from './pages/Home';
 import Support from './pages/Support';
 import Welcome from './pages/Welcome';
+import Achievements from './pages/Achievements';
+import AchievementUnlockModal from './components/AchievementUnlockModal';
 export default function App() {
   return (
     <AuthProvider>
       <SocketProvider>
       <ScrollToTop />
+      <AchievementUnlockModal />
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Landing />} />
@@ -54,6 +57,7 @@ export default function App() {
           <Route path="/coach-hub" element={<CoachHub />} />
           <Route path="/coaching-income" element={<Navigate to="/coach-hub" replace />} />
           <Route path="/support" element={<Support />} />
+          <Route path="/achievements" element={<Achievements />} />
           <Route path="/admin" element={<Admin />} />
         </Route>
 
