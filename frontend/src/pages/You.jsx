@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
@@ -63,13 +64,10 @@ function XPBar({ level, currentLevelXP, nextLevelXP, xp }) {
 function ProgressTab({ tournaments, gamificationProgress, achievements }) {
   const currency = useCurrency();
   const symbol = getCurrencySymbol(currency);
+  const navigate = useNavigate();
 
   const thisWeekStart = useMemo(() => getWeekStart(new Date()), []);
-  const thisWeekEnd = useMemo(() => {
-    const d = new Date(thisWeekStart);
-    d.setDate(d.getDate() + 7);
-    return d;
-  }, [thisWeekStart]);
+  const currentYear = new Date().getFullYear();
 
   const weeklyData = useMemo(() => {
     const weeks = [];
@@ -91,28 +89,45 @@ function ProgressTab({ tournaments, gamificationProgress, achievements }) {
     return weeks.map(({ label, count }) => ({ label, count }));
   }, [tournaments, thisWeekStart]);
 
-  const thisWeekTournaments = useMemo(() =>
+  const thisYearTournaments = useMemo(() =>
     tournaments.filter((t) => {
       const ds = getTournamentDate(t);
-      if (!ds) return false;
-      const d = new Date(ds);
-      return d >= thisWeekStart && d < thisWeekEnd;
-    }), [tournaments, thisWeekStart, thisWeekEnd]);
+      return ds && new Date(ds).getFullYear() === currentYear;
+    }), [tournaments, currentYear]);
 
-  const thisWeekMedals = thisWeekTournaments.reduce((acc, t) => {
+  const thisYearMedals = thisYearTournaments.reduce((acc, t) => {
     t.categories.forEach((c) => { if (c.medal && c.medal !== 'None') acc++; });
     return acc;
   }, 0);
 
-  const thisWeekEarnings = thisWeekTournaments.reduce((acc, t) =>
-    acc + t.categories.reduce((s, c) => s + (c.profit || 0), 0), 0);
+  const thisYearEarnings = thisYearTournaments.reduce((acc, t) =>
+    acc + t.categories.reduce((s, c) => s + (((c.prizeAmount || 0) - (c.entryFee || 0))), 0), 0);
 
-  const medalTally = useMemo(() => {
-    const tally = { Gold: 0, Silver: 0, Bronze: 0 };
-    tournaments.forEach((t) =>
-      t.categories.forEach((c) => { if (tally[c.medal] !== undefined) tally[c.medal]++; })
-    );
-    return tally;
+  const totalCategories = useMemo(() =>
+    tournaments.reduce((acc, t) => acc + t.categories.length, 0), [tournaments]);
+
+  const totalMedalsCount = useMemo(() =>
+    tournaments.reduce((acc, t) =>
+      acc + t.categories.filter((c) => c.medal && c.medal !== 'None').length, 0),
+    [tournaments]);
+
+  const winRate = totalCategories > 0 ? Math.round((totalMedalsCount / totalCategories) * 100) : 0;
+
+  const totalTournaments = tournaments.length;
+  const totalEarnings = useMemo(() =>
+    tournaments.reduce((acc, t) => acc + t.categories.reduce((s, c) => s + (((c.prizeAmount || 0) - (c.entryFee || 0))), 0), 0),
+    [tournaments]);
+
+  const avgEarnings = totalTournaments > 0 ? Math.round(totalEarnings / totalTournaments) : 0;
+
+  const avgPerMonth = useMemo(() => {
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const recent = tournaments.filter((t) => {
+      const ds = getTournamentDate(t);
+      return ds && new Date(ds) >= sixMonthsAgo;
+    });
+    return (recent.length / 6).toFixed(1);
   }, [tournaments]);
 
   const streak = useMemo(() => {
@@ -138,12 +153,8 @@ function ProgressTab({ tournaments, gamificationProgress, achievements }) {
     [...(achievements || [])]
       .filter((a) => a.unlocked)
       .sort((a, b) => new Date(b.unlockedAt) - new Date(a.unlockedAt))
-      .slice(0, 3),
+      .slice(0, 4),
     [achievements]);
-
-  const totalTournaments = tournaments.length;
-  const totalEarnings = tournaments.reduce((acc, t) =>
-    acc + t.categories.reduce((s, c) => s + (c.profit || 0), 0), 0);
 
   const xp = gamificationProgress?.xp ?? 0;
   const level = gamificationProgress?.level ?? 1;
@@ -151,7 +162,6 @@ function ProgressTab({ tournaments, gamificationProgress, achievements }) {
   const nextLevelXP = gamificationProgress?.nextLevelXP ?? 100;
   const currentLevelXP = gamificationProgress?.currentLevelXP ?? 0;
   const momentum = gamificationProgress?.momentum ?? 0;
-  const totalMedals = medalTally.Gold + medalTally.Silver + medalTally.Bronze;
 
   return (
     <div className="space-y-4">
@@ -184,19 +194,76 @@ function ProgressTab({ tournaments, gamificationProgress, achievements }) {
             <XPBar level={level} currentLevelXP={currentLevelXP} nextLevelXP={nextLevelXP} xp={xp} />
           </div>
         </div>
+        <div className="relative mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={() => navigate('/achievements')}
+            className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-colors"
+          >
+            View All Rewards
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      {/* This week */}
+      {/* Career snapshot */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">This week</p>
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Career snapshot</p>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            {
+              label: 'Win Rate',
+              value: `${winRate}%`,
+              icon: '🎯',
+              sub: `${totalMedalsCount} medals · ${totalCategories} events`,
+            },
+            {
+              label: 'Tournaments',
+              value: totalTournaments,
+              icon: '🎾',
+              sub: `${avgPerMonth}/month avg`,
+            },
+            {
+              label: 'Net Earnings',
+              value: `${totalEarnings >= 0 ? '+' : '-'}${symbol}${Math.abs(totalEarnings).toLocaleString()}`,
+              icon: totalEarnings >= 0 ? '📈' : '📉',
+              sub: 'all-time profit',
+            },
+            {
+              label: 'Avg per Event',
+              value: `${avgEarnings >= 0 ? '+' : '-'}${symbol}${Math.abs(avgEarnings).toLocaleString()}`,
+              icon: '💰',
+              sub: 'earnings per tournament',
+            },
+          ].map((s) => (
+            <div key={s.label} className="bg-gray-50 rounded-xl p-3">
+              <div className="text-xl mb-1">{s.icon}</div>
+              <div
+                className="font-black text-xl text-gray-900 leading-none"
+                style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+              >
+                {s.value}
+              </div>
+              <div className="text-[10px] text-gray-500 font-semibold mt-0.5">{s.label}</div>
+              <div className="text-[9px] text-gray-400 mt-0.5">{s.sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* This year */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">{currentYear} so far</p>
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: 'Tournaments', value: thisWeekTournaments.length, icon: '🎾' },
-            { label: 'Medals', value: thisWeekMedals, icon: '🏅' },
+            { label: 'Tournaments', value: thisYearTournaments.length, icon: '🎾' },
+            { label: 'Medals', value: thisYearMedals, icon: '🏅' },
             {
               label: 'Earnings',
-              value: `${thisWeekEarnings >= 0 ? '+' : '-'}${symbol}${Math.abs(thisWeekEarnings).toLocaleString()}`,
-              icon: thisWeekEarnings >= 0 ? '📈' : '📉',
+              value: `${thisYearEarnings >= 0 ? '+' : '-'}${symbol}${Math.abs(thisYearEarnings).toLocaleString()}`,
+              icon: thisYearEarnings >= 0 ? '📈' : '📉',
             },
           ].map((s) => (
             <div key={s.label} className="text-center">
@@ -216,7 +283,7 @@ function ProgressTab({ tournaments, gamificationProgress, achievements }) {
       {/* 12-week activity chart */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
         <div className="flex items-center justify-between mb-4">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Past 12 weeks</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">12-week activity</p>
           <span className="text-[10px] text-gray-400">Orange = this week</span>
         </div>
         <ResponsiveContainer width="100%" height={96}>
@@ -247,7 +314,7 @@ function ProgressTab({ tournaments, gamificationProgress, achievements }) {
         </ResponsiveContainer>
       </div>
 
-      {/* Streak + total */}
+      {/* Streak + avg per month */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
           <div className="text-2xl mb-1">🔥</div>
@@ -260,65 +327,37 @@ function ProgressTab({ tournaments, gamificationProgress, achievements }) {
           <div className="text-[10px] text-gray-400 font-medium mt-1">Week streak</div>
         </div>
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
-          <div className="text-2xl mb-1">🎾</div>
+          <div className="text-2xl mb-1">📅</div>
           <div
             className="font-black text-3xl text-gray-900 leading-none"
             style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
           >
-            {totalTournaments}
+            {avgPerMonth}
           </div>
-          <div className="text-[10px] text-gray-400 font-medium mt-1">All-time tournaments</div>
+          <div className="text-[10px] text-gray-400 font-medium mt-1">Avg / month</div>
         </div>
       </div>
-
-      {/* Medal tally */}
-      {totalMedals > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Medal tally</p>
-          <div className="flex items-center justify-around">
-            {[
-              { label: 'Gold', emoji: '🥇', count: medalTally.Gold, color: '#D97706' },
-              { label: 'Silver', emoji: '🥈', count: medalTally.Silver, color: '#6B7280' },
-              { label: 'Bronze', emoji: '🥉', count: medalTally.Bronze, color: '#92400E' },
-            ].map((m) => (
-              <div key={m.label} className="text-center">
-                <div className="text-4xl mb-1">{m.emoji}</div>
-                <div
-                  className="font-black text-2xl leading-none"
-                  style={{ fontFamily: "'Barlow Condensed', sans-serif", color: m.color }}
-                >
-                  {m.count}
-                </div>
-                <div className="text-[10px] text-gray-400 mt-0.5">{m.label}</div>
-              </div>
-            ))}
-          </div>
-          {/* Mini medal bar */}
-          {totalMedals > 0 && (
-            <div className="mt-4 flex rounded-full overflow-hidden h-2 gap-0.5">
-              {medalTally.Gold > 0 && (
-                <div className="h-full rounded-full" style={{ flex: medalTally.Gold, background: '#F59E0B' }} />
-              )}
-              {medalTally.Silver > 0 && (
-                <div className="h-full rounded-full" style={{ flex: medalTally.Silver, background: '#9CA3AF' }} />
-              )}
-              {medalTally.Bronze > 0 && (
-                <div className="h-full rounded-full" style={{ flex: medalTally.Bronze, background: '#B45309' }} />
-              )}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Recent achievements */}
       {recentAchievements.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Recent achievements</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Recent achievements</p>
+            <button
+              type="button"
+              onClick={() => navigate('/achievements')}
+              className="text-[10px] font-bold text-[#2d7005] hover:text-[#4a8a10] transition-colors"
+            >
+              View all →
+            </button>
+          </div>
           <div className="space-y-3">
             {recentAchievements.map((ach) => (
               <div key={ach._id || ach.slug} className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-                  style={{ background: 'linear-gradient(135deg, #f4f8e8, #e8f3cc)' }}>
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #f4f8e8, #e8f3cc)' }}
+                >
                   {ach.icon || '🏅'}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -335,28 +374,6 @@ function ProgressTab({ tournaments, gamificationProgress, achievements }) {
           </div>
         </div>
       )}
-
-      {/* All-time earnings */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">All-time earnings</p>
-        <p
-          className="font-black text-4xl leading-none"
-          style={{
-            fontFamily: "'Barlow Condensed', sans-serif",
-            background: totalEarnings >= 0
-              ? 'linear-gradient(to right, #2d7005, #91BE4D)'
-              : 'linear-gradient(to right, #dc2626, #ef4444)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-          }}
-        >
-          {totalEarnings >= 0 ? '+' : '-'}{symbol}{Math.abs(totalEarnings).toLocaleString()}
-        </p>
-        <p className="text-xs text-gray-400 mt-1.5">
-          Net profit across {totalTournaments} tournament{totalTournaments !== 1 ? 's' : ''}
-        </p>
-      </div>
     </div>
   );
 }
@@ -540,7 +557,7 @@ function MyRecordTab({ user, refreshUser }) {
 
 export default function You() {
   const { user, refreshUser } = useAuth();
-  const [activeTab, setActiveTab] = useState('progress');
+  const [activeTab, setActiveTab] = useState('record');
 
   const [tournaments, setTournaments] = useState([]);
   const [gamificationProgress, setGamificationProgress] = useState(null);
@@ -568,8 +585,8 @@ export default function You() {
         {/* Tab switcher */}
         <div className="flex gap-1 bg-white rounded-xl p-1 border border-gray-100 shadow-sm mb-4">
           {[
-            { id: 'progress', label: 'Progress', icon: '📊' },
             { id: 'record', label: 'My Record', icon: '🏅' },
+            { id: 'progress', label: 'Progress', icon: '📊' },
           ].map((tab) => (
             <button
               key={tab.id}
