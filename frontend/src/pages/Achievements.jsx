@@ -233,10 +233,12 @@ export default function Achievements() {
         getGamificationProgress(),
         getAchievements(),
       ]);
-      setProgress(progRes.data);
-      setAchievements(achRes.data.achievements || []);
-      setUnlockedCount(achRes.data.unlockedCount || 0);
-      setTotalCount(achRes.data.totalCount || 0);
+      setProgress(progRes.data.data);
+      const achData = achRes.data.data || {};
+      const grouped = achData.achievements || {};
+      setAchievements(Object.values(grouped).flat());
+      setUnlockedCount(achData.unlockedCount || 0);
+      setTotalCount(achData.totalCount || 0);
     } catch {
       setError('Failed to load achievements. Please try again.');
     } finally {

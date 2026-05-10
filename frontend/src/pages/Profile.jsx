@@ -123,7 +123,7 @@ export default function Profile() {
 
   useEffect(() => {
     api.getGamificationProgress()
-      .then((res) => setGamificationProgress(res.data))
+      .then((res) => setGamificationProgress(res.data.data))
       .catch(() => {});
   }, []);
 

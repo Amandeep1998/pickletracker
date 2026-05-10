@@ -193,7 +193,7 @@ export default function Home() {
 
   useEffect(() => {
     api.getGamificationFeed()
-      .then((res) => setAchievementFeed((res.data.items || []).slice(0, 3)))
+      .then((res) => setAchievementFeed(((res.data.data || {}).items || []).slice(0, 3)))
       .catch(() => {});
   }, []);
 
