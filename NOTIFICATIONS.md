@@ -21,6 +21,7 @@ All automated notifications sent to users. Each entry lists the name, purpose, a
 | Name | Purpose | Time |
 |------|---------|------|
 | Tournament Day-Before Push | Sends a push notification to users who have subscribed, reminding them of their tournament(s) happening tomorrow — works on PWA, mobile browser, and desktop Chrome | Daily at **7:00 PM IST** (13:30 UTC) |
+| Community Tournament Activity | When any user logs a tournament (upcoming or with results), sends a push + email to all other users nudging them to log theirs. Max 1 notification per user per calendar day (UTC). Push goes to subscribed users; email goes to users with email reminders enabled. | **Real-time** (on tournament create) |
 
 ---
 

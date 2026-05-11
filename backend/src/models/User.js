@@ -170,6 +170,11 @@ const userSchema = new mongoose.Schema(
       enum: ['pwa', 'mobile-web', 'desktop-web'],
       default: [],
     },
+    /** UTC timestamp of the last time this user received a tournament-activity community nudge. */
+    lastTournamentNudgeReceivedAt: {
+      type: Date,
+      default: null,
+    },
     resetPasswordToken: {
       type: String,
       default: null,
