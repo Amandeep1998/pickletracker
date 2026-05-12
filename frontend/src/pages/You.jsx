@@ -7,8 +7,6 @@ import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
 import PaddleLoader from '../components/PaddleLoader';
 import EditCommunityPlayerCardModal from '../components/EditCommunityPlayerCardModal';
-import { getCurrencySymbol } from '../utils/format';
-import useCurrency from '../hooks/useCurrency';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -59,16 +57,160 @@ function XPBar({ level, currentLevelXP, nextLevelXP, xp }) {
   );
 }
 
+// ─── Best Partners Card ───────────────────────────────────────────────────────
+
+function BestPartnersCard({ bestPartners }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleInvite = async () => {
+    const url = 'https://pickletracker.in';
+    const text = 'Track your pickleball journey — tournaments, medals, stats — on PickleTracker!';
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'PickleTracker', text, url });
+      } else {
+        await navigator.clipboard.writeText(`${text} ${url}`);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }
+    } catch { /* user dismissed */ }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      {bestPartners.length > 0 ? (
+        <>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Best partners</p>
+          <div className="space-y-2 mb-4">
+            {bestPartners.map((p) => (
+              <div key={p.name} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2.5">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black text-white flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #2d7005, #91BE4D)' }}
+                >
+                  {p.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{p.name}</p>
+                  <p className="text-[10px] text-gray-400">{p.total} event{p.total !== 1 ? 's' : ''} together</p>
+                </div>
+                {p.medals > 0 && (
+                  <span className="text-[10px] font-bold text-[#2d7005] bg-[#f4f8e8] px-2 py-0.5 rounded-full flex-shrink-0">
+                    {p.medals} 🏅
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Partners</p>
+      )}
+
+      {/* Invite CTA */}
+      <button
+        type="button"
+        onClick={handleInvite}
+        className="w-full flex items-center gap-3 rounded-xl px-4 py-3 transition-opacity hover:opacity-90 active:opacity-80"
+        style={{ background: 'linear-gradient(135deg, #f4f8e8, #e8f3cc)' }}
+      >
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-lg"
+          style={{ background: 'linear-gradient(135deg, #2d7005, #91BE4D)' }}
+        >
+          {copied ? '✓' : '📨'}
+        </div>
+        <div className="flex-1 text-left min-w-0">
+          <p className="text-sm font-bold text-gray-900 leading-tight">
+            {copied ? 'Link copied!' : 'Invite your partner or friend'}
+          </p>
+          <p className="text-[10px] text-[#2d7005] font-semibold mt-0.5 truncate">
+            pickletracker.in
+          </p>
+        </div>
+        <svg className="w-4 h-4 text-[#2d7005] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 // ─── Progress Tab ─────────────────────────────────────────────────────────────
 
-function ProgressTab({ tournaments, gamificationProgress, achievements }) {
-  const currency = useCurrency();
-  const symbol = getCurrencySymbol(currency);
+function ProgressTab({ tournaments, gamificationProgress, achievements, profile }) {
   const navigate = useNavigate();
 
   const thisWeekStart = useMemo(() => getWeekStart(new Date()), []);
   const currentYear = new Date().getFullYear();
 
+  const manualAchievements = useMemo(() =>
+    Array.isArray(profile?.manualAchievements) ? profile.manualAchievements : [],
+    [profile]);
+
+  // ── Streak
+  const streak = useMemo(() => {
+    let s = 0;
+    for (let i = 0; i < 52; i++) {
+      const wStart = new Date(thisWeekStart);
+      wStart.setDate(wStart.getDate() - i * 7);
+      const wEnd = new Date(wStart);
+      wEnd.setDate(wEnd.getDate() + 7);
+      const hasActivity = tournaments.some((t) => {
+        const ds = getTournamentDate(t);
+        if (!ds) return false;
+        const d = new Date(ds);
+        return d >= wStart && d < wEnd;
+      });
+      if (hasActivity) s++;
+      else break;
+    }
+    return s;
+  }, [tournaments, thisWeekStart]);
+
+  // ── Win rate by year
+  const winRateByYear = useMemo(() => {
+    const byYear = {};
+    tournaments.forEach((t) => {
+      const ds = getTournamentDate(t);
+      if (!ds) return;
+      const yr = new Date(ds).getFullYear();
+      if (!byYear[yr]) byYear[yr] = { total: 0, medals: 0 };
+      t.categories.forEach((c) => {
+        byYear[yr].total++;
+        if (c.medal && c.medal !== 'None') byYear[yr].medals++;
+      });
+    });
+    return Object.entries(byYear)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([year, { total, medals }]) => ({
+        year: String(year),
+        winRate: total > 0 ? Math.round((medals / total) * 100) : 0,
+        total,
+        medals,
+      }));
+  }, [tournaments]);
+
+
+  // ── Best partners
+  const bestPartners = useMemo(() => {
+    const map = {};
+    tournaments.forEach((t) => {
+      t.categories.forEach((c) => {
+        if (!c.partnerName?.trim()) return;
+        const name = c.partnerName.trim();
+        if (!map[name]) map[name] = { total: 0, medals: 0 };
+        map[name].total++;
+        if (c.medal && c.medal !== 'None') map[name].medals++;
+      });
+    });
+    return Object.entries(map)
+      .map(([name, { total, medals }]) => ({ name, total, medals }))
+      .sort((a, b) => b.medals - a.medals || b.total - a.total)
+      .slice(0, 5);
+  }, [tournaments]);
+
+  // ── 12-week activity
   const weeklyData = useMemo(() => {
     const weeks = [];
     for (let i = 11; i >= 0; i--) {
@@ -89,66 +231,7 @@ function ProgressTab({ tournaments, gamificationProgress, achievements }) {
     return weeks.map(({ label, count }) => ({ label, count }));
   }, [tournaments, thisWeekStart]);
 
-  const thisYearTournaments = useMemo(() =>
-    tournaments.filter((t) => {
-      const ds = getTournamentDate(t);
-      return ds && new Date(ds).getFullYear() === currentYear;
-    }), [tournaments, currentYear]);
-
-  const thisYearMedals = thisYearTournaments.reduce((acc, t) => {
-    t.categories.forEach((c) => { if (c.medal && c.medal !== 'None') acc++; });
-    return acc;
-  }, 0);
-
-  const thisYearEarnings = thisYearTournaments.reduce((acc, t) =>
-    acc + t.categories.reduce((s, c) => s + (((c.prizeAmount || 0) - (c.entryFee || 0))), 0), 0);
-
-  const totalCategories = useMemo(() =>
-    tournaments.reduce((acc, t) => acc + t.categories.length, 0), [tournaments]);
-
-  const totalMedalsCount = useMemo(() =>
-    tournaments.reduce((acc, t) =>
-      acc + t.categories.filter((c) => c.medal && c.medal !== 'None').length, 0),
-    [tournaments]);
-
-  const winRate = totalCategories > 0 ? Math.round((totalMedalsCount / totalCategories) * 100) : 0;
-
-  const totalTournaments = tournaments.length;
-  const totalEarnings = useMemo(() =>
-    tournaments.reduce((acc, t) => acc + t.categories.reduce((s, c) => s + (((c.prizeAmount || 0) - (c.entryFee || 0))), 0), 0),
-    [tournaments]);
-
-  const avgEarnings = totalTournaments > 0 ? Math.round(totalEarnings / totalTournaments) : 0;
-
-  const avgPerMonth = useMemo(() => {
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-    const recent = tournaments.filter((t) => {
-      const ds = getTournamentDate(t);
-      return ds && new Date(ds) >= sixMonthsAgo;
-    });
-    return (recent.length / 6).toFixed(1);
-  }, [tournaments]);
-
-  const streak = useMemo(() => {
-    let s = 0;
-    for (let i = 0; i < 52; i++) {
-      const wStart = new Date(thisWeekStart);
-      wStart.setDate(wStart.getDate() - i * 7);
-      const wEnd = new Date(wStart);
-      wEnd.setDate(wEnd.getDate() + 7);
-      const hasActivity = tournaments.some((t) => {
-        const ds = getTournamentDate(t);
-        if (!ds) return false;
-        const d = new Date(ds);
-        return d >= wStart && d < wEnd;
-      });
-      if (hasActivity) s++;
-      else break;
-    }
-    return s;
-  }, [tournaments, thisWeekStart]);
-
+  // ── Recent app achievements
   const recentAchievements = useMemo(() =>
     [...(achievements || [])]
       .filter((a) => a.unlocked)
@@ -162,6 +245,9 @@ function ProgressTab({ tournaments, gamificationProgress, achievements }) {
   const nextLevelXP = gamificationProgress?.nextLevelXP ?? 100;
   const currentLevelXP = gamificationProgress?.currentLevelXP ?? 0;
   const momentum = gamificationProgress?.momentum ?? 0;
+
+  const MEDAL_EMOJI = { Gold: '🥇', Silver: '🥈', Bronze: '🥉' };
+  const MEDAL_COLOR = { Gold: '#D97706', Silver: '#6B7280', Bronze: '#92400E' };
 
   return (
     <div className="space-y-4">
@@ -208,77 +294,41 @@ function ProgressTab({ tournaments, gamificationProgress, achievements }) {
         </div>
       </div>
 
-      {/* Career snapshot */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Career snapshot</p>
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            {
-              label: 'Win Rate',
-              value: `${winRate}%`,
-              icon: '🎯',
-              sub: `${totalMedalsCount} medals · ${totalCategories} events`,
-            },
-            {
-              label: 'Tournaments',
-              value: totalTournaments,
-              icon: '🎾',
-              sub: `${avgPerMonth}/month avg`,
-            },
-            {
-              label: 'Net Earnings',
-              value: `${totalEarnings >= 0 ? '+' : '-'}${symbol}${Math.abs(totalEarnings).toLocaleString()}`,
-              icon: totalEarnings >= 0 ? '📈' : '📉',
-              sub: 'all-time profit',
-            },
-            {
-              label: 'Avg per Event',
-              value: `${avgEarnings >= 0 ? '+' : '-'}${symbol}${Math.abs(avgEarnings).toLocaleString()}`,
-              icon: '💰',
-              sub: 'earnings per tournament',
-            },
-          ].map((s) => (
-            <div key={s.label} className="bg-gray-50 rounded-xl p-3">
-              <div className="text-xl mb-1">{s.icon}</div>
-              <div
-                className="font-black text-xl text-gray-900 leading-none"
-                style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-              >
-                {s.value}
-              </div>
-              <div className="text-[10px] text-gray-500 font-semibold mt-0.5">{s.label}</div>
-              <div className="text-[9px] text-gray-400 mt-0.5">{s.sub}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Best partners + invite */}
+      <BestPartnersCard bestPartners={bestPartners} />
 
-      {/* This year */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">{currentYear} so far</p>
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: 'Tournaments', value: thisYearTournaments.length, icon: '🎾' },
-            { label: 'Medals', value: thisYearMedals, icon: '🏅' },
-            {
-              label: 'Earnings',
-              value: `${thisYearEarnings >= 0 ? '+' : '-'}${symbol}${Math.abs(thisYearEarnings).toLocaleString()}`,
-              icon: thisYearEarnings >= 0 ? '📈' : '📉',
-            },
-          ].map((s) => (
-            <div key={s.label} className="text-center">
-              <div className="text-2xl mb-1">{s.icon}</div>
-              <div
-                className="font-black text-xl text-gray-900 leading-none"
-                style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-              >
-                {s.value}
-              </div>
-              <div className="text-[10px] text-gray-400 font-medium mt-0.5">{s.label}</div>
-            </div>
-          ))}
+      {/* Win rate by year */}
+      {winRateByYear.length > 1 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Win rate by year</p>
+          <ResponsiveContainer width="100%" height={96}>
+            <BarChart data={winRateByYear} barSize={28} margin={{ top: 4, right: 0, left: -28, bottom: 0 }}>
+              <XAxis
+                dataKey="year"
+                tick={{ fontSize: 10, fill: '#9ca3af' }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis hide domain={[0, 100]} />
+              <Tooltip
+                contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: 11 }}
+                formatter={(val, _name, { payload }) => [`${val}% (${payload.medals}/${payload.total})`, 'Win rate']}
+                labelStyle={{ fontWeight: 700 }}
+              />
+              <Bar dataKey="winRate" radius={[4, 4, 0, 0]}>
+                {winRateByYear.map((entry, idx) => (
+                  <Cell
+                    key={idx}
+                    fill={entry.year === String(currentYear) ? '#ec9937' : '#91BE4D'}
+                    fillOpacity={entry.year === String(currentYear) ? 1 : 0.65}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+          <p className="text-[9px] text-gray-400 text-right mt-1">Orange = {currentYear}</p>
         </div>
-      </div>
+      )}
 
       {/* 12-week activity chart */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -314,31 +364,32 @@ function ProgressTab({ tournaments, gamificationProgress, achievements }) {
         </ResponsiveContainer>
       </div>
 
-      {/* Streak + avg per month */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
-          <div className="text-2xl mb-1">🔥</div>
-          <div
-            className="font-black text-3xl text-gray-900 leading-none"
-            style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-          >
-            {streak}
+      {/* Past achievements — medals won before joining */}
+      {manualAchievements.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Past tournament podiums</p>
+          <div className="space-y-2">
+            {manualAchievements.map((a, idx) => (
+              <div key={idx} className="flex items-center gap-3 bg-gray-50 rounded-xl px-3 py-2.5">
+                <span className="text-xl flex-shrink-0">{MEDAL_EMOJI[a.medal] || '🏅'}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{a.tournamentName || '—'}</p>
+                  {a.categoryName && (
+                    <p className="text-[11px] text-gray-400 truncate">{a.categoryName}</p>
+                  )}
+                </div>
+                {a.date && (
+                  <span className="text-[11px] text-gray-400 flex-shrink-0">
+                    {new Date(a.date).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
-          <div className="text-[10px] text-gray-400 font-medium mt-1">Week streak</div>
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
-          <div className="text-2xl mb-1">📅</div>
-          <div
-            className="font-black text-3xl text-gray-900 leading-none"
-            style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-          >
-            {avgPerMonth}
-          </div>
-          <div className="text-[10px] text-gray-400 font-medium mt-1">Avg / month</div>
-        </div>
-      </div>
+      )}
 
-      {/* Recent achievements */}
+      {/* Recent app achievements */}
       {recentAchievements.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
           <div className="flex items-center justify-between mb-3">
@@ -562,6 +613,7 @@ export default function You() {
   const [tournaments, setTournaments] = useState([]);
   const [gamificationProgress, setGamificationProgress] = useState(null);
   const [achievements, setAchievements] = useState([]);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -569,12 +621,14 @@ export default function You() {
       api.getTournaments(),
       api.getGamificationProgress(),
       api.getAchievements(),
-    ]).then(([tRes, progRes, achRes]) => {
+      api.getProfile(),
+    ]).then(([tRes, progRes, achRes, profRes]) => {
       setTournaments(tRes.data.data || []);
       setGamificationProgress(progRes.data.data);
       const achData = achRes.data.data || {};
       const grouped = achData.achievements || {};
       setAchievements(Object.values(grouped).flat());
+      setProfile(profRes.data.data);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
@@ -613,6 +667,7 @@ export default function You() {
             tournaments={tournaments}
             gamificationProgress={gamificationProgress}
             achievements={achievements}
+            profile={profile}
           />
         ) : (
           <MyRecordTab user={user} refreshUser={refreshUser} />
