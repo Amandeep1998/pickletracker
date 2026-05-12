@@ -170,7 +170,7 @@ exports.getPlayers = async (req, res, next) => {
     // ── Step 7: Paginate ───────────────────────────────────────────────────────
     const total = players.length;
     const pageNum = Math.max(1, parseInt(page));
-    const limitNum = Math.min(48, Math.max(1, parseInt(limit)));
+    const limitNum = Math.min(1000, Math.max(1, parseInt(limit)));
     const paginated = players.slice((pageNum - 1) * limitNum, pageNum * limitNum);
 
     res.json({ success: true, data: paginated, total, page: pageNum, limit: limitNum });

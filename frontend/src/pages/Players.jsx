@@ -668,9 +668,6 @@ export default function Players() {
           <div className="min-w-0">
             <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-widest mb-0.5">Nearby Players</p>
             <h1 className="text-xl sm:text-2xl font-extrabold text-white leading-tight">Players</h1>
-            <p className="text-slate-400 text-xs mt-0.5">
-              {totalPlayers > 0 ? `${totalPlayers} player${totalPlayers !== 1 ? 's' : ''} across ${sortedCities.length} cit${sortedCities.length !== 1 ? 'ies' : 'y'}` : 'Discover the pickleball community'}
-            </p>
             {user?.city && (
               <button onClick={() => setLocationPromptOpen(true)} className="text-[#91BE4D]/70 hover:text-[#91BE4D] text-[10px] font-semibold mt-1 transition-colors">
                 📍 {user.city} · Change
