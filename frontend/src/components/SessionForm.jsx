@@ -88,7 +88,7 @@ const EMPTY = {
   coachFee: '',
 };
 
-export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
+export default function SessionForm({ initial, onSubmit, onCancel, loading, onTypeChange }) {
   const currency = useCurrency();
   const symbol = getCurrencySymbol(currency);
   const [form, setForm] = useState(EMPTY);
@@ -226,6 +226,8 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
       payload.drillFocus = form.drillFocus;
       payload.drillMode  = form.drillMode || undefined;
       payload.coachFee   = form.coachFee !== '' ? Number(form.coachFee) : 0;
+      payload.wentWell   = form.wentWell;
+      payload.wentWrong  = form.wentWrong;
     }
 
     onSubmit(payload);
@@ -253,7 +255,7 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
             <button
               key={t.value}
               type="button"
-              onClick={() => setForm((p) => ({ ...p, type: t.value }))}
+              onClick={() => { setForm((p) => ({ ...p, type: t.value })); onTypeChange?.(t.value); }}
               className={`flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 text-center transition-all ${
                 form.type === t.value
                   ? 'border-[#91BE4D] bg-[#91BE4D]/8'
@@ -564,8 +566,8 @@ export default function SessionForm({ initial, onSubmit, onCancel, loading }) {
         {errors.rating && <p className="text-red-500 text-xs mt-1">{errors.rating}</p>}
       </div>
 
-      {/* ── CASUAL: what went well / needs work ── */}
-      {isCasual && (
+      {/* ── What went well / needs work (casual + drill) ── */}
+      {(isCasual || isDrill) && (
         <>
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">

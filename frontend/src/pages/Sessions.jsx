@@ -47,6 +47,7 @@ export default function Sessions() {
   const [editSession, setEditSession] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
+  const [modalSessionType, setModalSessionType] = useState('casual');
   const [deleteId, setDeleteId] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [filterType, setFilterType] = useState('all');
@@ -120,8 +121,8 @@ export default function Sessions() {
   }, [sessions, filterType]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
-  const openAdd = () => { setEditSession(null); setFormError(''); setModalOpen(true); };
-  const openEdit = (s) => { setEditSession(s); setFormError(''); setModalOpen(true); };
+  const openAdd = () => { setEditSession(null); setFormError(''); setModalSessionType('casual'); setModalOpen(true); };
+  const openEdit = (s) => { setEditSession(s); setFormError(''); setModalSessionType(s.type || 'casual'); setModalOpen(true); };
   const closeModal = () => { setModalOpen(false); setEditSession(null); setFormError(''); };
 
   const handleSave = async (data) => {
@@ -449,7 +450,7 @@ export default function Sessions() {
       <Modal
         isOpen={modalOpen}
         onClose={closeModal}
-        title={editSession ? 'Edit Session' : 'Casual Play / Drill'}
+        title={editSession ? `Edit Session` : TYPE_LABELS[modalSessionType] || 'Log Session'}
       >
         {formError && (
           <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{formError}</div>
@@ -459,6 +460,7 @@ export default function Sessions() {
           onSubmit={handleSave}
           onCancel={closeModal}
           loading={formLoading}
+          onTypeChange={setModalSessionType}
         />
       </Modal>
     </div>
