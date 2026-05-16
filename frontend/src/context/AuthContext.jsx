@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import posthog from 'posthog-js';
 import * as api from '../services/api';
 import {
@@ -41,6 +41,7 @@ export const AuthProvider = ({ children }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const googleLoginInFlight = useRef(false);
   const [authInitializing, setAuthInitializing] = useState(true);
   // True on mobile while we check for a pending redirect result on mount
   const [redirectLoading, setRedirectLoading] = useState(() => isMobileBrowser());
@@ -323,6 +324,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const handleGoogleLogin = async () => {
+    // Synchronous ref guard prevents double-click race before React re-renders the disabled button
+    if (googleLoginInFlight.current) return { success: false, message: '' };
+    googleLoginInFlight.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -340,6 +344,11 @@ export const AuthProvider = ({ children }) => {
         setError(msg);
         return { success: false, message: msg };
       }
+      // cancelled-popup-request fires when a second popup was opened while one was pending;
+      // the concurrent call already handled it, so just clear state silently.
+      if (err?.code === 'auth/cancelled-popup-request') {
+        return { success: false, message: '' };
+      }
       const msg =
         err.response?.data?.errors?.[0] ||
         err.response?.data?.message ||
@@ -348,6 +357,7 @@ export const AuthProvider = ({ children }) => {
       setError(msg);
       return { success: false, message: msg };
     } finally {
+      googleLoginInFlight.current = false;
       setLoading(false);
     }
   };
