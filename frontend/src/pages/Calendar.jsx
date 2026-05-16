@@ -1316,6 +1316,7 @@ export default function Calendar() {
                 onSubmit={handleAddSession}
                 onCancel={() => { setAddSessionModal({ open: false, date: null, sessionType: null }); setSessionFormError(''); }}
                 loading={sessionFormLoading}
+                onTypeChange={(t) => setAddSessionModal((p) => ({ ...p, sessionType: t }))}
               />
             </div>
           </div>
