@@ -49,6 +49,69 @@ function yearMonthFromRecordDate(dateStr) {
   return { year: parts[0], month: parts[1] };
 }
 
+function DashboardSkeleton({ slowLoad }) {
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 animate-pulse">
+      {/* Hero Banner */}
+      <div
+        className="rounded-2xl px-5 py-5 sm:px-7 sm:py-6 mb-4 overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, #1c350a 0%, #2d6e05 50%, #a86010 100%)' }}
+      >
+        <div className="h-2.5 w-24 bg-white/20 rounded mb-2.5" />
+        <div className="h-7 w-52 bg-white/25 rounded mb-2" />
+        <div className="h-2.5 w-64 bg-white/15 rounded mb-4" />
+        <div className="flex gap-2">
+          <div className="h-5 w-14 bg-white/20 rounded-full" />
+          <div className="h-5 w-14 bg-white/20 rounded-full" />
+          <div className="h-5 w-14 bg-white/20 rounded-full" />
+        </div>
+      </div>
+
+      {/* Filter row */}
+      <div className="flex gap-2 sm:gap-3 mb-4">
+        <div className="h-10 w-36 bg-gray-200 rounded-xl" />
+        <div className="h-10 w-40 bg-gray-200 rounded-xl" />
+      </div>
+
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 mb-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="rounded-2xl p-3 sm:p-4 bg-gray-200 h-24" />
+        ))}
+      </div>
+
+      {/* Chart placeholder */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-5 mb-4">
+        <div className="h-3 w-40 bg-gray-200 rounded mb-4" />
+        <div className="h-52 bg-gray-100 rounded-xl" />
+      </div>
+
+      {/* Tournament list placeholder */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-5">
+        <div className="h-3 w-32 bg-gray-200 rounded mb-4" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-200 rounded-xl flex-shrink-0" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3.5 bg-gray-200 rounded w-1/2" />
+                <div className="h-3 bg-gray-100 rounded w-1/3" />
+              </div>
+              <div className="h-5 w-16 bg-gray-100 rounded-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {slowLoad && (
+        <p className="text-center text-gray-400 text-xs mt-6">
+          Server is waking up — this can take up to 30 seconds on first load…
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const currency = useCurrency();
@@ -472,24 +535,7 @@ export default function Dashboard() {
       : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4';
 
   if (loading) {
-    return (
-      <div className="text-center py-24 px-4">
-        <div className="inline-flex flex-col items-center gap-2">
-          {!slowLoad ? (
-            <PaddleLoader label="Loading dashboard..." />
-          ) : (
-            <div className="text-center">
-              <div className="mb-2">
-                <PaddleLoader label="Server is waking up..." />
-              </div>
-              <p className="text-gray-400 text-xs mt-1">
-                This takes up to 30 seconds on first load. Hang tight!
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton slowLoad={slowLoad} />;
   }
 
   if (error) {

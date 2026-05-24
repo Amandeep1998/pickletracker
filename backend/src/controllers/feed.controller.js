@@ -23,6 +23,8 @@ exports.getFeed = async (req, res, next) => {
   try {
     const currentUserId = new mongoose.Types.ObjectId(req.user.id);
     const wantNearby = ['1', 'true', 'yes'].includes(String(req.query.nearby || '').toLowerCase());
+    const limit  = Math.min(Math.max(parseInt(req.query.limit)  || 15, 1), 40);
+    const offset = Math.max(parseInt(req.query.offset) || 0, 0);
 
     let viewerCity = null;
     if (wantNearby) {
@@ -43,11 +45,13 @@ exports.getFeed = async (req, res, next) => {
       .slice(0, 10);
 
     // ── Step 1: Fetch relevant tournaments ────────────────────────────────────
+    // Fetch enough to cover all pages requested so far + one extra page (to know hasMore).
+    const dbLimit = Math.max(60, offset + limit + limit + 10);
     const tournaments = await Tournament.find({
       'categories.date': { $gte: thirtyDaysAgo },
     })
       .sort({ updatedAt: -1 })
-      .limit(60)
+      .limit(dbLimit)
       .lean();
 
     if (!tournaments.length) {
@@ -188,7 +192,9 @@ exports.getFeed = async (req, res, next) => {
       return (a.latestDate || '') > (b.latestDate || '') ? -1 : 1;
     });
 
-    res.json({ success: true, data: feedItems.slice(0, 30) });
+    const page = feedItems.slice(offset, offset + limit);
+    const hasMore = feedItems.length > offset + limit;
+    res.json({ success: true, data: page, hasMore, total: feedItems.length });
   } catch (err) {
     next(err);
   }

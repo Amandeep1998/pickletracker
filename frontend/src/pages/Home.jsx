@@ -26,6 +26,25 @@ function timeAgo(dateStr) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
+function SkeletonPlayerCardPromo() {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4 sm:px-5 animate-pulse">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+        <div className="space-y-1.5 min-w-0 flex-1">
+          <div className="h-4 bg-gray-200 rounded w-40" />
+          <div className="h-3 bg-gray-100 rounded w-64" />
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <div className="h-9 w-20 bg-gray-200 rounded-xl" />
+          <div className="h-9 w-32 bg-gray-200 rounded-xl" />
+        </div>
+      </div>
+      <div className="rounded-xl bg-gray-100 h-48" />
+    </div>
+  );
+}
+
+
 function SkeletonCard() {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 animate-pulse">
@@ -161,6 +180,8 @@ export default function Home() {
   const socket = useSocket();
   const [feed, setFeed] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
   const [locationOpen, setLocationOpen] = useState(false);
@@ -172,8 +193,6 @@ export default function Home() {
   const [showSharePlayerCard, setShowSharePlayerCard] = useState(false);
   const [publicCardPlayer, setPublicCardPlayer] = useState(null);
   const [cardLoading, setCardLoading] = useState(false);
-  const [achievementFeed, setAchievementFeed] = useState([]);
-
   const loadPublicCardPreview = useCallback(async () => {
     if (!user?.id) return;
     setCardLoading(true);
@@ -191,11 +210,6 @@ export default function Home() {
     loadPublicCardPreview();
   }, [loadPublicCardPreview]);
 
-  useEffect(() => {
-    api.getGamificationFeed()
-      .then((res) => setAchievementFeed(((res.data.data || {}).items || []).slice(0, 3)))
-      .catch(() => {});
-  }, []);
 
   const fetchFriendData = useCallback(async () => {
     try {
@@ -281,16 +295,26 @@ export default function Home() {
     }
   };
 
+  const FEED_PAGE_SIZE = 15;
+
   useEffect(() => {
     let cancelled = false;
-    const params = filter === 'nearby' ? { nearby: 1 } : {};
+    const params = {
+      ...(filter === 'nearby' ? { nearby: 1 } : {}),
+      limit: FEED_PAGE_SIZE,
+      offset: 0,
+    };
 
     const run = async () => {
       setError('');
       setLoading(true);
+      setHasMore(false);
       try {
         const res = await api.getFeed(params);
-        if (!cancelled) setFeed(res.data.data || []);
+        if (!cancelled) {
+          setFeed(res.data.data || []);
+          setHasMore(res.data.hasMore ?? false);
+        }
       } catch (err) {
         const code = err.response?.data?.code;
         if (err.response?.status === 400 && code === 'NEEDS_CITY') {
@@ -313,6 +337,29 @@ export default function Home() {
     };
   }, [filter]);
 
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const params = {
+        ...(filter === 'nearby' ? { nearby: 1 } : {}),
+        limit: FEED_PAGE_SIZE,
+        offset: feed.length,
+      };
+      const res = await api.getFeed(params);
+      const newItems = res.data.data || [];
+      setFeed((prev) => {
+        const existingIds = new Set(prev.map((i) => i.id));
+        return [...prev, ...newItems.filter((i) => !existingIds.has(i.id))];
+      });
+      setHasMore(res.data.hasMore ?? false);
+    } catch {
+      /* silent — user can scroll again to retry */
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, hasMore, filter, feed.length]);
+
   const firstName = (user?.name || '').split(' ')[0];
   const hasCity = Boolean(String(user?.city || '').trim());
 
@@ -325,12 +372,20 @@ export default function Home() {
   };
 
   const retryFetch = () => {
-    const params = filter === 'nearby' ? { nearby: 1 } : {};
+    const params = {
+      ...(filter === 'nearby' ? { nearby: 1 } : {}),
+      limit: FEED_PAGE_SIZE,
+      offset: 0,
+    };
     setError('');
     setLoading(true);
+    setHasMore(false);
     api
       .getFeed(params)
-      .then((res) => setFeed(res.data.data || []))
+      .then((res) => {
+        setFeed(res.data.data || []);
+        setHasMore(res.data.hasMore ?? false);
+      })
       .catch(() => setError('Could not load feed. Please try again.'))
       .finally(() => setLoading(false));
   };
@@ -361,15 +416,18 @@ export default function Home() {
   }, [feed, filter, friendIdsSet]);
 
   const feedPromoSlot = useMemo(
-    () => (
-      <HomeMidFeedPlayerCardPromo
-        cardLoading={cardLoading}
-        publicCardPlayer={publicCardPlayer}
-        currentUserId={user?.id}
-        onEditPlayerCard={() => setShowEditPlayerCard(true)}
-        onSharePlayerCard={() => setShowSharePlayerCard(true)}
-      />
-    ),
+    () =>
+      cardLoading ? (
+        <SkeletonPlayerCardPromo />
+      ) : (
+        <HomeMidFeedPlayerCardPromo
+          cardLoading={false}
+          publicCardPlayer={publicCardPlayer}
+          currentUserId={user?.id}
+          onEditPlayerCard={() => setShowEditPlayerCard(true)}
+          onSharePlayerCard={() => setShowSharePlayerCard(true)}
+        />
+      ),
     [cardLoading, publicCardPlayer, user?.id]
   );
 
@@ -487,48 +545,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Friends' Achievements */}
-        {achievementFeed.length > 0 && (
-          <div className="mb-4">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Friends' Achievements</p>
-            <div className="space-y-2">
-              {achievementFeed.map((item) => (
-                <div key={item._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-3 flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl"
-                    style={{
-                      background: item.achievementTier === 'legendary' ? '#111'
-                        : item.achievementTier === 'epic' ? '#7c3aed'
-                        : item.achievementTier === 'rare' ? '#d97706'
-                        : '#e5e7eb'
-                    }}
-                  >
-                    {item.type === 'level_up' ? '⬆️' : (item.achievement?.icon || '🏆')}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-bold text-gray-900 truncate">{item.user?.name || 'Player'}</span>
-                      <span className="text-xs text-gray-500">
-                        {item.type === 'level_up' ? `reached Level ${item.newLevel}` : `unlocked ${item.achievement?.name || 'achievement'}`}
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-gray-400 mt-0.5">
-                      {new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      {item.achievementTier && (
-                        <span className={`ml-2 font-bold uppercase ${
-                          item.achievementTier === 'legendary' ? 'text-yellow-500'
-                          : item.achievementTier === 'epic' ? 'text-purple-500'
-                          : item.achievementTier === 'rare' ? 'text-yellow-600'
-                          : 'text-gray-400'
-                        }`}>{item.achievementTier}</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {!loading && !error && visibleFeed.length > 0 && (
           <HomeFeedVirtualList
@@ -536,6 +552,9 @@ export default function Home() {
             currentUserId={user?.id}
             onViewProfile={setProfilePlayerId}
             promoSlot={feedPromoSlot}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={loadMore}
           />
         )}
 
