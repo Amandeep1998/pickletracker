@@ -92,8 +92,10 @@ export const deleteSession = (id) => api.delete(`/sessions/${id}`);
 export const getFeed = (params = {}) => api.get('/feed', { params });
 export const getFeedPost = (tournamentId) => api.get(`/feed/post/${tournamentId}`);
 export const toggleFeedLike = (tournamentId) => api.post(`/feed/${tournamentId}/like`);
+export const getFeedLikers = (tournamentId) => api.get(`/feed/${tournamentId}/likes`);
 export const getFeedComments = (tournamentId) => api.get(`/feed/${tournamentId}/comments`);
-export const addFeedComment = (tournamentId, text) => api.post(`/feed/${tournamentId}/comments`, { text });
+export const addFeedComment = (tournamentId, text, parentId = null) =>
+  api.post(`/feed/${tournamentId}/comments`, { text, parentId });
 export const deleteFeedComment = (tournamentId, commentId) => api.delete(`/feed/${tournamentId}/comments/${commentId}`);
 
 // Support tickets

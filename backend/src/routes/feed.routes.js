@@ -8,6 +8,7 @@ const {
   markAllRead,
   markOneRead,
   toggleLike,
+  getLikers,
   getComments,
   addComment,
   deleteComment,
@@ -26,6 +27,7 @@ router.get('/', protect, getFeed);
 
 // Likes & comments
 router.post('/:tournamentId/like',                   protect, toggleLike);
+router.get('/:tournamentId/likes',                   protect, getLikers);
 router.get('/:tournamentId/comments',                protect, getComments);
 router.post('/:tournamentId/comments',               protect, addComment);
 router.delete('/:tournamentId/comments/:commentId',  protect, deleteComment);

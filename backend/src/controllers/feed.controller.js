@@ -81,23 +81,50 @@ exports.getFeed = async (req, res, next) => {
       }
     }
 
-    // ── Step 3: Like counts + current user liked? ─────────────────────────────
+    // ── Step 3: Like counts + current user liked? + recent liker IDs ─────────
     const likeAgg = await FeedLike.aggregate([
       { $match: { tournamentId: { $in: tournamentIds } } },
+      { $sort: { createdAt: -1 } },
       {
         $group: {
           _id: '$tournamentId',
           count: { $sum: 1 },
-          likedByMe: {
-            $sum: { $cond: [{ $eq: ['$userId', currentUserId] }, 1, 0] },
+          likedByMeCount: { $sum: { $cond: [{ $eq: ['$userId', currentUserId] }, 1, 0] } },
+          allLikerIds: { $push: '$userId' },
+        },
+      },
+      {
+        $project: {
+          count: 1,
+          likedByMeCount: 1,
+          recentLikerIds: {
+            $slice: [
+              { $filter: { input: '$allLikerIds', as: 'uid', cond: { $ne: ['$$uid', currentUserId] } } },
+              2,
+            ],
           },
         },
       },
     ]);
 
+    const allLikerIdStrs = [...new Set(likeAgg.flatMap((l) => l.recentLikerIds.map(String)))];
+    const likerUsers = allLikerIdStrs.length
+      ? await User.find({ _id: { $in: allLikerIdStrs } }).select('name profilePhoto').lean()
+      : [];
+    const likerUserMap = Object.fromEntries(likerUsers.map((u) => [String(u._id), u]));
+
     const likeMap = {};
     for (const l of likeAgg) {
-      likeMap[String(l._id)] = { count: l.count, likedByMe: l.likedByMe > 0 };
+      likeMap[String(l._id)] = {
+        count: l.count,
+        likedByMe: l.likedByMeCount > 0,
+        recentLikers: l.recentLikerIds
+          .map((id) => {
+            const u = likerUserMap[String(id)];
+            return u ? { name: u.name, profilePhoto: u.profilePhoto || null } : null;
+          })
+          .filter(Boolean),
+      };
     }
 
     // ── Step 4: Recent comments (last 2 per tournament) ───────────────────────
@@ -114,6 +141,7 @@ exports.getFeed = async (req, res, next) => {
         userId: c.userId,
         userName: c.userName,
         text: c.text,
+        parentId: c.parentId || null,
         createdAt: c.createdAt,
       });
     }
@@ -127,11 +155,14 @@ exports.getFeed = async (req, res, next) => {
       if (feedHiddenUserIds.has(String(t.userId))) continue;
 
       const tIdStr = String(t._id);
+      const allForTournament = commentMap[tIdStr] || [];
+      const topLevelComments = allForTournament.filter((c) => !c.parentId);
       const social = {
-        likeCount:      likeMap[tIdStr]?.count    ?? 0,
-        likedByMe:      likeMap[tIdStr]?.likedByMe ?? false,
-        commentCount:   commentMap[tIdStr]?.length  ?? 0,
-        recentComments: (commentMap[tIdStr] || []).slice(-2),
+        likeCount:      likeMap[tIdStr]?.count        ?? 0,
+        likedByMe:      likeMap[tIdStr]?.likedByMe    ?? false,
+        recentLikers:   likeMap[tIdStr]?.recentLikers ?? [],
+        commentCount:   allForTournament.length,
+        recentComments: topLevelComments.slice(-2),
       };
 
       const upcomingCategories = (t.categories || []).filter((c) => c.date && c.date >= today);
@@ -240,23 +271,39 @@ exports.getFeedPost = async (req, res, next) => {
       profilePhoto: user.profilePhoto || null,
     };
 
-    const likes = await FeedLike.find({ tournamentId: tournamentOid }).lean();
+    const likes = await FeedLike.find({ tournamentId: tournamentOid }).sort({ createdAt: -1 }).lean();
     const likeCount = likes.length;
     const likedByMe = likes.some((l) => String(l.userId) === String(req.user.id));
 
+    const recentLikerRaw = likes.filter((l) => String(l.userId) !== String(req.user.id)).slice(0, 2);
+    const recentLikerUserIds = recentLikerRaw.map((l) => l.userId);
+    const recentLikerUsersData = recentLikerUserIds.length
+      ? await User.find({ _id: { $in: recentLikerUserIds } }).select('name profilePhoto').lean()
+      : [];
+    const recentLikerUserMap = Object.fromEntries(recentLikerUsersData.map((u) => [String(u._id), u]));
+    const recentLikers = recentLikerRaw
+      .map((l) => {
+        const u = recentLikerUserMap[String(l.userId)];
+        return u ? { name: u.name, profilePhoto: u.profilePhoto || null } : null;
+      })
+      .filter(Boolean);
+
     const allComments = await FeedComment.find({ tournamentId: tournamentOid }).sort({ createdAt: 1 }).lean();
     const commentCount = allComments.length;
-    const recentComments = allComments.slice(-2).map((c) => ({
+    const topLevelComments = allComments.filter((c) => !c.parentId);
+    const recentComments = topLevelComments.slice(-2).map((c) => ({
       id: c._id,
       userId: c.userId,
       userName: c.userName,
       text: c.text,
+      parentId: null,
       createdAt: c.createdAt,
     }));
 
     const social = {
       likeCount,
       likedByMe,
+      recentLikers,
       commentCount,
       recentComments,
     };
@@ -462,7 +509,24 @@ exports.toggleLike = async (req, res, next) => {
     }
 
     const likeCount = await FeedLike.countDocuments({ tournamentId });
-    res.json({ success: true, likedByMe: !existing, likeCount });
+
+    const recentLikeRaw = await FeedLike.find({ tournamentId, userId: { $ne: actorId } })
+      .sort({ createdAt: -1 })
+      .limit(2)
+      .lean();
+    const recentLikerUids = recentLikeRaw.map((l) => l.userId);
+    const recentLikerUsersData = recentLikerUids.length
+      ? await User.find({ _id: { $in: recentLikerUids } }).select('name profilePhoto').lean()
+      : [];
+    const recentLikerUMap = Object.fromEntries(recentLikerUsersData.map((u) => [String(u._id), u]));
+    const recentLikers = recentLikeRaw
+      .map((l) => {
+        const u = recentLikerUMap[String(l.userId)];
+        return u ? { name: u.name, profilePhoto: u.profilePhoto || null } : null;
+      })
+      .filter(Boolean);
+
+    res.json({ success: true, likedByMe: !existing, likeCount, recentLikers });
   } catch (err) {
     next(err);
   }
@@ -498,6 +562,7 @@ exports.getComments = async (req, res, next) => {
         userId: c.userId,
         userName: c.userName,
         text: c.text,
+        parentId: c.parentId || null,
         createdAt: c.createdAt,
       })),
     });
@@ -513,13 +578,20 @@ exports.getComments = async (req, res, next) => {
 exports.addComment = async (req, res, next) => {
   try {
     const { tournamentId } = req.params;
-    const { text } = req.body;
+    const { text, parentId } = req.body;
 
     if (!text || !text.trim()) {
       return res.status(400).json({ success: false, message: 'Comment text is required' });
     }
     if (text.trim().length > 500) {
       return res.status(400).json({ success: false, message: 'Comment too long (max 500 chars)' });
+    }
+
+    let resolvedParentId = null;
+    if (parentId) {
+      const parent = await FeedComment.findOne({ _id: parentId, tournamentId }).lean();
+      if (!parent) return res.status(400).json({ success: false, message: 'Parent comment not found' });
+      resolvedParentId = parent._id;
     }
 
     const actor = await User.findById(req.user.id).select('name').lean();
@@ -530,13 +602,14 @@ exports.addComment = async (req, res, next) => {
       userId: req.user.id,
       userName: actor.name,
       text: text.trim(),
+      parentId: resolvedParentId,
     });
 
-    // Notify + push tournament owner (skip self-comment)
     const tournament = await Tournament.findById(tournamentId).select('userId name').lean();
-    if (tournament && String(tournament.userId) !== String(req.user.id)) {
-      const excerpt = text.trim().length > 60 ? text.trim().slice(0, 60) + '…' : text.trim();
+    const excerpt = text.trim().length > 60 ? text.trim().slice(0, 60) + '…' : text.trim();
 
+    // Notify tournament owner (skip self)
+    if (tournament && String(tournament.userId) !== String(req.user.id)) {
       await FeedNotification.create({
         userId:         tournament.userId,
         actorId:        req.user.id,
@@ -555,6 +628,33 @@ exports.addComment = async (req, res, next) => {
       }).catch(() => {});
     }
 
+    // If replying, also notify the parent comment author (skip self and tournament owner — already notified)
+    if (resolvedParentId) {
+      const parentDoc = await FeedComment.findById(resolvedParentId).lean();
+      if (
+        parentDoc &&
+        String(parentDoc.userId) !== String(req.user.id) &&
+        (!tournament || String(parentDoc.userId) !== String(tournament.userId))
+      ) {
+        await FeedNotification.create({
+          userId:         parentDoc.userId,
+          actorId:        req.user.id,
+          actorName:      actor.name,
+          type:           'comment',
+          tournamentId,
+          tournamentName: tournament?.name || '',
+          commentText:    text.trim(),
+        });
+
+        sendPushToUser(parentDoc.userId, {
+          title: `${actor.name} replied to your comment`,
+          body: excerpt,
+          url: '/home',
+          tag: `feed-reply-${String(comment._id)}`,
+        }).catch(() => {});
+      }
+    }
+
     res.status(201).json({
       success: true,
       data: {
@@ -562,6 +662,7 @@ exports.addComment = async (req, res, next) => {
         userId:    comment.userId,
         userName:  comment.userName,
         text:      comment.text,
+        parentId:  comment.parentId || null,
         createdAt: comment.createdAt,
       },
     });
@@ -584,8 +685,39 @@ exports.deleteComment = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Not your comment' });
     }
 
+    await FeedComment.deleteMany({ parentId: comment._id });
     await comment.deleteOne();
     res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/feed/:tournamentId/likes
+ * Full list of users who liked a tournament (most recent first).
+ */
+exports.getLikers = async (req, res, next) => {
+  try {
+    const { tournamentId } = req.params;
+
+    const likes = await FeedLike.find({ tournamentId }).sort({ createdAt: -1 }).lean();
+    const userIds = likes.map((l) => l.userId);
+    const users = userIds.length
+      ? await User.find({ _id: { $in: userIds } }).select('name profilePhoto city').lean()
+      : [];
+    const userMap = Object.fromEntries(users.map((u) => [String(u._id), u]));
+
+    const likers = likes
+      .map((l) => {
+        const u = userMap[String(l.userId)];
+        return u
+          ? { id: u._id, name: u.name, profilePhoto: u.profilePhoto || null, city: u.city || null, likedAt: l.createdAt }
+          : null;
+      })
+      .filter(Boolean);
+
+    res.json({ success: true, data: likers });
   } catch (err) {
     next(err);
   }

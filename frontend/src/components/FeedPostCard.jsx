@@ -65,6 +65,140 @@ function Avatar({ user }) {
   );
 }
 
+function CommentAvatar({ name, photo, size = 7 }) {
+  if (photo) {
+    return (
+      <img
+        src={photo}
+        alt={name}
+        className={`w-${size} h-${size} rounded-full object-cover flex-shrink-0 mt-0.5`}
+      />
+    );
+  }
+  return (
+    <span
+      className={`w-${size} h-${size} rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5`}
+      style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}
+    >
+      {(name || '?')[0].toUpperCase()}
+    </span>
+  );
+}
+
+function buildLikedByText(likeCount, likedByMe, recentLikers) {
+  if (likeCount === 0) return null;
+  const others = recentLikers || [];
+  if (likedByMe) {
+    const remaining = likeCount - 1;
+    if (remaining === 0) return 'Liked by you';
+    if (remaining === 1 && others.length > 0) return `Liked by you and ${others[0].name}`;
+    return `Liked by you and ${remaining} other${remaining > 1 ? 's' : ''}`;
+  }
+  if (others.length === 0) return `${likeCount} like${likeCount > 1 ? 's' : ''}`;
+  if (likeCount === 1) return `Liked by ${others[0].name}`;
+  if (likeCount === 2 && others.length >= 2) return `Liked by ${others[0].name} and ${others[1].name}`;
+  return `Liked by ${others[0].name} and ${likeCount - 1} other${likeCount - 1 > 1 ? 's' : ''}`;
+}
+
+function buildCommentTree(flat) {
+  const map = {};
+  for (const c of flat) map[String(c.id)] = { ...c, replies: [] };
+  const roots = [];
+  for (const c of flat) {
+    if (c.parentId && map[String(c.parentId)]) {
+      map[String(c.parentId)].replies.push(map[String(c.id)]);
+    } else {
+      roots.push(map[String(c.id)]);
+    }
+  }
+  return roots;
+}
+
+function CommentNode({ comment, currentUserId, replyingTo, replyText, submitting, onDelete, onStartReply, onCancelReply, onSubmitReply, onReplyTextChange, depth = 0 }) {
+  const isReplying = replyingTo === String(comment.id);
+  const replyInputRef = useRef(null);
+
+  useEffect(() => {
+    if (isReplying) setTimeout(() => replyInputRef.current?.focus(), 80);
+  }, [isReplying]);
+
+  return (
+    <div className="flex items-start gap-2 group">
+      <CommentAvatar name={comment.userName} photo={comment.profilePhoto} size={depth > 0 ? 6 : 7} />
+      <div className="flex-1 min-w-0">
+        <div className="bg-white rounded-xl px-3 py-2 border border-gray-100 inline-block max-w-full">
+          <span className="text-xs font-semibold text-[#272702]">{comment.userName} </span>
+          <span className="text-xs text-gray-600">{comment.text}</span>
+        </div>
+        <div className="flex items-center gap-3 mt-0.5 pl-1">
+          <span className="text-[10px] text-gray-400">{timeAgo(comment.createdAt)}</span>
+          {depth < 2 && (
+            <button
+              type="button"
+              onClick={() => isReplying ? onCancelReply() : onStartReply(comment.id)}
+              className="text-[10px] font-medium text-[#4a6e10] hover:underline"
+            >
+              {isReplying ? 'Cancel' : 'Reply'}
+            </button>
+          )}
+          {String(comment.userId) === String(currentUserId) && (
+            <button
+              type="button"
+              onClick={() => onDelete(comment.id)}
+              className="text-[10px] text-gray-400 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100"
+            >
+              Delete
+            </button>
+          )}
+        </div>
+
+        {isReplying && (
+          <form onSubmit={(e) => onSubmitReply(e, comment.id)} className="mt-2 flex items-center gap-2">
+            <input
+              ref={replyInputRef}
+              type="text"
+              value={replyText}
+              onChange={(e) => onReplyTextChange(e.target.value)}
+              placeholder={`Reply to ${comment.userName}…`}
+              maxLength={500}
+              className="flex-1 text-xs bg-white border border-gray-200 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D] placeholder:text-gray-400"
+            />
+            <button
+              type="submit"
+              disabled={!replyText.trim() || submitting}
+              className="flex-shrink-0 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition-opacity disabled:opacity-40"
+              style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}
+            >
+              {submitting ? '…' : 'Post'}
+            </button>
+          </form>
+        )}
+
+        {comment.replies?.length > 0 && (
+          <div className="mt-2 space-y-2 pl-3 border-l-2 border-gray-100">
+            {comment.replies.map((reply) => (
+              <CommentNode
+                key={String(reply.id)}
+                comment={reply}
+                currentUserId={currentUserId}
+                replyingTo={replyingTo}
+                replyText={replyText}
+                submitting={submitting}
+                onDelete={onDelete}
+                onStartReply={onStartReply}
+                onCancelReply={onCancelReply}
+                onSubmitReply={onSubmitReply}
+                onReplyTextChange={onReplyTextChange}
+                depth={depth + 1}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Community feed card — used on Home and in the notification post popup.
  */
@@ -76,7 +210,11 @@ function FeedCardComponent({ item, currentUserId, onViewProfile, expandCommentsF
 
   const [liked, setLiked] = useState(item.likedByMe);
   const [likeCount, setLikeCount] = useState(item.likeCount);
+  const [recentLikers, setRecentLikers] = useState(item.recentLikers || []);
   const [liking, setLiking] = useState(false);
+  const [likersOpen, setLikersOpen] = useState(false);
+  const [likersList, setLikersList] = useState(null);
+  const [loadingLikers, setLoadingLikers] = useState(false);
 
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState(item.recentComments || []);
@@ -86,6 +224,8 @@ function FeedCardComponent({ item, currentUserId, onViewProfile, expandCommentsF
 
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyText, setReplyText] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
   const inputRef = useRef(null);
 
@@ -135,11 +275,28 @@ function FeedCardComponent({ item, currentUserId, onViewProfile, expandCommentsF
       const res = await api.toggleFeedLike(tournamentId);
       setLiked(res.data.likedByMe);
       setLikeCount(res.data.likeCount);
+      if (res.data.recentLikers) setRecentLikers(res.data.recentLikers);
     } catch {
       setLiked(wasLiked);
       setLikeCount((c) => c + (wasLiked ? 1 : -1));
     } finally {
       setLiking(false);
+    }
+  };
+
+  const handleOpenLikers = async () => {
+    if (likeCount === 0) return;
+    setLikersOpen(true);
+    if (!likersList) {
+      setLoadingLikers(true);
+      try {
+        const res = await api.getFeedLikers(tournamentId);
+        setLikersList(res.data.data || []);
+      } catch {
+        setLikersList([]);
+      } finally {
+        setLoadingLikers(false);
+      }
     }
   };
 
@@ -179,15 +336,39 @@ function FeedCardComponent({ item, currentUserId, onViewProfile, expandCommentsF
     }
   };
 
+  const handleSubmitReply = async (e, parentId) => {
+    e.preventDefault();
+    const text = replyText.trim();
+    if (!text || submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await api.addFeedComment(tournamentId, text, parentId);
+      setComments((prev) => [...prev, res.data.data]);
+      setCommentCount((c) => c + 1);
+      setReplyText('');
+      setReplyingTo(null);
+      setAllLoaded(true);
+    } catch {
+      /* silent */
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleDeleteComment = async (commentId) => {
     try {
       await api.deleteFeedComment(tournamentId, commentId);
-      setComments((prev) => prev.filter((c) => String(c.id) !== String(commentId)));
+      setComments((prev) => prev.filter(
+        (c) => String(c.id) !== String(commentId) && String(c.parentId) !== String(commentId)
+      ));
       setCommentCount((c) => Math.max(0, c - 1));
     } catch {
       /* silent */
     }
   };
+
+  const commentTree = buildCommentTree(comments);
+  const likedByText = buildLikedByText(likeCount, liked, recentLikers);
 
   let activityLine;
   if (isUpcoming) {
@@ -351,10 +532,68 @@ function FeedCardComponent({ item, currentUserId, onViewProfile, expandCommentsF
             <span>{commentCount > 0 ? commentCount : 'Comment'}</span>
           </button>
         </div>
+
+        {likedByText && (
+          <button
+            type="button"
+            onClick={handleOpenLikers}
+            className="mt-1 text-xs text-gray-500 hover:text-gray-700 px-1 text-left transition-colors"
+          >
+            <svg className="w-3 h-3 inline-block mr-1 text-rose-400" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            {likedByText}
+          </button>
+        )}
       </div>
 
       {shareOpen && isOwnTournament && (
         <FeedTournamentShareModal item={item} onClose={() => setShareOpen(false)} />
+      )}
+
+      {likersOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={() => setLikersOpen(false)}>
+          <div
+            className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm max-h-[70vh] flex flex-col shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <span className="font-semibold text-sm text-[#272702]">Likes</span>
+              <button type="button" onClick={() => setLikersOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 p-4 space-y-3">
+              {loadingLikers && (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center gap-3 animate-pulse">
+                      <div className="w-9 h-9 rounded-full bg-gray-200 flex-shrink-0" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3 bg-gray-200 rounded w-1/3" />
+                        <div className="h-2.5 bg-gray-100 rounded w-1/4" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!loadingLikers && likersList?.length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-4">No likes yet.</p>
+              )}
+              {!loadingLikers && likersList?.map((liker) => (
+                <div key={String(liker.id)} className="flex items-center gap-3">
+                  <CommentAvatar name={liker.name} photo={liker.profilePhoto} size={9} />
+                  <div>
+                    <p className="text-sm font-semibold text-[#272702]">{liker.name}</p>
+                    {liker.city && <p className="text-xs text-gray-400">{liker.city}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       )}
 
       {commentsOpen && (
@@ -377,35 +616,22 @@ function FeedCardComponent({ item, currentUserId, onViewProfile, expandCommentsF
             <p className="text-xs text-gray-400 text-center py-1">No comments yet. Be the first!</p>
           )}
 
-          {!loadingComments && comments.length > 0 && (
-            <div className="space-y-2.5">
-              {comments.map((c) => (
-                <div key={String(c.id)} className="flex items-start gap-2 group">
-                  <span
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5"
-                    style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D)' }}
-                  >
-                    {(c.userName || '?')[0].toUpperCase()}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="bg-white rounded-xl px-3 py-2 border border-gray-100 inline-block max-w-full">
-                      <span className="text-xs font-semibold text-[#272702]">{c.userName} </span>
-                      <span className="text-xs text-gray-600">{c.text}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5 pl-1">
-                      <span className="text-[10px] text-gray-400">{timeAgo(c.createdAt)}</span>
-                      {String(c.userId) === String(currentUserId) && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteComment(c.id)}
-                          className="text-[10px] text-gray-400 hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+          {!loadingComments && commentTree.length > 0 && (
+            <div className="space-y-3">
+              {commentTree.map((c) => (
+                <CommentNode
+                  key={String(c.id)}
+                  comment={c}
+                  currentUserId={currentUserId}
+                  replyingTo={replyingTo}
+                  replyText={replyText}
+                  submitting={submitting}
+                  onDelete={handleDeleteComment}
+                  onStartReply={(id) => { setReplyingTo(String(id)); setReplyText(''); }}
+                  onCancelReply={() => setReplyingTo(null)}
+                  onSubmitReply={handleSubmitReply}
+                  onReplyTextChange={setReplyText}
+                />
               ))}
             </div>
           )}
