@@ -19,7 +19,7 @@ export default function Login() {
   const [forgotMsg, setForgotMsg] = useState('');
 
   useEffect(() => {
-    if (user) navigate(user.onboardingDone ? '/home' : '/welcome', { replace: true });
+    if (user) navigate('/home', { replace: true });
   }, [user, navigate]);
 
   const handleChange = (e) => {

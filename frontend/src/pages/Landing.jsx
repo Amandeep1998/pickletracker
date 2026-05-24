@@ -142,16 +142,16 @@ export default function Landing() {
               {/* Text */}
               <div className="flex-1 text-center lg:text-left">
                 <span className="inline-block bg-[#91BE4D]/15 border border-[#91BE4D]/25 text-[#91BE4D] text-[11px] font-bold px-3 py-1.5 rounded-full mb-6 tracking-[0.12em] uppercase">
-                  Built for pickleball players
+                  Your complete pickleball companion
                 </span>
 
                 <h1 className="text-4xl sm:text-5xl lg:text-[3.3rem] font-extrabold text-white leading-[1.1] mb-6 tracking-[-0.01em]">
-                  Stop losing track of your{' '}
-                  <span className="text-[#ec9937]">pickleball spending.</span>
+                  Every match, every session —{' '}
+                  <span className="text-[#ec9937]">your whole journey.</span>
                 </h1>
 
                 <p className="text-base sm:text-[1.1rem] text-slate-300 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
-                  Know exactly what pickleball is costing you — entry fees, travel, coaching — and whether your prize money covers it.{' '}
+                  PickleTracker is your pickleball diary — log tournaments and sessions, track your progress, celebrate wins, and own your story as a player.{' '}
                   <span className="text-white font-semibold">Free forever.</span>
                 </p>
 
@@ -185,7 +185,7 @@ export default function Landing() {
                     Sign in
                   </Link>
                 </div>
-                <p className="text-slate-500 text-xs mt-4">Join 200+ players tracking their season · Free forever · No credit card</p>
+                <p className="text-slate-500 text-xs mt-4">Join 200+ players building their pickleball story · Free forever · No credit card</p>
               </div>
 
               {/* Hero visual: dashboard screenshot */}
@@ -204,9 +204,9 @@ export default function Landing() {
             <h2 className="text-2xl sm:text-3xl font-extrabold text-[#272702] mb-10 tracking-tight">Up and running in 60 seconds</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
               {[
-                { step: '1', icon: '📝', title: 'Log a tournament', desc: 'Add the name, date, entry fee, category, and prize money. Takes under a minute.' },
-                { step: '2', icon: '📊', title: 'See your real numbers', desc: 'Dashboard shows profit vs. spend, medal tally, and monthly chart — instantly.' },
-                { step: '3', icon: '🔔', title: 'Get reminded automatically', desc: 'Day-before email + push notification so you never miss a tournament start.' },
+                { step: '1', icon: '📝', title: 'Log everything', desc: 'Tournaments, casual sessions, drills, coaching — add any kind of play in under a minute.' },
+                { step: '2', icon: '📈', title: 'Watch yourself grow', desc: 'Dashboard shows your medals, session count, skill trends, spending, and monthly chart — all in one place.' },
+                { step: '3', icon: '🏆', title: 'Own your story', desc: 'Every win, every lesson learned, every city you played in — yours forever. Never lose a season\'s worth of memories.' },
               ].map(({ step, icon, title, desc }) => (
                 <div key={step} className="flex flex-col items-center">
                   <div className="w-12 h-12 rounded-full bg-[#f4f8e8] border-2 border-[#91BE4D]/30 flex items-center justify-center mb-3 text-xl">
@@ -233,24 +233,24 @@ export default function Landing() {
 
               {/* Copy */}
               <div className="flex-1 order-1 lg:order-2 text-center lg:text-left">
-                <p className="text-[#ec9937] text-xs font-bold uppercase tracking-[0.15em] mb-3">Expense tracking</p>
+                <p className="text-[#ec9937] text-xs font-bold uppercase tracking-[0.15em] mb-3">Tournament & session log</p>
                 <h2 className="text-3xl sm:text-4xl font-extrabold text-[#272702] leading-tight tracking-tight mb-4">
-                  Every fee, every prize —<br />tracked in seconds.
+                  Your complete record —<br />every match, every moment.
                 </h2>
                 <p className="text-gray-600 text-base sm:text-lg leading-relaxed mb-6 max-w-md mx-auto lg:mx-0">
-                  Most players have no idea what they're really spending. PickleTracker totals every entry fee, court rental, coach fee, and travel cost — and shows what's actually left after prize money.
+                  Log every tournament, drill, and casual game. Track your medals, results, who you played with, and what you spent — so your pickleball story is always a tap away.
                 </p>
                 <ul className="space-y-2.5 max-w-md mx-auto lg:mx-0 text-left">
-                  <li className="flex items-start gap-2.5 text-sm text-gray-700"><Check />Itemized travel — transport, food, stay, visa</li>
-                  <li className="flex items-start gap-2.5 text-sm text-gray-700"><Check />Court fees, coach fees, gear — all counted</li>
-                  <li className="flex items-start gap-2.5 text-sm text-gray-700"><Check />Month-by-month chart of profit vs. spending</li>
+                  <li className="flex items-start gap-2.5 text-sm text-gray-700"><Check />Tournaments with categories, medals, and prize amounts</li>
+                  <li className="flex items-start gap-2.5 text-sm text-gray-700"><Check />Casual sessions and drills — log reps, skills, notes</li>
+                  <li className="flex items-start gap-2.5 text-sm text-gray-700"><Check />Travel and entry fees — know your real investment</li>
                   <li className="flex items-start gap-2.5 text-sm text-gray-700"><Check />Works in any currency &amp; time zone — no matter where you play</li>
                 </ul>
                 <Link
                   to="/signup"
                   className="inline-flex items-center gap-1.5 text-sm font-bold text-[#4a6e10] hover:text-[#2d7005] transition-colors mt-7"
                 >
-                  See your real numbers <ArrowRight />
+                  Start your journal <ArrowRight />
                 </Link>
               </div>
 
@@ -334,9 +334,9 @@ export default function Landing() {
         <section className="bg-[#f9fafb] border-y border-gray-100 py-16 sm:py-20">
           <div className="max-w-6xl mx-auto px-5 sm:px-8">
             <div className="text-center mb-10">
-              <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-[0.15em] mb-3">More reasons to love it</p>
+              <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-[0.15em] mb-3">Everything a serious player needs</p>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-[#272702] leading-tight tracking-tight">
-                And a few more things you'll like.
+                One app. Your entire pickleball life.
               </h2>
             </div>
 
@@ -373,11 +373,11 @@ export default function Landing() {
                   Try it right now — no account needed
                 </span>
                 <h2 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight tracking-tight mb-4">
-                  Log your next tournament<br />
+                  Start your journey<br />
                   <span className="text-[#ec9937]">before you sign up.</span>
                 </h2>
                 <p className="text-slate-300 text-base sm:text-lg leading-relaxed mb-6 max-w-md mx-auto lg:mx-0">
-                  Fill in the details below. We'll save your tournament automatically when you sign in with Google — your data is ready the moment you land in the app.
+                  Log your next tournament below — no account needed. We'll save it automatically when you sign in with Google, and it'll be waiting in your dashboard.
                 </p>
                 <ul className="space-y-2 max-w-xs mx-auto lg:mx-0 text-left">
                   {[
@@ -470,11 +470,11 @@ export default function Landing() {
           <div className="relative max-w-3xl mx-auto px-5 sm:px-8 text-center">
             <p className="text-[#91BE4D] text-xs font-bold uppercase tracking-[0.15em] mb-4">Ready?</p>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-4 leading-tight">
-              Track your tournaments.<br />
-              <span className="text-[#91BE4D]">Know what you're spending.</span>
+              Start your pickleball journey.<br />
+              <span className="text-[#91BE4D]">Every match. Every memory.</span>
             </h2>
             <p className="text-slate-400 text-base mb-8 max-w-md mx-auto leading-relaxed">
-              Takes 60 seconds to start. No credit card. Free forever.
+              Log your first session in 60 seconds. No credit card. Free forever.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
@@ -506,7 +506,7 @@ export default function Landing() {
               <div className="mb-4"><BrandLogo size="lg" /></div>
               <p className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.14em] mb-3">About</p>
               <p className="text-sm text-slate-400 leading-relaxed mb-3">
-                Hi, I'm <span className="text-white font-semibold">Amandeep Saini</span> — a software engineer and a passionate pickleball player. I built PickleTracker to help fellow players track what they're spending on the sport and get better at the same time.
+                Hi, I'm <span className="text-white font-semibold">Amandeep Saini</span> — a software engineer and a passionate pickleball player. I built PickleTracker to be the one app serious players need: a match diary, a progress tracker, and a complete companion for your pickleball journey.
               </p>
               <p className="text-sm text-slate-400 leading-relaxed">
                 Built by a player, for players.
