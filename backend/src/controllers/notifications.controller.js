@@ -116,7 +116,7 @@ const buildDigestHtml = (user, recentSessions, allSessions, allTournaments) => {
       ${perfSection}
       ${medalSection}
       <div style="text-align:center;margin:24px 0 20px;">
-        <a href="https://pickletracker.in/sessions" style="background:linear-gradient(to right,#2d7005,#91BE4D 45%,#ec9937);color:#ffffff;font-weight:700;font-size:14px;padding:13px 28px;border-radius:10px;text-decoration:none;display:inline-block;">Open PickleTracker</a>
+        <a href="https://pickletracker.in" style="background:linear-gradient(to right,#2d7005,#91BE4D 45%,#ec9937);color:#ffffff;font-weight:700;font-size:14px;padding:13px 28px;border-radius:10px;text-decoration:none;display:inline-block;">Open PickleTracker</a>
       </div>
     </div>
     ${footerHtml()}`);

@@ -81,7 +81,7 @@ function buildDay3Email(firstName) {
             <p style="margin:0 0 16px;color:#374151;font-size:14px;line-height:1.6;">
               It takes under 2 minutes to add your first tournament. Your dashboard, P&amp;L charts, and monthly reports will start filling in automatically from there.
             </p>
-            <a href="${APP_URL}/tournaments"
+            <a href="${APP_URL}"
                style="display:inline-block;background:linear-gradient(to right,#2d7005,#91BE4D);color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:10px;">
               Add your first tournament →
             </a>
@@ -165,12 +165,12 @@ function buildDay7Email(firstName) {
         <!-- CTA -->
         <tr>
           <td style="padding:20px 32px 28px;">
-            <a href="${APP_URL}/tournaments"
+            <a href="${APP_URL}"
                style="display:inline-block;background:linear-gradient(to right,#2d7005,#91BE4D);color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:12px 24px;border-radius:10px;">
               Add a tournament now →
             </a>
             <p style="margin:16px 0 0;color:#9ca3af;font-size:12px;">
-              Or <a href="${APP_URL}/sessions" style="color:#4a6e10;">log a practice session</a> if you don't have a tournament lined up yet.
+              Or <a href="${APP_URL}" style="color:#4a6e10;">log a practice session</a> if you don't have a tournament lined up yet.
             </p>
           </td>
         </tr>
