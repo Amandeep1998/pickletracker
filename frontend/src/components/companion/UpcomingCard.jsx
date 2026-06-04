@@ -89,9 +89,9 @@ async function buildShareImage(item) {
   });
 
   x.fillStyle = '#C7F23A';
-  x.font = 'bold 34px Archivo, sans-serif';
+  x.font = 'bold 40px Archivo, sans-serif';
   x.textAlign = 'center';
-  x.fillText('erne', cx, H - 90);
+  x.fillText('🏓 PickleTracker', cx, H - 90);
 
   return new Promise((resolve) => c.toBlob((b) => resolve(b), 'image/png'));
 }
@@ -107,17 +107,17 @@ function UpcomingItem({ item, onEdit, onDelete }) {
       .join(', ');
     const summary = `Playing ${item.name}${item.dates ? ` on ${item.dates}` : ''}${
       item.venue ? ` at ${item.venue}` : ''
-    }${catLine ? ` — ${catLine}` : ''}. Tracked on erne.`;
+    }${catLine ? ` — ${catLine}` : ''}. Tracked on PickleTracker.`;
     try {
       const blob = await buildShareImage(item);
-      const file = blob && new File([blob], 'erne-upcoming.png', { type: 'image/png' });
+      const file = blob && new File([blob], 'pickletracker-upcoming.png', { type: 'image/png' });
       if (file && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: `${item.name} · erne`, text: summary });
+        await navigator.share({ files: [file], title: `${item.name} · PickleTracker`, text: summary });
         setShareMsg('');
         return;
       }
       if (navigator.share) {
-        await navigator.share({ title: `${item.name} · erne`, text: summary });
+        await navigator.share({ title: `${item.name} · PickleTracker`, text: summary });
         setShareMsg('');
         return;
       }
@@ -219,7 +219,10 @@ function UpcomingItem({ item, onEdit, onDelete }) {
           </button>
         )}
         <button type="button" onClick={onShare} className="erne-btn" style={shareBtn}>
-          <Icon name="share" size={16} color="var(--accent-text)" /> {shareMsg || 'Share'}
+          <Icon name="share" size={16} color="var(--accent-text)" />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {shareMsg || 'Share'}
+          </span>
         </button>
       </div>
     </div>
@@ -228,6 +231,7 @@ function UpcomingItem({ item, onEdit, onDelete }) {
 
 const ghostBtn = {
   flex: 1,
+  minWidth: 0,
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -245,6 +249,7 @@ const ghostBtn = {
 
 const shareBtn = {
   flex: 1,
+  minWidth: 0,
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',

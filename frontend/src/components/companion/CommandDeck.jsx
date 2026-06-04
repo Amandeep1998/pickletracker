@@ -88,8 +88,34 @@ export default function CommandDeck({ chips = [], onPick, disabled, open, onClos
           ...(dragging ? { transform: `translateY(${dragY}px)`, transition: 'none' } : null),
         }}
       >
-        <div style={{ padding: '4px 0 12px', cursor: 'grab' }}>
+        <div style={{ padding: '4px 0 8px', cursor: 'grab' }}>
           <div className="erne-grabber" style={{ margin: '0 auto' }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '0 0 10px' }}>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            onPointerDown={(e) => e.stopPropagation()}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: '8px 18px',
+              borderRadius: 999,
+              border: 'none',
+              background: '#E5484D',
+              color: '#fff',
+              fontFamily: 'var(--font-body)',
+              fontSize: 13.5,
+              fontWeight: 800,
+              cursor: 'pointer',
+            }}
+          >
+            <Icon name="close" size={18} color="#fff" />
+            Close
+          </button>
         </div>
 
         <div

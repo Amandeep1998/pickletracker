@@ -156,9 +156,9 @@ async function buildShareImage(card) {
   });
 
   x.fillStyle = '#C7F23A';
-  x.font = 'bold 34px Archivo, sans-serif';
+  x.font = 'bold 40px Archivo, sans-serif';
   x.textAlign = 'center';
-  x.fillText('erne', cx, H - 90);
+  x.fillText('🏓 PickleTracker', cx, H - 90);
 
   return new Promise((resolve) => c.toBlob((b) => resolve(b), 'image/png'));
 }
@@ -248,17 +248,17 @@ export default function PlayerCard({ card, onUpdated, grew, onEditWin }) {
 
   const onShare = async () => {
     setShareMsg('Preparing…');
-    const summary = `${name} — ${c.totalMedals || 0} medals (Gold ${m.gold || 0}, Silver ${m.silver || 0}, Bronze ${m.bronze || 0}) across ${c.tournaments || 0} tournaments. Tracked on erne.`;
+    const summary = `${name} — ${c.totalMedals || 0} medals (Gold ${m.gold || 0}, Silver ${m.silver || 0}, Bronze ${m.bronze || 0}) across ${c.tournaments || 0} tournaments. Tracked on PickleTracker.`;
     try {
       const blob = await buildShareImage({ ...c, name, profilePhoto: photo });
-      const file = blob && new File([blob], 'erne-card.png', { type: 'image/png' });
+      const file = blob && new File([blob], 'pickletracker-card.png', { type: 'image/png' });
       if (file && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: `${name} · erne`, text: summary });
+        await navigator.share({ files: [file], title: `${name} · PickleTracker`, text: summary });
         setShareMsg('');
         return;
       }
       if (navigator.share) {
-        await navigator.share({ title: `${name} · erne`, text: summary });
+        await navigator.share({ title: `${name} · PickleTracker`, text: summary });
         setShareMsg('');
         return;
       }
@@ -526,7 +526,9 @@ export default function PlayerCard({ card, onUpdated, grew, onEditWin }) {
           }}
         >
           <Icon name="share" size={17} color="var(--accent-text)" />
-          {shareMsg || 'Share my card'}
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {shareMsg || 'Share my card'}
+          </span>
         </button>
       </div>
     </div>
