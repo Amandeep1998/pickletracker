@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Icon } from './erne/Icon';
 
 /**
- * Command Deck — type-to-filter bottom sheet that replaces RadialDock.
- * Triggered by the accent (+) button in Composer. Parent controls open state.
+ * Command Deck — bottom sheet of actions, triggered by the accent (+)
+ * button in Composer. Parent controls open state. Drag the sheet down
+ * (from anywhere, when scrolled to top) to dismiss.
  *
  * chips = [{ id, action, iconName, label, short, hint?, group? }]
  * onPick(chip) — called when user picks an action (deck closes after)
@@ -14,16 +15,15 @@ import { Icon } from './erne/Icon';
 const GROUP_ORDER = ['hero', 'Log & add', 'Your game', 'Explore', 'App'];
 
 export default function CommandDeck({ chips = [], onPick, disabled, open, onClose }) {
-  const [query, setQuery] = useState('');
-  const inputRef = useRef(null);
-
-  // Swipe-down-to-close: drag the grabber down; release past the threshold closes.
+  // Swipe-down-to-close: drag the sheet down; release past threshold closes.
   const [dragY, setDragY] = useState(0);
   const dragStart = useRef(null);
+  const scrollRef = useRef(null);
 
   const onDragStart = (e) => {
+    // Only begin a close-drag when content is scrolled to the top.
+    if ((scrollRef.current?.scrollTop ?? 0) > 0) return;
     dragStart.current = e.clientY;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
   };
   const onDragMove = (e) => {
     if (dragStart.current == null) return;
@@ -32,33 +32,19 @@ export default function CommandDeck({ chips = [], onPick, disabled, open, onClos
   };
   const onDragEnd = () => {
     if (dragStart.current == null) return;
-    const closing = dragY > 80;
+    const closing = dragY > 90;
     dragStart.current = null;
     setDragY(0);
     if (closing) onClose?.();
   };
 
-  // Clear query on open
+  // Reset drag offset on open.
   useEffect(() => {
-    if (open) {
-      setQuery('');
-      setDragY(0);
-      setTimeout(() => inputRef.current?.focus(), 120);
-    }
+    if (open) setDragY(0);
   }, [open]);
 
-  const q = query.toLowerCase().trim();
-  const filtered = q
-    ? chips.filter(
-        (c) =>
-          (c.label || '').toLowerCase().includes(q) ||
-          (c.short || '').toLowerCase().includes(q) ||
-          (c.hint || '').toLowerCase().includes(q)
-      )
-    : chips;
-
-  const hero = filtered.find((c) => c.group === 'hero');
-  const rest = filtered.filter((c) => c.group !== 'hero');
+  const hero = chips.find((c) => c.group === 'hero');
+  const rest = chips.filter((c) => c.group !== 'hero');
 
   // Group non-hero chips
   const grouped = {};
@@ -74,6 +60,8 @@ export default function CommandDeck({ chips = [], onPick, disabled, open, onClos
     onPick?.(chip);
   };
 
+  const dragging = dragY > 0;
+
   return (
     <>
       {/* Scrim */}
@@ -87,67 +75,27 @@ export default function CommandDeck({ chips = [], onPick, disabled, open, onClos
       <div
         className="erne-deck"
         data-open={String(open)}
+        onPointerDown={onDragStart}
+        onPointerMove={onDragMove}
+        onPointerUp={onDragEnd}
+        onPointerCancel={onDragEnd}
         style={{
           position: 'fixed',
           bottom: 0,
           left: 0,
           right: 0,
-          ...(dragY > 0 ? { transform: `translateY(${dragY}px)`, transition: 'none' } : null),
+          touchAction: 'none',
+          ...(dragging ? { transform: `translateY(${dragY}px)`, transition: 'none' } : null),
         }}
       >
-        <div
-          onPointerDown={onDragStart}
-          onPointerMove={onDragMove}
-          onPointerUp={onDragEnd}
-          onPointerCancel={onDragEnd}
-          style={{ padding: '4px 0 8px', margin: '-4px 0 0', cursor: 'grab', touchAction: 'none' }}
-        >
+        <div style={{ padding: '4px 0 12px', cursor: 'grab' }}>
           <div className="erne-grabber" style={{ margin: '0 auto' }} />
         </div>
 
-        {/* Search */}
-        <div style={{ position: 'relative', marginBottom: 12 }}>
-          <Icon
-            name="search"
-            size={16}
-            style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', pointerEvents: 'none' }}
-          />
-          <input
-            ref={inputRef}
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search actions…"
-            style={{
-              width: '100%',
-              padding: '10px 12px 10px 36px',
-              fontFamily: 'var(--font-body)',
-              fontSize: 14.5,
-              fontWeight: 500,
-              color: 'var(--ink)',
-              background: 'var(--surface)',
-              border: '1.5px solid var(--line)',
-              borderRadius: 14,
-              outline: 'none',
-            }}
-          />
-        </div>
-
-        <div style={{ maxHeight: 'min(60vh, 460px)', overflowY: 'auto' }}>
-          {filtered.length === 0 && (
-            <div
-              style={{
-                padding: '32px 16px',
-                textAlign: 'center',
-                color: 'var(--ink-soft)',
-                fontSize: 14,
-                fontWeight: 600,
-              }}
-            >
-              No actions match "{query}"
-            </div>
-          )}
-
+        <div
+          ref={scrollRef}
+          style={{ maxHeight: 'min(60vh, 460px)', overflowY: 'auto', touchAction: 'pan-y' }}
+        >
           {/* Hero tile */}
           {hero && (
             <button
