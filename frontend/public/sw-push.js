@@ -25,7 +25,7 @@ self.addEventListener('push', (event) => {
   const {
     title = 'PickleTracker',
     body = '',
-    url = '/home',
+    url = '/',
     tag = 'pickletracker',
     icon: payloadIcon,
     image: payloadImage,
@@ -55,8 +55,8 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const raw = event.notification.data?.url || '/home';
-  const targetUrl = resolveAbsoluteUrl(raw) || new URL('/home', self.location.origin).href;
+  const raw = event.notification.data?.url || '/';
+  const targetUrl = resolveAbsoluteUrl(raw) || new URL('/', self.location.origin).href;
   event.waitUntil(
     clients
       .matchAll({ type: 'window', includeUncontrolled: true })

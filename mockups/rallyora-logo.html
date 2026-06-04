@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>rallyora — logo concepts</title>
+<style>
+  :root{ --navy:#16261e; --lime:#c4f53b; --lime2:#a9dc24; --paper:#f6f8f5; --ink:#16261e; }
+  *{margin:0;box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  body{background:#0e1411;color:#fff;padding:40px 20px}
+  h1{text-align:center;font-size:20px;font-weight:700;margin-bottom:4px}
+  p.sub{text-align:center;color:#9fb3a6;font-size:13px;margin-bottom:34px}
+  .grid{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;align-items:stretch}
+  .tile{background:var(--paper);border-radius:20px;padding:30px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:14px;min-width:300px;min-height:200px}
+  .tile.dark{background:var(--navy)}
+  .cap{font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:#8a9a90}
+  .tile.dark .cap{color:#6f8479}
+
+  /* wordmark text version */
+  .wm{font-weight:800;font-size:44px;letter-spacing:-1.5px;display:flex;align-items:center}
+  .wm .a{color:var(--navy)} .wm .b{color:var(--lime2)}
+  .tile.dark .wm .a{color:#fff} .tile.dark .wm .b{color:var(--lime)}
+</style>
+</head>
+<body>
+  <h1>🏐 rallyora — logo concepts</h1>
+  <p class="sub">Concept: the "rally arc" — a ball's trajectory / the back-and-forth of a rally. Palette: navy #16261e + lime #c4f53b</p>
+
+  <div class="grid">
+
+    <!-- ICON A: rally arc + ball -->
+    <div class="tile">
+      <div class="cap">Icon A · rally arc</div>
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <rect x="4" y="4" width="112" height="112" rx="28" fill="#16261e"/>
+        <path d="M28 84 Q60 18 92 84" fill="none" stroke="#c4f53b" stroke-width="9" stroke-linecap="round"/>
+        <path d="M30 84 Q60 36 90 84" fill="none" stroke="#c4f53b" stroke-width="9" stroke-linecap="round" opacity=".35"/>
+        <circle cx="60" cy="30" r="9" fill="#c4f53b"/>
+      </svg>
+    </div>
+
+    <!-- ICON B: R monogram with swoosh -->
+    <div class="tile">
+      <div class="cap">Icon B · R + motion</div>
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <rect x="4" y="4" width="112" height="112" rx="28" fill="#c4f53b"/>
+        <text x="50%" y="54%" text-anchor="middle" dominant-baseline="central"
+          font-size="74" font-weight="900" fill="#16261e" font-family="Arial">r</text>
+        <path d="M30 92 Q70 92 96 60" fill="none" stroke="#16261e" stroke-width="8" stroke-linecap="round"/>
+        <circle cx="96" cy="60" r="6" fill="#16261e"/>
+      </svg>
+    </div>
+
+    <!-- ICON C: rally bounce / infinity exchange -->
+    <div class="tile">
+      <div class="cap">Icon C · exchange</div>
+      <svg width="120" height="120" viewBox="0 0 120 120">
+        <rect x="4" y="4" width="112" height="112" rx="28" fill="#16261e"/>
+        <path d="M34 60 Q47 34 60 60 Q73 86 86 60" fill="none" stroke="#c4f53b" stroke-width="9" stroke-linecap="round"/>
+        <circle cx="34" cy="60" r="7" fill="#c4f53b"/>
+        <circle cx="86" cy="60" r="7" fill="#fff"/>
+      </svg>
+    </div>
+
+    <!-- HORIZONTAL LOCKUP on light -->
+    <div class="tile" style="min-width:420px">
+      <div class="cap">Horizontal lockup</div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <svg width="60" height="60" viewBox="0 0 120 120">
+          <rect x="4" y="4" width="112" height="112" rx="28" fill="#16261e"/>
+          <path d="M28 84 Q60 18 92 84" fill="none" stroke="#c4f53b" stroke-width="9" stroke-linecap="round"/>
+          <circle cx="60" cy="30" r="9" fill="#c4f53b"/>
+        </svg>
+        <div class="wm"><span class="a">rally</span><span class="b">ora</span></div>
+      </div>
+    </div>
+
+    <!-- REVERSE lockup on navy -->
+    <div class="tile dark" style="min-width:420px">
+      <div class="cap">Reverse (on navy)</div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <svg width="60" height="60" viewBox="0 0 120 120">
+          <rect x="4" y="4" width="112" height="112" rx="28" fill="#c4f53b"/>
+          <path d="M28 84 Q60 18 92 84" fill="none" stroke="#16261e" stroke-width="9" stroke-linecap="round"/>
+          <circle cx="60" cy="30" r="9" fill="#16261e"/>
+        </svg>
+        <div class="wm"><span class="a">rally</span><span class="b">ora</span></div>
+      </div>
+    </div>
+
+    <!-- MONOCHROME -->
+    <div class="tile">
+      <div class="cap">Monochrome</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <svg width="48" height="48" viewBox="0 0 120 120">
+          <rect x="4" y="4" width="112" height="112" rx="28" fill="none" stroke="#16261e" stroke-width="7"/>
+          <path d="M28 84 Q60 18 92 84" fill="none" stroke="#16261e" stroke-width="9" stroke-linecap="round"/>
+          <circle cx="60" cy="30" r="9" fill="#16261e"/>
+        </svg>
+        <div class="wm" style="font-size:34px"><span class="a">rallyora</span></div>
+      </div>
+    </div>
+
+    <!-- APP ICON preview small -->
+    <div class="tile">
+      <div class="cap">App icon @ small sizes</div>
+      <div style="display:flex;align-items:center;gap:18px">
+        <svg width="76" height="76" viewBox="0 0 120 120">
+          <rect x="4" y="4" width="112" height="112" rx="28" fill="#16261e"/>
+          <path d="M28 84 Q60 18 92 84" fill="none" stroke="#c4f53b" stroke-width="9" stroke-linecap="round"/>
+          <circle cx="60" cy="30" r="9" fill="#c4f53b"/>
+        </svg>
+        <svg width="40" height="40" viewBox="0 0 120 120">
+          <rect x="4" y="4" width="112" height="112" rx="28" fill="#16261e"/>
+          <path d="M28 84 Q60 18 92 84" fill="none" stroke="#c4f53b" stroke-width="11" stroke-linecap="round"/>
+          <circle cx="60" cy="30" r="11" fill="#c4f53b"/>
+        </svg>
+        <svg width="24" height="24" viewBox="0 0 120 120">
+          <rect x="4" y="4" width="112" height="112" rx="28" fill="#16261e"/>
+          <path d="M28 84 Q60 18 92 84" fill="none" stroke="#c4f53b" stroke-width="13" stroke-linecap="round"/>
+          <circle cx="60" cy="30" r="13" fill="#c4f53b"/>
+        </svg>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

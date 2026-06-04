@@ -805,31 +805,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Quick Actions */}
-      <div className="grid gap-2 mb-4 grid-cols-3">
-        <button
-          onClick={() => navigate('/calendar', { state: { openAdd: 'session' } })}
-          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-[#91BE4D]/30 bg-[#91BE4D]/5 hover:bg-[#91BE4D]/10 transition-colors text-center"
-        >
-          <span className="text-xl">🎯</span>
-          <span className="text-xs font-bold text-[#4a6e10] leading-tight text-center">Casual Play / Drill</span>
-        </button>
-        <button
-          onClick={() => navigate('/calendar', { state: { openAdd: 'tournament' } })}
-          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-[#ec9937]/30 bg-[#ec9937]/5 hover:bg-[#ec9937]/10 transition-colors text-center"
-        >
-          <span className="text-xl">🏆</span>
-          <span className="text-xs font-bold text-orange-700 leading-tight">Tournament</span>
-        </button>
-        <button
-          onClick={() => navigate('/expenses')}
-          className="flex flex-col items-center gap-1 py-3 px-2 rounded-xl border-2 border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors text-center"
-        >
-          <span className="text-xl">🎒</span>
-          <span className="text-xs font-bold text-gray-600 leading-tight">Add Gear</span>
-        </button>
-      </div>
-
       <InstallAppCard />
 
       {/* Upcoming Tournaments Share Widget */}
@@ -972,68 +947,6 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
       )}
-
-      {/* Travel Spend Widget */}
-      {(() => {
-        const yearTravel = expenses
-          .filter((e) => e.type === 'travel' && e.date?.startsWith(filterYear))
-          .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-        const yearTravelTotal = yearTravel.reduce((s, e) => s + e.amount, 0);
-        if (yearTravel.length === 0) return null;
-
-        return (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-md p-4 sm:p-6 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">✈️</span>
-                <h2 className="text-sm sm:text-base font-semibold text-gray-700">
-                  Travel Spend — {filterYear}
-                </h2>
-                {yearTravelTotal > 0 && (
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-600 border border-teal-200">
-                    {formatCurrency(yearTravelTotal, currency)}
-                  </span>
-                )}
-              </div>
-              <Link to="/travel" className="text-xs text-teal-600 hover:text-teal-800 font-semibold transition-colors">
-                View all →
-              </Link>
-            </div>
-            <div className="space-y-2">
-              {yearTravel.slice(0, 3).map((e) => (
-                <div key={e._id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{e.title}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-xs text-gray-400">
-                        {e.date
-                          ? new Date(`${e.date.split('T')[0]}T00:00:00`).toLocaleDateString(undefined, {
-                              day: 'numeric',
-                              month: 'short',
-                            })
-                          : '—'}
-                      </p>
-                      {e.fromCity && e.toCity && (
-                        <p className="text-xs text-gray-500">{e.fromCity} → {e.toCity}</p>
-                      )}
-                      {e.isInternational && (
-                        <span className="text-xs px-1.5 py-0.5 bg-teal-50 text-teal-600 rounded-full border border-teal-200 font-medium">Intl</span>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-sm font-bold text-teal-600 flex-shrink-0">{formatCurrency(e.amount, currency)}</p>
-                </div>
-              ))}
-              {yearTravel.length > 3 && (
-                <p className="text-xs text-gray-400 pt-1 text-center">
-                  +{yearTravel.length - 3} more trip{yearTravel.length - 3 !== 1 ? 's' : ''} —{' '}
-                  <Link to="/travel" className="text-teal-600 hover:underline font-medium">view all</Link>
-                </p>
-              )}
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Get started prompt */}
       {tournaments.length === 0 && allSessions.length === 0 && expenses.length === 0 && coachingIncomes.length === 0 && (

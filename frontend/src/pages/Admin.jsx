@@ -295,6 +295,24 @@ export default function Admin() {
     }
   };
 
+  const [companionTogglingId, setCompanionTogglingId] = useState('');
+  const handleToggleCompanion = async (u, e) => {
+    e.stopPropagation();
+    setCompanionTogglingId(u._id);
+    try {
+      const res = await api.toggleCompanionAccess(u._id);
+      const next = res.data.companionAccess;
+      setData((prev) => ({
+        ...prev,
+        users: prev.users.map((x) => (x._id === u._id ? { ...x, companionAccess: next } : x)),
+      }));
+    } catch {
+      /* ignore */
+    } finally {
+      setCompanionTogglingId('');
+    }
+  };
+
   const toggleUserSelect = (id, e) => {
     e.stopPropagation();
     setSelectedUserIds((prev) => {
@@ -1109,6 +1127,21 @@ export default function Admin() {
 
                   {/* Bottom actions row */}
                   <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-end gap-4 flex-wrap">
+                    {/* Companion (beta) access */}
+                    <button
+                      onClick={(e) => handleToggleCompanion(u, e)}
+                      disabled={companionTogglingId === u._id}
+                      className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors flex-shrink-0 disabled:opacity-50 ${
+                        u.companionAccess
+                          ? 'text-[#4a6e10] bg-[#f4f8e8] border-[#91BE4D]/40 hover:bg-[#eaf3d8]'
+                          : 'text-gray-500 border-gray-200 hover:bg-gray-50'
+                      }`}
+                      title="Toggle Companion (beta) access"
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${u.companionAccess ? 'bg-[#91BE4D]' : 'bg-gray-300'}`} />
+                      Companion {u.companionAccess ? 'on' : 'off'}
+                    </button>
+
                     {/* Delete user */}
                     <button
                       onClick={(e) => { e.stopPropagation(); setDeleteConfirm(u); setDeleteError(''); }}

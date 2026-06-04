@@ -64,6 +64,7 @@ function publicUser(user) {
             ? 'manual'
             : 'auto',
     shareTournamentsOnFeed: user.shareTournamentsOnFeed !== false,
+    companionAccess: Boolean(user.companionAccess),
   };
 }
 

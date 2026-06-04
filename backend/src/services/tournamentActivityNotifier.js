@@ -22,7 +22,14 @@ async function notifyAllUsersOfTournamentActivity(loggingUserId, tournament) {
       (c) => c.medal && c.medal !== 'None'
     );
 
-    const loggingUser = await User.findById(loggingUserId).select('name').lean();
+    const loggingUser = await User.findById(loggingUserId)
+      .select('name shareTournamentsOnFeed')
+      .lean();
+
+    // Respect privacy: if the logger opted out of the public feed, don't nudge
+    // others about their activity either.
+    if (loggingUser?.shareTournamentsOnFeed === false) return;
+
     const playerName = loggingUser?.name || 'A player';
     const tournamentName = tournament.name;
 

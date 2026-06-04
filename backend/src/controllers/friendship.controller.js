@@ -68,7 +68,7 @@ const sendFriendRequest = async (req, res, next) => {
       sendPushToUser(recipientId, {
         title: 'New friend request',
         body: `${fromName} wants to connect on PickleTracker`,
-        url: '/home',
+        url: '/',
         tag: 'friend-request',
       }).catch(() => {});
       return res.status(200).json({ success: true, data: existing });
@@ -83,7 +83,7 @@ const sendFriendRequest = async (req, res, next) => {
     sendPushToUser(recipientId, {
       title: 'New friend request',
       body: `${fromName} wants to connect on PickleTracker`,
-      url: '/home',
+      url: '/',
       tag: 'friend-request',
     }).catch(() => {});
     return res.status(201).json({ success: true, data: friendship });
@@ -181,13 +181,13 @@ const acceptFriendRequest = async (req, res, next) => {
     sendPushToUser(String(row.requesterId), {
       title: `You're now friends with ${accepterName}`,
       body: `You and ${accepterName} can view each other's schedule on PickleTracker.`,
-      url: '/home',
+      url: '/',
       tag: 'friend-connected',
     }).catch(() => {});
     sendPushToUser(userId, {
       title: `You're now friends with ${requesterName}`,
       body: `You and ${requesterName} can view each other's schedule on PickleTracker.`,
-      url: '/home',
+      url: '/',
       tag: 'friend-connected',
     }).catch(() => {});
 

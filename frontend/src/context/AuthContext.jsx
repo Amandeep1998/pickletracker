@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
     if (user) identifyUser(user);
   }, [user?.id]);
 
-  const clearError = () => setError(null);
+  const clearError = React.useCallback(() => setError(null), []);
 
   const syncDeviceTimeZoneAfterAuth = React.useCallback(async (baseUser) => {
     const tz = getBrowserIanaTimeZone();

@@ -2,9 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+}
+
 body {
   background-color: #F3F8F9;
   font-family: 'Roboto', sans-serif;
+}
+
+/*
+ * Default form text to near-black for the light auth/profile forms. Low
+ * specificity (element selector) so any inline `color` or Tailwind text-*
+ * utility on dark-themed companion inputs still wins. Do NOT add
+ * -webkit-text-fill-color here — it beats inline color in WebKit and would
+ * black out the dark chat/popup inputs.
+ */
+input,
+textarea,
+select {
+  color: #111827;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9ca3af;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -75,6 +97,697 @@ h1, h2, h3, h4, h5, h6 {
 @media (prefers-reduced-motion: reduce) {
   .animate-cell-breathe {
     animation: none;
+  }
+}
+
+/* =====================================================================
+   Erne — Volt palette + Archivo/Hanken, scoped to the companion shell.
+   Ported from design_handoff_erne_companion. CSS variables live on
+   .erne-app so nothing leaks into the reused light-theme pages that
+   render inside PageOverlay (Calendar / Dashboard / Coach Hub).
+   ===================================================================== */
+.erne-app {
+  /* Volt palette */
+  --bg: #f1f0e8;
+  --surface: #fbfaf4;
+  --surface2: #ffffff;
+  --ink: #16180f;
+  --ink-soft: #6c6e60;
+  --line: #e2e0d4;
+  --accent: #c7f23a;
+  --accent-text: #16180f;
+  --accent-soft: #eef8c8;
+  --dark: #16180f;
+  --on-dark: #fbfaf4;
+  --on-dark-soft: #9da08c;
+  --dark-line: #2c2e22;
+  /* Archivo / Hanken pairing */
+  --font-display: 'Archivo', system-ui, sans-serif;
+  --font-body: 'Hanken Grotesk', system-ui, sans-serif;
+  --display-wght: 800;
+  --display-stretch: 112%;
+
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100dvh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+.erne-app *,
+.erne-popup * {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.erne-h {
+  font-family: var(--font-display);
+  font-weight: var(--display-wght);
+  font-stretch: var(--display-stretch);
+  letter-spacing: -0.01em;
+}
+
+/* header */
+.erne-header {
+  flex-shrink: 0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 0 18px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 84%, transparent);
+  backdrop-filter: blur(8px);
+  /* backdrop-filter creates a stacking context; without an explicit z-index the
+     header sits at z-auto and later chat cards paint over its dropdown menu.
+     Keep it low (above chat content, below the full-screen page overlays at
+     z-index 45) so Dashboard/Calendar overlays still cover the header. */
+  position: relative;
+  z-index: 5;
+}
+.erne-beta {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  background: var(--accent);
+  padding: 2px 6px;
+  border-radius: 5px;
+  margin-left: 1px;
+}
+.erne-iconbtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.erne-iconbtn:hover {
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+.erne-headava {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--dark);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 14px;
+  overflow: hidden;
+}
+.erne-headava.sm {
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+}
+.erne-headava img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.erne-menu {
+  position: absolute;
+  right: 0;
+  top: 46px;
+  z-index: 41;
+  width: 210px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 7px;
+  box-shadow: 0 18px 44px -10px rgba(0, 0, 0, 0.28);
+  animation: erne-pop 0.16s ease;
+}
+.erne-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 12px;
+  border: none;
+  background: transparent;
+  border-radius: 11px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: left;
+  text-decoration: none;
+}
+.erne-menu-item:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.erne-menu-item svg {
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+.erne-menu-label {
+  padding: 9px 12px 4px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+/* stat strip */
+.erne-statstrip {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  cursor: pointer;
+  font-family: var(--font-body);
+  color: var(--ink);
+  width: 100%;
+}
+.erne-strip-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 800;
+  font-size: 12.5px;
+}
+.erne-strip-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--line);
+}
+
+/* stream */
+.erne-stream {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  scroll-behavior: smooth;
+}
+.erne-stream::-webkit-scrollbar {
+  width: 0;
+}
+.erne-msgs {
+  padding: 18px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.erne-row {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  animation: erne-rise 0.42s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.erne-row.user {
+  justify-content: flex-end;
+}
+.erne-ava {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.erne-bubble-bot {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px 18px 18px 18px;
+  padding: 11px 14px;
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(20, 22, 15, 0.04);
+  white-space: pre-wrap;
+}
+.erne-bubble-user {
+  background: var(--ink);
+  color: var(--bg);
+  border-radius: 18px 18px 6px 18px;
+  padding: 11px 15px;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+.erne-cardwrap {
+  width: 100%;
+  max-width: 342px;
+  animation: erne-cardin 0.44s cubic-bezier(0.2, 1.05, 0.3, 1);
+}
+
+.erne-dots {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.erne-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  animation: erne-blink 1.2s infinite both;
+}
+.erne-dots i:nth-child(2) {
+  animation-delay: 0.18s;
+}
+.erne-dots i:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
+/* welcome */
+.erne-welcome {
+  padding: 28px 22px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  animation: erne-rise 0.5s ease;
+}
+.erne-examples {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  margin-top: 22px;
+}
+.erne-ex {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  align-items: flex-start;
+  padding: 13px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+}
+.erne-ex:hover {
+  border-color: var(--accent);
+}
+.erne-ex-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* chips */
+.erne-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0 16px 10px;
+  scrollbar-width: none;
+}
+.erne-chips::-webkit-scrollbar {
+  display: none;
+}
+.erne-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 9px 14px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.erne-chip:hover {
+  border-color: var(--ink);
+}
+.erne-chip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.erne-chip svg {
+  color: var(--ink-soft);
+}
+
+/* composer */
+.erne-composer-wrap {
+  flex-shrink: 0;
+  padding-top: 8px;
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(6px);
+  border-top: 1px solid var(--line);
+}
+.erne-composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 0 14px 16px;
+}
+.erne-deck-trigger {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  border: none;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px -3px color-mix(in srgb, var(--accent) 70%, transparent);
+  transition: transform 0.15s;
+}
+.erne-deck-trigger:active {
+  transform: scale(0.92);
+}
+.erne-input {
+  flex: 1;
+  resize: none;
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 12px 15px;
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--ink);
+  outline: none;
+  line-height: 1.35;
+  max-height: 120px;
+}
+.erne-input:focus {
+  border-color: var(--ink);
+}
+.erne-input::placeholder {
+  color: var(--ink-soft);
+}
+.erne-send {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 14px;
+  border: none;
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.15s;
+}
+.erne-send svg {
+  color: var(--bg) !important;
+}
+.erne-send:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+.erne-send:not(:disabled):active {
+  transform: scale(0.92);
+}
+
+.erne-btn:active {
+  transform: scale(0.97);
+}
+.erne-iconbtn:active {
+  transform: scale(0.9);
+}
+
+/* command deck */
+.erne-deck-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(15, 16, 12, 0);
+  display: flex;
+  align-items: flex-end;
+  transition: background 0.24s ease;
+  pointer-events: none;
+}
+.erne-deck-scrim[data-open='true'] {
+  background: rgba(15, 16, 12, 0.42);
+  pointer-events: auto;
+}
+.erne-deck {
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+  z-index: 61;
+  background: var(--bg);
+  border-radius: 28px 28px 0 0;
+  padding: 10px 16px 22px;
+  transform: translateY(102%);
+  transition: transform 0.3s cubic-bezier(0.2, 0.95, 0.3, 1);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -20px 50px -12px rgba(0, 0, 0, 0.3);
+}
+.erne-deck[data-open='true'] {
+  transform: translateY(0);
+}
+.erne-grabber {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line);
+  margin: 0 auto 10px;
+}
+.erne-hero-tile {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 16px;
+  border-radius: 18px;
+  border: none;
+  background: var(--accent);
+  cursor: pointer;
+}
+.erne-hero-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--accent-text) 12%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.erne-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+  text-align: left;
+}
+.erne-tile:hover {
+  border-color: var(--ink);
+}
+.erne-tile-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* popups */
+.erne-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: var(--bg);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.34s cubic-bezier(0.2, 0.95, 0.3, 1);
+  font-family: var(--font-body);
+}
+.erne-popup[data-open='true'] {
+  transform: translateY(0);
+}
+.erne-popup-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.erne-popup-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 16px 28px;
+}
+.erne-popup-body::-webkit-scrollbar {
+  width: 0;
+}
+
+.erne-push-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(15, 16, 12, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+}
+.erne-push {
+  width: 100%;
+  max-width: 320px;
+  background: var(--surface);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.4);
+  animation: erne-checkpop 0.26s cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+
+/* reward animations */
+.erne-checkwrap {
+  animation: erne-checkpop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes erne-checkpop {
+  from {
+    transform: scale(0.72);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.erne-confetti {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  animation: erne-confetti 0.7s ease-out forwards;
+}
+@keyframes erne-confetti {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(0.3);
+  }
+}
+.erne-playercard {
+  position: relative;
+}
+.erne-shine {
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+  transform: skewX(-18deg);
+  pointer-events: none;
+}
+.erne-grow {
+  animation: erne-grow 0.6s cubic-bezier(0.2, 1.1, 0.3, 1);
+}
+.erne-grow .erne-shine {
+  animation: erne-shine 1s ease 0.15s;
+}
+@keyframes erne-grow {
+  0% {
+    transform: scale(0.96);
+  }
+  50% {
+    transform: scale(1.012);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes erne-shine {
+  0% {
+    left: -60%;
+  }
+  100% {
+    left: 130%;
+  }
+}
+@keyframes erne-rise {
+  from {
+    transform: translateY(10px);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes erne-cardin {
+  from {
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes erne-blink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes erne-pop {
+  from {
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .erne-row,
+  .erne-cardwrap,
+  .erne-welcome,
+  .erne-checkwrap,
+  .erne-confetti,
+  .erne-grow,
+  .erne-grow .erne-shine {
+    animation: none !important;
   }
 }
 

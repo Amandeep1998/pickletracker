@@ -23,18 +23,17 @@ const aiRoutes = require('./src/routes/ai.routes');
 const documentRoutes = require('./src/routes/document.routes');
 const whatsappRoutes = require('./src/routes/whatsapp.routes');
 const sessionRoutes = require('./src/routes/session.routes');
-const exportRoutes = require('./src/routes/export.routes');
 const playersRoutes = require('./src/routes/players.routes');
 const notificationsRoutes = require('./src/routes/notifications.routes');
 const friendshipRoutes = require('./src/routes/friendship.routes');
 const pushRoutes = require('./src/routes/push.routes');
 const coachingIncomeRoutes = require('./src/routes/coachingIncome.routes');
 const coachScheduleRoutes = require('./src/routes/coachSchedule.routes');
-const coachOverheadRoutes = require('./src/routes/coachOverhead.routes');
 const coachStudentRoutes = require('./src/routes/coachStudent.routes');
 const feedRoutes = require('./src/routes/feed.routes');
 const supportRoutes = require('./src/routes/support.routes');
 const gamificationRoutes = require('./src/routes/gamification.routes');
+const companionRoutes = require('./src/routes/companion.routes');
 const errorHandler = require('./src/middleware/error.middleware');
 const { startMorningEmailJobs } = require('./src/jobs/morningEmailJobs');
 const { startWeeklySummaryJob } = require('./src/jobs/weeklySummary');
@@ -43,6 +42,10 @@ const { startInactiveUserNudgeJob } = require('./src/jobs/inactiveUserNudge');
 const { startPushReminderJob } = require('./src/jobs/pushReminder');
 
 const app = express();
+// Behind Render's single proxy hop. Lets req.ip resolve to the real client
+// (the proxy-appended X-Forwarded-For entry) instead of a client-forgeable one,
+// so the companion anon rate limit can't be bypassed with a spoofed XFF header.
+app.set('trust proxy', 1);
 const server = http.createServer(app);
 
 // ── Socket.io setup ──────────────────────────────────────────────────────────
@@ -93,18 +96,17 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/document', documentRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/sessions', sessionRoutes);
-app.use('/api/export', exportRoutes);
 app.use('/api/players', playersRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/friends', friendshipRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/coaching-income', coachingIncomeRoutes);
 app.use('/api/coach-schedule', coachScheduleRoutes);
-app.use('/api/coach-overhead', coachOverheadRoutes);
 app.use('/api/coach-students', coachStudentRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/support', supportRoutes);
 app.use('/api/gamification', gamificationRoutes);
+app.use('/api/companion', companionRoutes);
 
 app.use(Sentry.Handlers.errorHandler()); // captures unhandled errors and sends to Sentry
 app.use(errorHandler);

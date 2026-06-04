@@ -6,26 +6,11 @@ import PrivateRoute from './components/PrivateRoute';
 import ScrollToTop from './components/ScrollToTop';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Dashboard from './pages/Dashboard';
-import Tournaments from './pages/Tournaments';
-import Calendar from './pages/Calendar';
-import Sessions from './pages/Sessions';
-import Expenses from './pages/Expenses';
-import Travel from './pages/Travel';
 import Admin from './pages/Admin';
-import Landing from './pages/Landing';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 import ResetPassword from './pages/ResetPassword';
-import Profile from './pages/Profile';
-import Players from './pages/Players';
-import Coach from './pages/Coach';
-import CoachHub from './pages/CoachHub';
-import Home from './pages/Home';
-import Support from './pages/Support';
-import Welcome from './pages/Welcome';
-import Achievements from './pages/Achievements';
-import You from './pages/You';
+import Companion from './pages/Companion';
 import AchievementUnlockModal from './components/AchievementUnlockModal';
 export default function App() {
   return (
@@ -34,8 +19,9 @@ export default function App() {
       <ScrollToTop />
       <AchievementUnlockModal />
       <Routes>
-        {/* Public routes */}
-        <Route path="/" element={<Landing />} />
+        {/* Public routes — the chat companion is the app. */}
+        <Route path="/" element={<Companion />} />
+        <Route path="/companion" element={<Navigate to="/" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -44,22 +30,6 @@ export default function App() {
 
         {/* Protected routes */}
         <Route element={<PrivateRoute />}>
-          <Route path="/welcome" element={<Welcome />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/tournaments" element={<Tournaments />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/sessions" element={<Sessions />} />
-          <Route path="/expenses" element={<Expenses />} />
-          <Route path="/travel" element={<Travel />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/players" element={<Players />} />
-          <Route path="/coach" element={<Coach />} />
-          <Route path="/coach-hub" element={<CoachHub />} />
-          <Route path="/coaching-income" element={<Navigate to="/coach-hub" replace />} />
-          <Route path="/support" element={<Support />} />
-          <Route path="/achievements" element={<Achievements />} />
-          <Route path="/you" element={<You />} />
           <Route path="/admin" element={<Admin />} />
         </Route>
 

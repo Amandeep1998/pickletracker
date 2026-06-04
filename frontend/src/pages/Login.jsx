@@ -19,7 +19,7 @@ export default function Login() {
   const [forgotMsg, setForgotMsg] = useState('');
 
   useEffect(() => {
-    if (user) navigate('/home', { replace: true });
+    if (user) navigate('/', { replace: true });
   }, [user, navigate]);
 
   const handleChange = (e) => {
@@ -54,7 +54,7 @@ export default function Login() {
     }
   };
 
-  const inputClass = "w-full border border-gray-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]";
+  const inputClass = "w-full bg-white text-gray-900 placeholder-gray-400 border border-gray-300 rounded px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#91BE4D] focus:border-[#91BE4D]";
 
   return (
     <div className="min-h-screen bg-white flex flex-col">

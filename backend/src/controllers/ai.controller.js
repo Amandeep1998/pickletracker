@@ -1,39 +1,5 @@
-const OpenAI = require('openai');
-
-const CATEGORIES = [
-  // Open
-  "Men's Singles Open", "Women's Singles", "Men's Doubles Open", "Women's Doubles", "Mixed Doubles",
-  // Pro
-  "Pro Men's Singles", "Pro Women's Singles", "Pro Men's Doubles", "Pro Women's Doubles", "Pro Mixed Doubles",
-  // Beginner
-  "Beginner Singles", "Beginner Men's Singles", "Beginner Women's Singles",
-  "Beginner Doubles", "Beginner Men's Doubles", "Beginner Women's Doubles", "Beginner Mixed Doubles",
-  // Intermediate
-  "Intermediate Singles", "Intermediate Men's Singles", "Intermediate Women's Singles",
-  "Intermediate Doubles", "Intermediate Men's Doubles", "Intermediate Women's Doubles", "Intermediate Mixed Doubles",
-  // Advanced
-  "Advanced Men's Singles", "Advanced Women's Singles", "Advanced Men's Doubles", "Advanced Women's Doubles", "Advanced Mixed Doubles",
-  // 35+
-  "35+ Men's Singles", "35+ Men's Doubles", "35+ Women's Singles", "35+ Women's Doubles", "35+ Mixed Doubles",
-  // 40+
-  "40+ Men's Singles", "40+ Men's Doubles", "40+ Women's Singles", "40+ Women's Doubles", "40+ Mixed Doubles",
-  // 45+
-  "45+ Men's Singles", "45+ Men's Doubles", "45+ Women's Singles", "45+ Women's Doubles", "45+ Mixed Doubles",
-  // 50+
-  "50+ Men's Singles", "50+ Men's Doubles", "50+ Women's Singles", "50+ Women's Doubles", "50+ Mixed Doubles",
-  // 55+
-  "55+ Men's Singles", "55+ Men's Doubles", "55+ Women's Singles", "55+ Women's Doubles", "55+ Mixed Doubles",
-  // 60+
-  "Men's Singles 60+", "Men's Doubles 60+", "Women's Singles 60+", "Women's Doubles 60+", "Mixed Doubles 60+",
-  // 65+
-  "Men's Singles 65+", "Men's Doubles 65+", "Women's Singles 65+", "Women's Doubles 65+", "Mixed Doubles 65+",
-  // 70+
-  "Men's Singles 70+", "Men's Doubles 70+", "Women's Singles 70+", "Women's Doubles 70+", "Mixed Doubles 70+",
-  // Split Age
-  "Split Age 35+", "Split Age 40+", "Split Age 50+",
-  // Team
-  "Team Event",
-];
+const llm = require('../services/llm.service');
+const { CATEGORIES } = require('../config/categories');
 
 const buildSystemPrompt = (today, currentForm) => `
 You are a data extraction assistant for a pickleball tournament finance tracker app.
@@ -83,188 +49,43 @@ NAME: Keep existing name unless the user explicitly says a different tournament 
 TOURNAMENT NAME:
 - Extract if mentioned. The user may use past tense ("I played in City Open") or future tense ("I'm playing in City Open", "I registered for City Open", "entering City Open", "going to play in City Open").
 - Strip filler words like "tournament" suffix — keep the proper name (e.g. "I played in City Open tournament" → "City Open").
+- A proper noun introduced by "at" or "in" is the tournament NAME (not the location) when it reads like an event name — especially if it contains an event word such as Slam, Open, Cup, Championship, Champs, Classic, Masters, League, Series, Invitational, Challenge, Showdown, Throwdown, Tour, Trophy. This holds even when the name contains a city ("at Pune Slam" → name "Pune Slam"; "Mumbai Open" → name "Mumbai Open").
+- Ignore trailing time words attached to the name ("Pune Slam month", "City Open last week" → name "Pune Slam" / "City Open").
 - If not mentioned, return null.
 
 LOCATION:
 - Extract the venue or city as a plain text string (e.g. "DLF Sports Complex, Gurugram").
+- A bare city/venue with NO event word is the location ("at the DLF complex", "in Pune" → location). If the phrase is an event name (see TOURNAMENT NAME), put it in name, not here.
 - If not mentioned, return null.
 
 CATEGORIES:
 The user may describe one or more categories they played in. For each, extract:
 
 1. categoryName:
-   Always prefer a direct mapping. Only create an ambiguity when the user's words genuinely match multiple categories and there is no way to tell which one they mean.
-   If the user gave enough context (e.g. "mixed doubles", "beginner doubles", "men's doubles", "intermediate singles", "35 mixed doubles"), map directly — never ask a follow-up for those.
+   Map the user's words to ONE exact string from the VALID CATEGORY NAMES list above (case-sensitive). Match on type (singles/doubles/mixed), gender (men's/women's), level (beginner/intermediate/advanced/pro), and age (35/40/45/50/55/60/65/70). Non-obvious rules:
+   - "mixed" alone → "Mixed Doubles".
+   - Plain "men's singles" / "men's doubles" (no age, no level) → ADD "Open": "Men's Singles Open" / "Men's Doubles Open". ("open singles"/"open doubles" too.)
+   - Plain "women's singles" / "women's doubles" (no age, no level) → "Women's Singles" / "Women's Doubles" (NO "Open").
+   - Age word order differs by bracket:
+       * 35, 40, 45, 50, 55 → age is a PREFIX with "+": "35 mixed" → "35+ Mixed Doubles", "40 men's doubles" → "40+ Men's Doubles", "50 women's singles" → "50+ Women's Singles".
+       * 60, 65, 70 → age is a SUFFIX with "+": "60 singles" → "Men's Singles 60+", "65 mixed" → "Mixed Doubles 65+", "70 women's doubles" → "Women's Doubles 70+". (Bare "60 singles"/"60 doubles" default to men's.)
+   - "split 35" / "split age 35" → "Split Age 35+" (also 40, 50). "team" / "team event" → "Team Event".
+   - When the words point to exactly one valid name, map directly — never ask a follow-up.
 
-   DIRECT MAPPINGS (set categoryName directly, no ambiguity):
-   - "mixed doubles" / "mixed" alone → "Mixed Doubles"
-   - "beginner men's singles" / "men's beginner singles" → "Beginner Men's Singles"
-   - "beginner women's singles" / "women's beginner singles" → "Beginner Women's Singles"
-   - "beginner men's doubles" / "men's beginner doubles" → "Beginner Men's Doubles"
-   - "beginner women's doubles" / "women's beginner doubles" → "Beginner Women's Doubles"
-   - "beginner mixed" / "beginner mixed doubles" → "Beginner Mixed Doubles"
-   - "intermediate men's singles" / "men's intermediate singles" → "Intermediate Men's Singles"
-   - "intermediate women's singles" / "women's intermediate singles" → "Intermediate Women's Singles"
-   - "intermediate men's doubles" / "men's intermediate doubles" → "Intermediate Men's Doubles"
-   - "intermediate women's doubles" / "women's intermediate doubles" → "Intermediate Women's Doubles"
-   - "intermediate mixed" / "intermediate mixed doubles" → "Intermediate Mixed Doubles"
-   - "advanced men's singles" / "advanced singles men" → "Advanced Men's Singles"
-   - "advanced women's singles" / "advanced singles women" → "Advanced Women's Singles"
-   - "advanced men's doubles" / "advanced doubles men" → "Advanced Men's Doubles"
-   - "advanced women's doubles" / "advanced doubles women" → "Advanced Women's Doubles"
-   - "advanced mixed" / "advanced mixed doubles" → "Advanced Mixed Doubles"
-   - "pro men's singles" / "pro men singles" → "Pro Men's Singles"
-   - "pro women's singles" / "pro women singles" → "Pro Women's Singles"
-   - "pro men's doubles" / "pro men doubles" → "Pro Men's Doubles"
-   - "pro women's doubles" / "pro women doubles" → "Pro Women's Doubles"
-   - "pro mixed" / "pro mixed doubles" → "Pro Mixed Doubles"
-   - "men's singles" / "open singles" / "men's singles open" → "Men's Singles Open"
-   - "men's doubles" / "open doubles" / "men's doubles open" → "Men's Doubles Open"
-   - "women's singles" (no age) → "Women's Singles"
-   - "women's doubles" (no age) → "Women's Doubles"
-   - "35 mixed" / "35 mixed doubles" → "35+ Mixed Doubles"
-   - "35 men's singles" → "35+ Men's Singles"
-   - "35 men's doubles" → "35+ Men's Doubles"
-   - "35 women's singles" → "35+ Women's Singles"
-   - "35 women's doubles" → "35+ Women's Doubles"
-   - "40 mixed" / "40 mixed doubles" → "40+ Mixed Doubles"
-   - "40 men's singles" → "40+ Men's Singles"
-   - "40 men's doubles" → "40+ Men's Doubles"
-   - "40 women's singles" → "40+ Women's Singles"
-   - "40 women's doubles" → "40+ Women's Doubles"
-   - "45 mixed" / "45 mixed doubles" → "45+ Mixed Doubles"
-   - "45 men's singles" → "45+ Men's Singles"
-   - "45 men's doubles" → "45+ Men's Doubles"
-   - "45 women's singles" → "45+ Women's Singles"
-   - "45 women's doubles" → "45+ Women's Doubles"
-   - "50 mixed" / "50 mixed doubles" → "50+ Mixed Doubles"
-   - "50 men's singles" → "50+ Men's Singles"
-   - "50 men's doubles" → "50+ Men's Doubles"
-   - "50 women's singles" → "50+ Women's Singles"
-   - "50 women's doubles" → "50+ Women's Doubles"
-   - "55 mixed" / "55 mixed doubles" → "55+ Mixed Doubles"
-   - "55 men's singles" → "55+ Men's Singles"
-   - "55 men's doubles" → "55+ Men's Doubles"
-   - "55 women's singles" → "55+ Women's Singles"
-   - "55 women's doubles" → "55+ Women's Doubles"
-   - "60 singles" / "men's singles 60" → "Men's Singles 60+"
-   - "60 doubles" / "men's doubles 60" → "Men's Doubles 60+"
-   - "60 women's singles" / "women's singles 60" → "Women's Singles 60+"
-   - "60 women's doubles" / "women's doubles 60" → "Women's Doubles 60+"
-   - "60 mixed" / "mixed doubles 60" → "Mixed Doubles 60+"
-   - "65 singles" / "men's singles 65" → "Men's Singles 65+"
-   - "65 doubles" / "men's doubles 65" → "Men's Doubles 65+"
-   - "65 women's singles" → "Women's Singles 65+"
-   - "65 women's doubles" → "Women's Doubles 65+"
-   - "65 mixed" → "Mixed Doubles 65+"
-   - "70 singles" / "men's singles 70" → "Men's Singles 70+"
-   - "70 doubles" / "men's doubles 70" → "Men's Doubles 70+"
-   - "70 women's singles" → "Women's Singles 70+"
-   - "70 women's doubles" → "Women's Doubles 70+"
-   - "70 mixed" → "Mixed Doubles 70+"
-   - "split age 35" / "split 35" → "Split Age 35+"
-   - "split age 40" / "split 40" → "Split Age 40+"
-   - "split age 50" / "split 50" → "Split Age 50+"
-   - "team" / "team event" → "Team Event"
-
-   AMBIGUOUS CASES (set null, create ambiguity entry with question + options):
-   IMPORTANT: Only trigger an ambiguity if the user's words genuinely do not tell you which category they mean.
-   If the user said enough to map directly — use the DIRECT MAPPINGS above. Do NOT ask a follow-up question for those.
-   Only ask when the spoken word(s) alone match multiple categories and you truly cannot tell which one.
-
-   - "doubles" alone (no type/level/gender at all):
-     question: "You said doubles. Which doubles category did you play?"
-     options: ["Men's Doubles Open", "Women's Doubles", "Mixed Doubles", "Beginner Doubles", "Intermediate Doubles", "Advanced Men's Doubles"]
-   - "singles" alone (no type/level/gender at all):
-     question: "You said singles. Which singles category did you play?"
-     options: ["Men's Singles Open", "Women's Singles", "Beginner Singles", "Intermediate Singles", "Advanced Men's Singles"]
-   - "beginner singles" (no gender specified):
-     question: "Was it beginner singles for men, women, or gender-neutral?"
-     options: ["Beginner Men's Singles", "Beginner Women's Singles", "Beginner Singles"]
-   - "beginner doubles" (no gender specified):
-     question: "Was it beginner doubles for men, women, or gender-neutral?"
-     options: ["Beginner Men's Doubles", "Beginner Women's Doubles", "Beginner Doubles"]
-   - "beginner" alone (no singles/doubles/mixed at all):
-     question: "Which beginner category did you play?"
-     options: ["Beginner Men's Singles", "Beginner Women's Singles", "Beginner Singles", "Beginner Men's Doubles", "Beginner Women's Doubles", "Beginner Doubles", "Beginner Mixed Doubles"]
-   - "intermediate singles" (no gender specified):
-     question: "Was it intermediate singles for men, women, or gender-neutral?"
-     options: ["Intermediate Men's Singles", "Intermediate Women's Singles", "Intermediate Singles"]
-   - "intermediate doubles" (no gender specified):
-     question: "Was it intermediate doubles for men, women, or gender-neutral?"
-     options: ["Intermediate Men's Doubles", "Intermediate Women's Doubles", "Intermediate Doubles"]
-   - "intermediate" alone (no singles/doubles/mixed at all):
-     question: "Which intermediate category did you play?"
-     options: ["Intermediate Men's Singles", "Intermediate Women's Singles", "Intermediate Singles", "Intermediate Men's Doubles", "Intermediate Women's Doubles", "Intermediate Doubles", "Intermediate Mixed Doubles"]
-   - "advanced" alone (no singles/doubles/mixed/gender):
-     question: "Which advanced category did you play?"
-     options: ["Advanced Men's Singles", "Advanced Women's Singles", "Advanced Men's Doubles", "Advanced Women's Doubles", "Advanced Mixed Doubles"]
-   - "open" alone (no singles/doubles):
-     question: "Was it men's singles open or men's doubles open?"
-     options: ["Men's Singles Open", "Men's Doubles Open"]
-   - "35" / "35 plus" alone (no type):
-     question: "You mentioned 35+. Which 35+ category did you play?"
-     options: ["35+ Men's Singles", "35+ Men's Doubles", "35+ Women's Singles", "35+ Women's Doubles", "35+ Mixed Doubles"]
-   - "35 doubles" (no gender):
-     question: "Which 35+ doubles category did you play?"
-     options: ["35+ Men's Doubles", "35+ Women's Doubles", "35+ Mixed Doubles"]
-   - "35 singles" (no gender):
-     question: "Was it 35+ men's singles or 35+ women's singles?"
-     options: ["35+ Men's Singles", "35+ Women's Singles"]
-   - "40" / "40 plus" alone (no type):
-     question: "You mentioned 40+. Which 40+ category did you play?"
-     options: ["40+ Men's Singles", "40+ Men's Doubles", "40+ Women's Singles", "40+ Women's Doubles", "40+ Mixed Doubles"]
-   - "40 doubles" (no gender):
-     question: "Which 40+ doubles category did you play?"
-     options: ["40+ Men's Doubles", "40+ Women's Doubles", "40+ Mixed Doubles"]
-   - "40 singles" (no gender):
-     question: "Was it 40+ men's singles or 40+ women's singles?"
-     options: ["40+ Men's Singles", "40+ Women's Singles"]
-   - "45" / "45 plus" alone (no type):
-     question: "You mentioned 45+. Which 45+ category did you play?"
-     options: ["45+ Men's Singles", "45+ Men's Doubles", "45+ Women's Singles", "45+ Women's Doubles", "45+ Mixed Doubles"]
-   - "45 doubles" (no gender):
-     question: "Which 45+ doubles category did you play?"
-     options: ["45+ Men's Doubles", "45+ Women's Doubles", "45+ Mixed Doubles"]
-   - "45 singles" (no gender):
-     question: "Was it 45+ men's singles or 45+ women's singles?"
-     options: ["45+ Men's Singles", "45+ Women's Singles"]
-   - "50" / "50 plus" alone (no type):
-     question: "You mentioned 50+. Which 50+ category did you play?"
-     options: ["50+ Men's Singles", "50+ Men's Doubles", "50+ Women's Singles", "50+ Women's Doubles", "50+ Mixed Doubles"]
-   - "50 doubles" (no gender):
-     question: "Which 50+ doubles category did you play?"
-     options: ["50+ Men's Doubles", "50+ Women's Doubles", "50+ Mixed Doubles"]
-   - "50 singles" (no gender):
-     question: "Was it 50+ men's singles or 50+ women's singles?"
-     options: ["50+ Men's Singles", "50+ Women's Singles"]
-   - "55" / "55 plus" alone (no type):
-     question: "You mentioned 55+. Which 55+ category did you play?"
-     options: ["55+ Men's Singles", "55+ Men's Doubles", "55+ Women's Singles", "55+ Women's Doubles", "55+ Mixed Doubles"]
-   - "55 doubles" (no gender):
-     question: "Which 55+ doubles category did you play?"
-     options: ["55+ Men's Doubles", "55+ Women's Doubles", "55+ Mixed Doubles"]
-   - "55 singles" (no gender):
-     question: "Was it 55+ men's singles or 55+ women's singles?"
-     options: ["55+ Men's Singles", "55+ Women's Singles"]
-   - "60" / "60 plus" alone (no type/gender):
-     question: "You mentioned 60+. Which 60+ category did you play?"
-     options: ["Men's Singles 60+", "Men's Doubles 60+", "Women's Singles 60+", "Women's Doubles 60+", "Mixed Doubles 60+"]
-   - "65" / "65 plus" alone (no type/gender):
-     question: "You mentioned 65+. Which 65+ category did you play?"
-     options: ["Men's Singles 65+", "Men's Doubles 65+", "Women's Singles 65+", "Women's Doubles 65+", "Mixed Doubles 65+"]
-   - "70" / "70 plus" alone (no type/gender):
-     question: "You mentioned 70+. Which 70+ category did you play?"
-     options: ["Men's Singles 70+", "Men's Doubles 70+", "Women's Singles 70+", "Women's Doubles 70+", "Mixed Doubles 70+"]
-   - "split" / "split age" alone (no age):
-     question: "Which split age category? 35+, 40+, or 50+?"
-     options: ["Split Age 35+", "Split Age 40+", "Split Age 50+"]
+   AMBIGUITY: set categoryName to null and add an ambiguity entry ONLY when the user's words match MORE THAN ONE valid name and you genuinely cannot tell which. Write a short clarifying "question" and a SHORT "options" list — AT MOST 6 entries, the most likely common variants, NOT every age/level permutation. Examples of words that ARE ambiguous (and good short option sets):
+   - "doubles" alone → ["Men's Doubles Open", "Women's Doubles", "Mixed Doubles", "Beginner Doubles", "Intermediate Doubles", "Advanced Men's Doubles"].
+   - "singles" alone → ["Men's Singles Open", "Women's Singles", "Beginner Singles", "Intermediate Singles", "Advanced Men's Singles"].
+   - "beginner singles" / "intermediate doubles" (level but no gender) → the men's, women's, and gender-neutral variants (3 options).
+   - "beginner" / "intermediate" / "advanced" alone (no type) → that level's main singles/doubles/mixed variants (cap 6).
+   - "35" / "40" / ... / "70" alone → that bracket's 5 variants (men's/women's singles, men's/women's doubles, mixed). "35 doubles" / "35 singles" (age, missing gender) → just that bracket+type's gendered variants.
+   - "open" alone → ["Men's Singles Open", "Men's Doubles Open"]. "split" alone → ["Split Age 35+", "Split Age 40+", "Split Age 50+"].
+   Never ask when the words already map to exactly one name.
 
 2. date:
-   - Convert to YYYY-MM-DD format.
-   - Handle relative expressions: "tomorrow", "yesterday", "next Saturday", "last Sunday".
-   - Handle partial dates: "April 15" or "15th April" → use current year (${today.split('-')[0]}).
-   - If not mentioned, return null.
+   - Convert to YYYY-MM-DD format. ONLY output a date when a SPECIFIC CALENDAR DAY is determinable.
+   - Specific (resolve these): "tomorrow", "yesterday", "next Saturday", "last Sunday", "April 15" / "15th April" → use current year (${today.split('-')[0]}), "May 24", "24/05".
+   - VAGUE — do NOT guess a day, return null so we can ask: "last month", "this month", "last week", "a few weeks ago", "recently", "earlier this year", a bare month with no day ("in May", "sometime in April"), a season ("last winter").
+   - If not mentioned at all, return null.
 
 3. medal:
    - Map spoken words to medal values:
@@ -287,15 +108,33 @@ The user may describe one or more categories they played in. For each, extract:
    - If medal is "None" or the user lost, set to 0.
    - If not mentioned (e.g. future tournament where result is unknown), return null.
 
+6. travelExpense (OPTIONAL — only if the user mentions any travel/trip cost):
+   - ONE object for the whole tournament trip (not per category).
+   - Map spoken costs to fields (all numbers in INR, no currency symbol):
+     * flight / train / bus / cab fare to reach the event → "transport"
+     * local taxi / auto / metro / commute at the venue → "localCommute"
+     * hotel / stay / lodging / Airbnb → "accommodation"
+     * food / meals → "food"
+     * paddle / shoes / strings / gear bought for the trip → "equipment"
+     * visa / passport / document fees → "visaDocs"
+     * travel insurance → "travelInsurance"
+     * any other travel cost → "others"
+   - fromCity / toCity: city names if mentioned ("from Delhi to Mumbai").
+   - isInternational: true only if clearly a foreign trip.
+   - Same number parsing as entryFee ("2k" = 2000, "five hundred" = 500).
+   - If NO travel cost is mentioned at all, set travelExpense to null.
+
 --- AMBIGUITY ENTRY FORMAT ---
 For each ambiguity create one entry:
 {
   "id": "cat_{categoryIndex}_{field}",
   "categoryIndex": <number>,
   "field": "categoryName",
+  "partial": "<the user's exact category words, e.g. 'doubles', \"men's doubles\", '50+'>",
   "question": "<clear question to ask the user>",
   "options": ["<exact valid value 1>", "<exact valid value 2>", ...]
 }
+"partial" is REQUIRED on every ambiguity — copy the user's own category words verbatim (lowercased is fine). The chat UI uses it to build a full set of matching category chips, so it matters more than "options".
 
 --- OUTPUT FORMAT ---
 Return ONLY a valid JSON object, no markdown, no explanation:
@@ -311,11 +150,25 @@ Return ONLY a valid JSON object, no markdown, no explanation:
       "prizeAmount": number | null
     }
   ],
+  "travelExpense": {
+    "fromCity": string | null,
+    "toCity": string | null,
+    "isInternational": boolean,
+    "transport": number,
+    "localCommute": number,
+    "accommodation": number,
+    "food": number,
+    "equipment": number,
+    "others": number,
+    "visaDocs": number,
+    "travelInsurance": number
+  } | null,
   "ambiguities": [
     {
       "id": string,
       "categoryIndex": number,
       "field": string,
+      "partial": string,
       "question": string,
       "options": string[]
     }
@@ -325,72 +178,92 @@ Return ONLY a valid JSON object, no markdown, no explanation:
 If no categories are mentioned, return an empty array for categories.
 `.trim();
 
-let openaiClient = null;
-const getClient = () => {
-  if (!openaiClient) {
-    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const MAX_TRANSCRIPT = 2000;
+
+/**
+ * Core tournament-extraction call, shared by the voice-form route and the
+ * chat companion. Throws on bad input / LLM failure so callers map to HTTP.
+ *
+ * @returns sanitized { name, locationQuery, categories[], ambiguities[] }
+ */
+const runTournamentParse = async (transcript, currentForm) => {
+  if (!transcript || typeof transcript !== 'string' || transcript.trim().length === 0) {
+    const e = new Error('Transcript is required');
+    e.status = 400;
+    throw e;
   }
-  return openaiClient;
+  if (transcript.length > MAX_TRANSCRIPT) {
+    const e = new Error(`Transcript too long (max ${MAX_TRANSCRIPT} characters)`);
+    e.status = 400;
+    throw e;
+  }
+  if (!llm.isConfigured()) {
+    const e = new Error('AI service is not configured');
+    e.status = 503;
+    throw e;
+  }
+
+  const safeForm = {
+    name: currentForm?.name || '',
+    categories: Array.isArray(currentForm?.categories) ? currentForm.categories : [],
+  };
+  const today = new Date().toISOString().split('T')[0];
+
+  const { data: parsed } = await llm.chatJSON({
+    system: buildSystemPrompt(today, safeForm),
+    user: transcript.trim(),
+  });
+
+  if (!Array.isArray(parsed.categories)) parsed.categories = [];
+  if (!Array.isArray(parsed.ambiguities)) parsed.ambiguities = [];
+  if (typeof parsed.name !== 'string') parsed.name = null;
+  if (typeof parsed.locationQuery !== 'string') parsed.locationQuery = null;
+
+  parsed.categories = parsed.categories.map((cat) => ({
+    categoryName: typeof cat.categoryName === 'string' ? cat.categoryName : null,
+    date: typeof cat.date === 'string' ? cat.date : null,
+    medal: typeof cat.medal === 'string' ? cat.medal : null,
+    entryFee: typeof cat.entryFee === 'number' ? cat.entryFee : null,
+    prizeAmount: typeof cat.prizeAmount === 'number' ? cat.prizeAmount : null,
+  }));
+
+  const te = parsed.travelExpense;
+  if (te && typeof te === 'object' && !Array.isArray(te)) {
+    const num = (v) => (typeof v === 'number' && isFinite(v) && v >= 0 ? v : 0);
+    parsed.travelExpense = {
+      fromCity: typeof te.fromCity === 'string' ? te.fromCity : '',
+      toCity: typeof te.toCity === 'string' ? te.toCity : '',
+      isInternational: Boolean(te.isInternational),
+      transport: num(te.transport),
+      localCommute: num(te.localCommute),
+      accommodation: num(te.accommodation),
+      food: num(te.food),
+      equipment: num(te.equipment),
+      others: num(te.others),
+      visaDocs: num(te.visaDocs),
+      travelInsurance: num(te.travelInsurance),
+    };
+  } else {
+    parsed.travelExpense = null;
+  }
+
+  return parsed;
 };
+
+exports.runTournamentParse = runTournamentParse;
 
 exports.parseTournamentVoice = async (req, res, next) => {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(503).json({ success: false, message: 'AI service is not configured' });
-    }
-
     const { transcript, currentForm } = req.body;
-
-    if (!transcript || typeof transcript !== 'string' || transcript.trim().length === 0) {
-      return res.status(400).json({ success: false, message: 'Transcript is required' });
-    }
-
-    if (transcript.length > 2000) {
-      return res.status(400).json({ success: false, message: 'Transcript too long (max 2000 characters)' });
-    }
-
-    const safeForm = {
-      name: currentForm?.name || '',
-      categories: Array.isArray(currentForm?.categories) ? currentForm.categories : [],
-    };
-
-    const today = new Date().toISOString().split('T')[0];
-
-    const completion = await getClient().chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: buildSystemPrompt(today, safeForm) },
-        { role: 'user', content: transcript.trim() },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.1,
-      max_tokens: 1200,
-    }, { timeout: 15000 });
-
-    let parsed;
-    try {
-      parsed = JSON.parse(completion.choices[0].message.content);
-    } catch {
-      return res.status(500).json({ success: false, message: 'Failed to parse AI response' });
-    }
-
-    // Sanitize structure
-    if (!Array.isArray(parsed.categories)) parsed.categories = [];
-    if (!Array.isArray(parsed.ambiguities)) parsed.ambiguities = [];
-    if (typeof parsed.name !== 'string') parsed.name = null;
-    if (typeof parsed.locationQuery !== 'string') parsed.locationQuery = null;
-
-    // Validate each category has expected fields
-    parsed.categories = parsed.categories.map((cat) => ({
-      categoryName: typeof cat.categoryName === 'string' ? cat.categoryName : null,
-      date: typeof cat.date === 'string' ? cat.date : null,
-      medal: typeof cat.medal === 'string' ? cat.medal : null,
-      entryFee: typeof cat.entryFee === 'number' ? cat.entryFee : null,
-      prizeAmount: typeof cat.prizeAmount === 'number' ? cat.prizeAmount : null,
-    }));
-
+    const parsed = await runTournamentParse(transcript, currentForm);
     return res.json({ success: true, data: parsed });
   } catch (err) {
+    if (err.status) {
+      return res.status(err.status).json({ success: false, message: err.message });
+    }
+    if (err.code && err.code.startsWith('LLM_')) {
+      return res.status(502).json({ success: false, message: 'AI service failed to respond' });
+    }
     next(err);
   }
 };

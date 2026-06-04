@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../services/api';
@@ -20,6 +20,28 @@ export default function Navbar() {
   const navigate = useNavigate();
   const isAdmin = ADMIN_EMAILS.includes(user?.email?.toLowerCase());
   const [locationOpen, setLocationOpen] = useState(false);
+  const [level, setLevel] = useState(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    api.getGamificationProgress()
+      .then((res) => { if (active) setLevel(res.data?.data?.level ?? null); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [user]);
+
+  const levelBadge = level != null && (
+    <NavLink
+      to="/achievements"
+      className="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-white text-xs font-bold whitespace-nowrap shadow-sm"
+      style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
+      title="Your rewards level"
+    >
+      <span className="uppercase tracking-wide text-[10px] opacity-90">Level</span>
+      <span className="text-sm leading-none">{level}</span>
+    </NavLink>
+  );
 
   const logout = () => {
     handleLogout();
@@ -63,6 +85,7 @@ export default function Navbar() {
               className="flex w-max shrink-0 flex-nowrap items-center gap-x-1 lg:gap-x-1.5 xl:gap-x-2"
               aria-label="Main navigation"
             >
+              {levelBadge}
               <NavLink to="/home" className={linkClass}>
                 Home
               </NavLink>
@@ -164,6 +187,7 @@ export default function Navbar() {
 
           {/* Mobile / tablet: bell + avatar + menu (drawer contains full nav) */}
           <div className="flex lg:hidden items-center gap-1 sm:gap-2 ml-auto flex-shrink-0">
+            {levelBadge}
             <NotificationBell />
             <NavLink to="/profile" className="flex-shrink-0 p-0.5" aria-label="Profile">
               {user?.profilePhoto ? (

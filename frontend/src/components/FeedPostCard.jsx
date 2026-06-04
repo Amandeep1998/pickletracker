@@ -243,26 +243,20 @@ function FeedCardComponent({ item, currentUserId, onViewProfile, expandCommentsF
   useEffect(() => {
     if (!expandCommentsFromLink || expandedFromLinkRef.current) return;
     expandedFromLinkRef.current = true;
-    let cancelled = false;
     (async () => {
       setCommentsOpen(true);
       setLoadingComments(true);
       try {
         const res = await api.getFeedComments(tournamentId);
-        if (!cancelled) {
-          setComments(res.data.data || []);
-          setAllLoaded(true);
-        }
+        setComments(res.data.data || []);
+        setAllLoaded(true);
       } catch {
         /* keep recentComments */
       } finally {
-        if (!cancelled) setLoadingComments(false);
+        setLoadingComments(false);
       }
       setTimeout(() => inputRef.current?.focus(), 280);
     })();
-    return () => {
-      cancelled = true;
-    };
   }, [expandCommentsFromLink, tournamentId]);
 
   const handleLike = async () => {

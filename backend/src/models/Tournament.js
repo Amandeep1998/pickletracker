@@ -90,6 +90,12 @@ const tournamentSchema = new mongoose.Schema(
       required: [true, 'Tournament name is required'],
       trim: true,
     },
+    // Multi-sport stamp (additive). Defaults to pickleball so existing rows and
+    // form logs need no change; chat companion stamps it explicitly.
+    sport: {
+      type: String,
+      default: 'pickleball',
+    },
     location: {
       name: { type: String, default: null },
       address: { type: String, default: null },

@@ -729,49 +729,6 @@ export default function NotificationBell() {
 
   return (
     <div ref={containerRef} className="flex items-center gap-0.5">
-      {/* Friend requests — separate from activity notifications */}
-      <div className="relative">
-        <button
-          type="button"
-          onClick={handleToggleFriendPanel}
-          className={`relative p-2 rounded-lg transition-colors ${
-            friendOpen ? 'bg-indigo-50 text-indigo-700' : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50/80'
-          }`}
-          aria-label="Friend requests"
-          aria-expanded={friendOpen}
-          title="Friend requests"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-            />
-          </svg>
-          {friendIncomingCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-indigo-500 leading-none">
-              {friendIncomingCount > 9 ? '9+' : friendIncomingCount}
-            </span>
-          )}
-        </button>
-
-        {friendOpen && !isMobileLayout && (
-          <div ref={friendPanelRef} className={desktopPanelClass}>
-            {friendDropdownBody}
-          </div>
-        )}
-
-        {friendOpen &&
-          isMobileLayout &&
-          typeof document !== 'undefined' &&
-          createPortal(
-            <div ref={friendPanelRef} className={mobilePanelClass} style={mobilePanelStyle} role="dialog" aria-label="Friend requests">
-              {friendDropdownBody}
-            </div>,
-            document.body,
-          )}
-      </div>
-
       {/* Likes & comments (+ push prompts) */}
       <div className="relative">
         <button

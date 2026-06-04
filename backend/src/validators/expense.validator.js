@@ -32,6 +32,7 @@ const expenseSchema = Joi.object({
   localCommute:    Joi.number().min(0).optional(),
   accommodation:   Joi.number().min(0).optional(),
   food:            Joi.number().min(0).optional(),
+  others:          Joi.number().min(0).optional(),
   equipment:       Joi.number().min(0).optional(),
   visaDocs:        Joi.number().min(0).optional(),
   travelInsurance: Joi.number().min(0).optional(),

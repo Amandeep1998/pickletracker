@@ -68,6 +68,10 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    companionAccess: {
+      type: Boolean,
+      default: false,
+    },
     city: {
       type: String,
       default: null,
@@ -149,6 +153,12 @@ const userSchema = new mongoose.Schema(
     onboardingDone: {
       type: Boolean,
       default: false,
+    },
+    // Sports this user plays (additive, multi-sport groundwork). Defaults to
+    // pickleball; onboarding sport-picker (Phase 3) and backfill populate it.
+    sports: {
+      type: [String],
+      default: ['pickleball'],
     },
     /** When false, this user's tournaments are omitted from the Home community feed (likes/comments may still exist on old rows). */
     shareTournamentsOnFeed: {

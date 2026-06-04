@@ -538,7 +538,7 @@ async function sendImmediateLikePush(tournament, actor) {
   await sendPushToUser(recipientId, {
     title: 'Someone liked your tournament',
     body: `${actor.name} liked your ${name}`,
-    url: '/home',
+    url: '/',
     tag: `feed-like-${String(tournament._id)}-${Date.now()}`,
   });
 }
@@ -623,7 +623,7 @@ exports.addComment = async (req, res, next) => {
       sendPushToUser(tournament.userId, {
         title: `${actor.name} commented on your tournament`,
         body: excerpt,
-        url: '/home',
+        url: '/',
         tag: `feed-comment-${String(comment._id)}`,
       }).catch(() => {});
     }
@@ -649,7 +649,7 @@ exports.addComment = async (req, res, next) => {
         sendPushToUser(parentDoc.userId, {
           title: `${actor.name} replied to your comment`,
           body: excerpt,
-          url: '/home',
+          url: '/',
           tag: `feed-reply-${String(comment._id)}`,
         }).catch(() => {});
       }

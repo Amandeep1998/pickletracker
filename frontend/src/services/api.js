@@ -67,20 +67,12 @@ export const createAdminStory = (data) => api.post('/admin/stories', data);
 export const updateAdminStory = (id, data) => api.put(`/admin/stories/${id}`, data);
 export const deleteAdminStory = (id) => api.delete(`/admin/stories/${id}`);
 
-// Email notifications
-export const getEmailPrefs = () => api.get('/notifications/prefs');
-export const updateEmailPrefs = (data) => api.put('/notifications/prefs', data);
-export const sendTestEmail = () => api.post('/notifications/test');
-
 // Admin
-export const toggleWhatsAppAccess = (userId) => api.put(`/admin/users/${userId}/whatsapp-access`);
+export const toggleCompanionAccess = (userId) => api.put(`/admin/users/${userId}/companion-access`);
 
 // Push notifications
 export const subscribePush = (subscription) => api.post('/push/subscribe', subscription);
 export const unsubscribePush = (endpoint) => api.post('/push/unsubscribe', { endpoint });
-
-// Export
-export const exportData = () => api.get('/export', { responseType: 'blob' });
 
 // Sessions (performance journal)
 export const getSessions = () => api.get('/sessions');
@@ -109,23 +101,27 @@ export const markFeedNotificationsRead = () => api.put('/feed/notifications/read
 export const markFeedNotificationRead = (id) => api.put(`/feed/notifications/${id}/read`);
 
 // Players / Community
-export const getPlayers = (params) => api.get('/players', { params });
 export const getPlayer = (id) => api.get(`/players/${id}`);
 export const sendFriendRequest = (recipientId) => api.post('/friends/requests', { recipientId });
 export const getFriendRequests = () => api.get('/friends/requests');
 export const acceptFriendRequest = (id) => api.post(`/friends/requests/${id}/accept`);
 export const rejectFriendRequest = (id) => api.post(`/friends/requests/${id}/reject`);
-export const cancelFriendRequest = (id) => api.delete(`/friends/requests/${id}`);
-export const getFriends = () => api.get('/friends');
 export const getFriendSchedule = (friendId) => api.get(`/friends/${friendId}/schedule`);
-export const removeFriend = (friendId) => api.delete(`/friends/${friendId}`);
 
-// AI — voice
-export const parseTournamentVoice = (transcript, currentForm) =>
-  api.post('/ai/parse-voice', { transcript, currentForm });
-
-// AI — personal coach
-export const getCoachInsight = (messages) => api.post('/ai/coach', { messages });
+// Companion (chat) — Phase 2 real wiring
+export const companionParse = (transcript, currentForm) =>
+  api.post('/companion/parse', { transcript, currentForm });
+export const companionAssist = (message) => api.post('/companion/assist', { message });
+export const companionParseGear = (transcript) =>
+  api.post('/companion/parse-gear', { transcript });
+export const getCategoryOptions = (facets) =>
+  api.post('/companion/category-options', { facets });
+export const getCategoryList = () => api.get('/companion/categories');
+export const getCompanionCard = () => api.get('/companion/me/card');
+export const getCompanionTournaments = () => api.get('/companion/me/tournaments');
+export const getCompanionUpcoming = () => api.get('/companion/me/upcoming');
+export const getCompanionSpend = (period = 'month') =>
+  api.get('/companion/me/spend', { params: { period } });
 
 // Coaching Income
 export const getCoachingIncomes = () => api.get('/coaching-income');
@@ -139,12 +135,6 @@ export const createCoachScheduleSlot = (data) => api.post('/coach-schedule', dat
 export const updateCoachScheduleSlot = (id, data) => api.put(`/coach-schedule/${id}`, data);
 export const deleteCoachScheduleSlot = (id) => api.delete(`/coach-schedule/${id}`);
 
-// Coach Overhead Expenses
-export const getCoachOverheads = (month) => api.get('/coach-overhead', { params: month ? { month } : {} });
-export const createCoachOverhead = (data) => api.post('/coach-overhead', data);
-export const updateCoachOverhead = (id, data) => api.put(`/coach-overhead/${id}`, data);
-export const deleteCoachOverhead = (id) => api.delete(`/coach-overhead/${id}`);
-
 // Coach Students
 export const getCoachStudents = () => api.get('/coach-students');
 export const upsertCoachStudents = (names) => api.post('/coach-students/upsert', { names });
@@ -152,18 +142,4 @@ export const deleteCoachStudent = (id) => api.delete(`/coach-students/${id}`);
 
 // Gamification
 export const getGamificationProgress = () => api.get('/gamification/progress');
-export const getAchievements = () => api.get('/gamification/achievements');
-export const triggerAchievementCheck = () => api.post('/gamification/check');
 export const markAchievementShared = (id) => api.post(`/gamification/achievements/${id}/share`);
-export const getGamificationFeed = (params) => api.get('/gamification/feed', { params });
-export const toggleGamificationReaction = (itemId, emoji) => api.post(`/gamification/feed/${itemId}/react`, { emoji });
-
-// AI — document (URL or file)
-export const parseFromFile = (file, currentForm) => {
-  const formData = new FormData();
-  formData.append('file', file);
-  if (currentForm) formData.append('currentForm', JSON.stringify(currentForm));
-  return api.post('/document/parse-file', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-};

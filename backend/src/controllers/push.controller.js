@@ -123,7 +123,7 @@ const runPushReminders = async () => {
     const payload = JSON.stringify({
       title,
       body,
-      url: '/home',
+      url: '/',
       tag: `tournament-reminder-${tomorrowStr}`,
     });
     const userSubs = subscriptions.filter((s) => String(s.userId) === userId);
@@ -216,7 +216,7 @@ const runPushResultReminders = async () => {
     const payload = JSON.stringify({
       title,
       body,
-      url: '/home',
+      url: '/',
       tag: `result-log-${todayStr}`,
     });
     const userSubs = subscriptions.filter((s) => String(s.userId) === userId);

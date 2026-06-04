@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>rallyora — premium logo direction</title>
+<style>
+  :root{ --navy:#15201b; --lime:#c4f53b; --lime2:#b6e82f; --paper:#f4f6f2; }
+  *{margin:0;box-sizing:border-box;font-family:"Poppins",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  body{background:#0c100e;color:#fff;padding:46px 20px}
+  h1{text-align:center;font-size:19px;font-weight:600;margin-bottom:4px}
+  p.sub{text-align:center;color:#93a89b;font-size:12.5px;margin-bottom:38px;max-width:620px;margin-left:auto;margin-right:auto;line-height:1.5}
+  .grid{display:flex;flex-wrap:wrap;gap:22px;justify-content:center;align-items:stretch}
+  .tile{background:var(--paper);border-radius:16px;padding:42px 36px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:22px;min-width:340px;min-height:190px}
+  .tile.dark{background:var(--navy)}
+  .cap{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:#9aa89f;font-weight:600}
+  .tile.dark .cap{color:#5f7268}
+  .wordmark{font-weight:600;letter-spacing:-.5px}
+</style>
+</head>
+<body>
+  <h1>rallyora — premium typographic direction</h1>
+  <p class="sub">Type-led, not icon-led. One idea: the rally arc lives inside the word. Flat. Two colors. No gradients, no mascot, no swoosh clutter. The mark below is hand-built SVG (real geometry), not AI raster.</p>
+
+  <div class="grid">
+
+    <!-- A: arc trajectory over the wordmark, dot apex -->
+    <div class="tile" style="min-width:460px">
+      <div class="cap">A · rally arc over wordmark</div>
+      <svg width="380" height="120" viewBox="0 0 380 120">
+        <!-- trajectory arc with ball at apex -->
+        <path d="M30 86 Q190 6 350 86" fill="none" stroke="#b6e82f" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="190" cy="26" r="8.5" fill="#b6e82f"/>
+        <text x="190" y="104" text-anchor="middle" font-size="50" font-weight="600" letter-spacing="-1.5" fill="#15201b">rallyora</text>
+      </svg>
+    </div>
+
+    <!-- B: lowercase wordmark, the dot sits as accent, arc minimal under -->
+    <div class="tile" style="min-width:460px">
+      <div class="cap">B · two-tone wordmark + accent</div>
+      <svg width="380" height="100" viewBox="0 0 380 100">
+        <text x="20" y="66" font-size="52" font-weight="700" letter-spacing="-2" fill="#15201b">rally<tspan fill="#b6e82f">ora</tspan></text>
+        <circle cx="356" cy="30" r="6" fill="#b6e82f"/>
+      </svg>
+    </div>
+
+    <!-- C: icon mark — arc + dot, monoline, no badge fill -->
+    <div class="tile">
+      <div class="cap">C · standalone mark (monoline)</div>
+      <svg width="110" height="110" viewBox="0 0 110 110">
+        <path d="M16 80 Q55 8 94 80" fill="none" stroke="#15201b" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="55" cy="22" r="8" fill="#b6e82f" stroke="#15201b" stroke-width="0"/>
+      </svg>
+    </div>
+
+    <!-- D: app icon, restrained -->
+    <div class="tile dark">
+      <div class="cap">D · app icon</div>
+      <svg width="96" height="96" viewBox="0 0 110 110">
+        <rect x="2" y="2" width="106" height="106" rx="26" fill="#15201b" stroke="#243730" stroke-width="1"/>
+        <path d="M22 76 Q55 18 88 76" fill="none" stroke="#c4f53b" stroke-width="6.5" stroke-linecap="round"/>
+        <circle cx="55" cy="28" r="8" fill="#c4f53b"/>
+      </svg>
+    </div>
+
+    <!-- E: reverse lockup on navy -->
+    <div class="tile dark" style="min-width:460px">
+      <div class="cap">E · reverse lockup</div>
+      <svg width="380" height="120" viewBox="0 0 380 120">
+        <path d="M30 86 Q190 6 350 86" fill="none" stroke="#c4f53b" stroke-width="5" stroke-linecap="round"/>
+        <circle cx="190" cy="26" r="8.5" fill="#c4f53b"/>
+        <text x="190" y="104" text-anchor="middle" font-size="50" font-weight="600" letter-spacing="-1.5" fill="#ffffff">rallyora</text>
+      </svg>
+    </div>
+
+    <!-- F: monochrome / one color -->
+    <div class="tile">
+      <div class="cap">F · monochrome</div>
+      <svg width="300" height="84" viewBox="0 0 300 84">
+        <path d="M24 60 Q150 8 276 60" fill="none" stroke="#15201b" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="150" cy="20" r="5.5" fill="#15201b"/>
+        <text x="150" y="76" text-anchor="middle" font-size="38" font-weight="600" letter-spacing="-1" fill="#15201b">rallyora</text>
+      </svg>
+    </div>
+
+  </div>
+</body>
+</html>

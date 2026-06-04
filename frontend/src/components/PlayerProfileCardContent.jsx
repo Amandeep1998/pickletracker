@@ -83,7 +83,7 @@ export default function PlayerProfileCardContent({
 
   return (
     <div
-      className={`flex flex-col min-w-0 overflow-x-hidden ${forExport ? '' : 'min-h-0 h-full'}`}
+      className={`flex flex-col min-w-0 overflow-x-hidden ${forExport ? '' : 'flex-1 min-h-0'}`}
     >
       <div
         className={

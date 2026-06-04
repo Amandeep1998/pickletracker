@@ -5,6 +5,7 @@ const {
   getUsers,
   getUserTournaments,
   toggleWhatsAppAccess,
+  toggleCompanionAccess,
   deleteUser,
   broadcastEmail,
   getAdminStories,
@@ -21,6 +22,7 @@ router.use(protect, isAdmin);
 router.get('/users', getUsers);
 router.get('/users/:id/tournaments', getUserTournaments);
 router.put('/users/:id/whatsapp-access', toggleWhatsAppAccess);
+router.put('/users/:id/companion-access', toggleCompanionAccess);
 router.delete('/users/:id', deleteUser);
 router.post('/broadcast-email', broadcastEmail);
 router.get('/stories', getAdminStories);

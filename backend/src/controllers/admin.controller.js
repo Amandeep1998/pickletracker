@@ -453,6 +453,7 @@ const getUsers = async (req, res, next) => {
         email: user.email,
         isGoogleUser: user.isGoogleUser,
         whatsappEnabled: user.whatsappEnabled || false,
+        companionAccess: user.companionAccess || false,
         createdAt: user.createdAt,
         lastActive,
         activityStatus,
@@ -533,6 +534,20 @@ const toggleWhatsAppAccess = async (req, res, next) => {
     await user.save();
 
     res.json({ success: true, whatsappEnabled: user.whatsappEnabled });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const toggleCompanionAccess = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.params.id).select('companionAccess');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    user.companionAccess = !user.companionAccess;
+    await user.save();
+
+    res.json({ success: true, companionAccess: user.companionAccess });
   } catch (err) {
     next(err);
   }
@@ -744,6 +759,7 @@ module.exports = {
   getUsers,
   getUserTournaments,
   toggleWhatsAppAccess,
+  toggleCompanionAccess,
   deleteUser,
   broadcastEmail,
   getAdminStories,
