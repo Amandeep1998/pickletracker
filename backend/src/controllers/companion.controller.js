@@ -62,7 +62,10 @@ const buildFromParse = (parsed) => {
     categories: cats.map((c) => ({
       format: c.categoryName || '(needs detail)',
       level: null,
-      partner: null,
+      partner: c.partnerName || null,
+      date: c.date || null,
+      entryFee: c.entryFee != null ? c.entryFee : null,
+      prizeAmount: c.prizeAmount != null ? c.prizeAmount : null,
       result: c.medal != null ? { type: 'medal', value: c.medal === 'None' ? null : c.medal } : null,
     })),
   };

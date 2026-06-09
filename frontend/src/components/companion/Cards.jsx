@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon } from './erne/Icon';
+import LocationAutocomplete from '../LocationAutocomplete';
 
 /* ---------- shared bits (Erne) ---------- */
 
@@ -312,7 +313,9 @@ function TournamentEditForm({ data, categoryOptions, onCancel, onSave, showHint 
   };
 
   const [name, setName] = React.useState(data?.name || '');
-  const [venue, setVenue] = React.useState(data?.venue || '');
+  // Location is a Google Places object {name,address,lat,lng,placeId}; we only
+  // persist the name up (locationQuery) but keep the full object for the search.
+  const [loc, setLoc] = React.useState(data?.venue ? { name: data.venue } : null);
   const [showVenue, setShowVenue] = React.useState(Boolean(data?.venue));
   const [cats, setCats] = React.useState(
     (data?.categories || []).map((c) => ({
@@ -340,7 +343,7 @@ function TournamentEditForm({ data, categoryOptions, onCancel, onSave, showHint 
     const travelTotal = travelOpen ? sumTravel(travel) : 0;
     onSave({
       name: name.trim(),
-      locationQuery: showVenue && venue.trim() ? venue.trim() : null,
+      locationQuery: showVenue && loc?.name?.trim() ? loc.name.trim() : null,
       categories: cats.map((c) => ({
         categoryName: c.categoryName || null,
         date: c.date || null,
@@ -375,13 +378,19 @@ function TournamentEditForm({ data, categoryOptions, onCancel, onSave, showHint 
 
       {showVenue ? (
         <div style={{ marginTop: 11 }}>
-          <label style={fieldLabel}>Location</label>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}>
-            <input style={inputStyle} value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="Venue or city" />
-            <button type="button" onClick={() => { setShowVenue(false); setVenue(''); }} aria-label="Remove location"
-              style={{ border: '1px solid var(--line)', background: 'transparent', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', color: 'var(--ink-soft)', flexShrink: 0 }}>
-              <Icon name="x" size={15} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label style={fieldLabel}>Location</label>
+            <button type="button" onClick={() => { setShowVenue(false); setLoc(null); }}
+              style={{ background: 'transparent', border: 'none', color: 'var(--ink-soft)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
+              Remove
             </button>
+          </div>
+          <div style={{ marginTop: 4 }}>
+            <LocationAutocomplete
+              value={loc}
+              onSelect={(place) => setLoc(place)}
+              onClear={() => setLoc(null)}
+            />
           </div>
         </div>
       ) : (
