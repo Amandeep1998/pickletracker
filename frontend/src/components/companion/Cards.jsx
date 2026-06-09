@@ -136,32 +136,46 @@ const rowStyle = {
 /* ---------- TournamentPreviewCard ---------- */
 // data: { name, dates, venue, status, categories:[{format,level,partner,result:{type,value},entryFee}], travelTotal }
 //
-// Two edit paths:
-//  - onEdit()  → conversational edit ("tell me what to change") — kept for back-compat.
-//  - onSave(d) → INLINE manual edit. When provided (with categoryOptions), the
-//    Edit button flips the card into an editable form (name, venue, per-category
-//    dropdown/date/medal/entry/prize/partner, + Add location, + Add travel cost).
+// Edit paths:
+//  - onEdit()           → conversational edit ("tell me what to change") — back-compat.
+//  - onSave(d)          → INLINE manual edit, re-renders the summary afterwards.
+//  - onSaveAndConfirm(d)→ INLINE form is the DEFAULT view: all fields shown prefilled,
+//    the primary button applies the edits AND saves in one tap (no Edit click).
+// When onSaveAndConfirm + categoryOptions are wired the card opens straight into
+// the editable form; otherwise it falls back to the read-only summary + Edit.
 export function TournamentPreviewCard({
   data,
   onConfirm,
   onEdit,
   onSave,
+  onSaveAndConfirm,
   categoryOptions = [],
   confirmLabel = 'Looks right',
 }) {
-  const [editing, setEditing] = React.useState(false);
+  // Default to the inline form when the save-and-confirm path is wired so the
+  // user sees every prefilled detail immediately and can tweak in place.
+  const inlineDefault = Boolean(onSaveAndConfirm && categoryOptions.length);
+  const [editing, setEditing] = React.useState(inlineDefault);
   const { name, dates, venue, status = 'completed', categories = [], travelTotal = 0 } = data || {};
   const upcoming = status === 'upcoming';
 
-  if (editing && onSave) {
+  if (editing && (onSave || onSaveAndConfirm)) {
     return (
       <TournamentEditForm
         data={data}
         categoryOptions={categoryOptions}
-        onCancel={() => setEditing(false)}
+        showHint={inlineDefault}
+        saveLabel={inlineDefault ? confirmLabel : 'Done'}
+        onCancel={inlineDefault ? null : () => setEditing(false)}
         onSave={(edited) => {
-          setEditing(false);
-          onSave(edited);
+          // Inline-default form saves directly; legacy Edit-button form returns
+          // to the summary so the user can confirm separately.
+          if (inlineDefault && onSaveAndConfirm) {
+            onSaveAndConfirm(edited);
+          } else {
+            setEditing(false);
+            onSave(edited);
+          }
         }}
       />
     );
@@ -289,7 +303,7 @@ const inputStyle = {
   fontWeight: 600,
 };
 
-function TournamentEditForm({ data, categoryOptions, onCancel, onSave }) {
+function TournamentEditForm({ data, categoryOptions, onCancel, onSave, showHint = false, saveLabel = 'Done' }) {
   // medal value lives on result:{type:'medal', value}; '' value = no medal (None).
   const medalOf = (c) => {
     if (!c.result || c.result.type !== 'medal' || !c.result.value) return 'None';
@@ -347,7 +361,14 @@ function TournamentEditForm({ data, categoryOptions, onCancel, onSave }) {
 
   return (
     <Shell accent>
-      <div className="erne-h" style={{ fontSize: 16, marginBottom: 10 }}>Edit details</div>
+      <div className="erne-h" style={{ fontSize: 16, marginBottom: showHint ? 4 : 10 }}>
+        {showHint ? 'Review & save' : 'Edit details'}
+      </div>
+      {showHint && (
+        <div style={{ fontSize: 12, color: 'var(--ink-soft)', fontWeight: 600, marginBottom: 12, lineHeight: 1.35 }}>
+          Everything I picked up is below — tweak anything right here, or just tell me in chat.
+        </div>
+      )}
 
       <label style={fieldLabel}>Tournament name</label>
       <input style={{ ...inputStyle, marginTop: 4 }} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Mumbai Open" />
@@ -463,8 +484,8 @@ function TournamentEditForm({ data, categoryOptions, onCancel, onSave }) {
       )}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-        <Btn onClick={onCancel} full>Cancel</Btn>
-        <Btn variant="accent" onClick={save} icon="check" full>Done</Btn>
+        {onCancel && <Btn onClick={onCancel} full>Cancel</Btn>}
+        <Btn variant="accent" onClick={save} icon="check" full>{saveLabel}</Btn>
       </div>
     </Shell>
   );

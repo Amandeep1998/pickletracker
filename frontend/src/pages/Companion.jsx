@@ -418,6 +418,7 @@ function CompanionChat() {
             onConfirm={onConfirm}
             onEdit={onEdit}
             onSave={onSaveEdit}
+            onSaveAndConfirm={onSaveAndConfirm}
             categoryOptions={categoryOptions}
           />
         ),
@@ -750,6 +751,20 @@ function CompanionChat() {
   const onEdit = useCallback(async () => {
     await botSay('Sure — what should I change? Just tell me the corrected detail.', []);
   }, [botSay]);
+
+  // Inline form is now the default save-card view: the user reviews/tweaks the
+  // prefilled fields and the primary button saves in one tap. Apply the edits
+  // onto the working refs, then run the normal confirm/save path.
+  const onSaveAndConfirm = useCallback(async (edited) => {
+    applyManualEdit(edited);
+    track('confirm_card_edited', {
+      categories: edited.categories?.length || 0,
+      has_location: Boolean(edited.locationQuery),
+      has_travel: Boolean(edited.travel),
+    });
+    await onConfirm();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyManualEdit, onConfirm]);
 
   // ---- saved-tournament manager popup (year + month accordions; edit/delete
   // inline or via type-to-edit). Both "My upcoming" and "My tournaments" open
