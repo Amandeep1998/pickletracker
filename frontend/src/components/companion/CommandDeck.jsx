@@ -91,6 +91,9 @@ export default function CommandDeck({ chips = [], onPick, disabled, open, onClos
         <div style={{ padding: '4px 0 8px', cursor: 'grab' }}>
           <div className="erne-grabber" style={{ margin: '0 auto' }} />
         </div>
+        <div className="erne-h" style={{ textAlign: 'center', fontSize: 16, color: 'var(--ink)', padding: '0 0 8px' }}>
+          Menu
+        </div>
         <div style={{ display: 'flex', justifyContent: 'center', padding: '0 0 10px' }}>
           <button
             type="button"

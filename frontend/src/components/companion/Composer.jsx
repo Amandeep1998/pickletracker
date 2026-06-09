@@ -47,8 +47,9 @@ export default function Composer({ onSend, disabled, value, onChange, autoFocus,
           onClick={onOpenDeck}
           disabled={disabled}
           aria-label="Open menu"
+          title="Menu"
         >
-          <Icon name="plus" size={22} color="var(--accent-text)" />
+          <span className="erne-deck-trigger-label">Menu</span>
         </button>
       )}
       <textarea

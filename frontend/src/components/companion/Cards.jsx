@@ -135,9 +135,41 @@ const rowStyle = {
 
 /* ---------- TournamentPreviewCard ---------- */
 // data: { name, dates, venue, status, categories:[{format,level,partner,result:{type,value},entryFee}], travelTotal }
-export function TournamentPreviewCard({ data, onConfirm, onEdit, confirmLabel = 'Looks right' }) {
+//
+// Two edit paths:
+//  - onEdit()  → conversational edit ("tell me what to change") — kept for back-compat.
+//  - onSave(d) → INLINE manual edit. When provided (with categoryOptions), the
+//    Edit button flips the card into an editable form (name, venue, per-category
+//    dropdown/date/medal/entry/prize/partner, + Add location, + Add travel cost).
+export function TournamentPreviewCard({
+  data,
+  onConfirm,
+  onEdit,
+  onSave,
+  categoryOptions = [],
+  confirmLabel = 'Looks right',
+}) {
+  const [editing, setEditing] = React.useState(false);
   const { name, dates, venue, status = 'completed', categories = [], travelTotal = 0 } = data || {};
   const upcoming = status === 'upcoming';
+
+  if (editing && onSave) {
+    return (
+      <TournamentEditForm
+        data={data}
+        categoryOptions={categoryOptions}
+        onCancel={() => setEditing(false)}
+        onSave={(edited) => {
+          setEditing(false);
+          onSave(edited);
+        }}
+      />
+    );
+  }
+
+  // Prefer inline editing when the parent wired onSave + provided category options.
+  const editHandler = onSave && categoryOptions.length ? () => setEditing(true) : onEdit;
+
   return (
     <Shell accent>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
@@ -215,9 +247,9 @@ export function TournamentPreviewCard({ data, onConfirm, onEdit, confirmLabel = 
         </div>
       )}
 
-      {(onConfirm || onEdit) && (
+      {(onConfirm || editHandler) && (
         <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-          {onEdit && <Btn onClick={onEdit} icon="edit" full>Edit</Btn>}
+          {editHandler && <Btn onClick={editHandler} icon="edit" full>Edit</Btn>}
           {onConfirm && (
             <Btn variant="accent" onClick={onConfirm} icon="check" full>
               {confirmLabel}
@@ -225,6 +257,215 @@ export function TournamentPreviewCard({ data, onConfirm, onEdit, confirmLabel = 
           )}
         </div>
       )}
+    </Shell>
+  );
+}
+
+/* ---------- TournamentEditForm (inline manual editor) ---------- */
+// Drives a local draft built from the preview card, then hands a normalized
+// edited shape back up. The parent maps it onto its working refs (payload/raw/
+// preview) so a manual edit and a conversational edit converge on the same save.
+const MEDALS = ['None', 'Gold', 'Silver', 'Bronze'];
+const TRAVEL_FIELDS = [
+  ['transport', 'Transport (flight/train/cab)'],
+  ['accommodation', 'Hotel / stay'],
+  ['food', 'Food'],
+  ['localCommute', 'Local commute'],
+  ['others', 'Other'],
+];
+const sumTravel = (t) => TRAVEL_FIELDS.reduce((s, [k]) => s + (Number(t?.[k]) || 0), 0);
+
+const fieldLabel = { fontSize: 11, fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '0.05em' };
+const inputStyle = {
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: '9px 11px',
+  borderRadius: 10,
+  border: '1px solid var(--line)',
+  background: 'var(--surface)',
+  color: 'var(--ink)',
+  fontFamily: 'var(--font-body)',
+  fontSize: 13.5,
+  fontWeight: 600,
+};
+
+function TournamentEditForm({ data, categoryOptions, onCancel, onSave }) {
+  // medal value lives on result:{type:'medal', value}; '' value = no medal (None).
+  const medalOf = (c) => {
+    if (!c.result || c.result.type !== 'medal' || !c.result.value) return 'None';
+    const v = String(c.result.value).toLowerCase();
+    return v === 'gold' ? 'Gold' : v === 'silver' ? 'Silver' : v === 'bronze' ? 'Bronze' : 'None';
+  };
+
+  const [name, setName] = React.useState(data?.name || '');
+  const [venue, setVenue] = React.useState(data?.venue || '');
+  const [showVenue, setShowVenue] = React.useState(Boolean(data?.venue));
+  const [cats, setCats] = React.useState(
+    (data?.categories || []).map((c) => ({
+      categoryName: c.format && c.format !== '(needs detail)' ? c.format : '',
+      date: c.date || '',
+      medal: medalOf(c),
+      entryFee: c.entryFee != null ? c.entryFee : '',
+      prizeAmount: c.prizeAmount != null ? c.prizeAmount : '',
+      partnerName: c.partner || '',
+    }))
+  );
+  const [travelOpen, setTravelOpen] = React.useState((data?.travelTotal || 0) > 0);
+  const [travel, setTravel] = React.useState(
+    data?.travel || { transport: 0, accommodation: 0, food: 0, localCommute: 0, others: 0 }
+  );
+
+  const setCat = (i, patch) => setCats((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+  const addCat = () =>
+    setCats((cs) => [...cs, { categoryName: '', date: '', medal: 'None', entryFee: '', prizeAmount: '', partnerName: '' }]);
+  const removeCat = (i) => setCats((cs) => (cs.length > 1 ? cs.filter((_, j) => j !== i) : cs));
+
+  const isDoubles = (n) => /doubles|mixed/i.test(n);
+
+  const save = () => {
+    const travelTotal = travelOpen ? sumTravel(travel) : 0;
+    onSave({
+      name: name.trim(),
+      locationQuery: showVenue && venue.trim() ? venue.trim() : null,
+      categories: cats.map((c) => ({
+        categoryName: c.categoryName || null,
+        date: c.date || null,
+        medal: c.medal || 'None',
+        entryFee: c.entryFee === '' ? null : Math.max(0, Math.round(Number(c.entryFee) || 0)),
+        prizeAmount:
+          c.medal === 'None' ? 0 : c.prizeAmount === '' ? null : Math.max(0, Math.round(Number(c.prizeAmount) || 0)),
+        partnerName: c.partnerName || '',
+      })),
+      travel:
+        travelTotal > 0
+          ? { ...travel, transport: Number(travel.transport) || 0, accommodation: Number(travel.accommodation) || 0,
+              food: Number(travel.food) || 0, localCommute: Number(travel.localCommute) || 0, others: Number(travel.others) || 0,
+              total: travelTotal }
+          : null,
+    });
+  };
+
+  return (
+    <Shell accent>
+      <div className="erne-h" style={{ fontSize: 16, marginBottom: 10 }}>Edit details</div>
+
+      <label style={fieldLabel}>Tournament name</label>
+      <input style={{ ...inputStyle, marginTop: 4 }} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Mumbai Open" />
+
+      {showVenue ? (
+        <div style={{ marginTop: 11 }}>
+          <label style={fieldLabel}>Location</label>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4 }}>
+            <input style={inputStyle} value={venue} onChange={(e) => setVenue(e.target.value)} placeholder="Venue or city" />
+            <button type="button" onClick={() => { setShowVenue(false); setVenue(''); }} aria-label="Remove location"
+              style={{ border: '1px solid var(--line)', background: 'transparent', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', color: 'var(--ink-soft)', flexShrink: 0 }}>
+              <Icon name="x" size={15} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setShowVenue(true)}
+          style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'transparent', border: '1px dashed var(--line)', borderRadius: 10, padding: '8px 12px', color: 'var(--ink)', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+          <Icon name="pin" size={14} /> Add location
+        </button>
+      )}
+
+      <div style={{ height: 1, background: 'var(--line)', margin: '14px 0 10px' }} />
+      <label style={fieldLabel}>Categories</label>
+
+      {cats.map((c, i) => (
+        <div key={i} style={{ ...rowStyle, flexDirection: 'column', alignItems: 'stretch', gap: 8, marginTop: 8, padding: 12 }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <select style={{ ...inputStyle, flex: 1 }} value={c.categoryName} onChange={(e) => setCat(i, { categoryName: e.target.value })}>
+              <option value="">Pick a category…</option>
+              {categoryOptions.map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+            {cats.length > 1 && (
+              <button type="button" onClick={() => removeCat(i)} aria-label="Remove category"
+                style={{ border: '1px solid var(--line)', background: 'transparent', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', color: 'var(--ink-soft)', flexShrink: 0 }}>
+                <Icon name="trash" size={15} />
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ flex: 1 }}>
+              <label style={fieldLabel}>Date</label>
+              <input type="date" style={{ ...inputStyle, marginTop: 3 }} value={c.date} onChange={(e) => setCat(i, { date: e.target.value })} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={fieldLabel}>Result</label>
+              <select style={{ ...inputStyle, marginTop: 3 }} value={c.medal} onChange={(e) => setCat(i, { medal: e.target.value })}>
+                {MEDALS.map((m) => <option key={m} value={m}>{m === 'None' ? 'No medal' : m}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ flex: 1 }}>
+              <label style={fieldLabel}>Entry fee ₹</label>
+              <input type="number" min="0" inputMode="numeric" style={{ ...inputStyle, marginTop: 3 }} value={c.entryFee} onChange={(e) => setCat(i, { entryFee: e.target.value })} placeholder="0" />
+            </div>
+            {c.medal !== 'None' && (
+              <div style={{ flex: 1 }}>
+                <label style={fieldLabel}>Prize won ₹</label>
+                <input type="number" min="0" inputMode="numeric" style={{ ...inputStyle, marginTop: 3 }} value={c.prizeAmount} onChange={(e) => setCat(i, { prizeAmount: e.target.value })} placeholder="0" />
+              </div>
+            )}
+          </div>
+
+          {isDoubles(c.categoryName) && (
+            <div>
+              <label style={fieldLabel}>Partner (optional)</label>
+              <input style={{ ...inputStyle, marginTop: 3 }} value={c.partnerName} onChange={(e) => setCat(i, { partnerName: e.target.value })} placeholder="Partner name" />
+            </div>
+          )}
+        </div>
+      ))}
+
+      <button type="button" onClick={addCat}
+        style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'transparent', border: '1px dashed var(--line)', borderRadius: 10, padding: '8px 12px', color: 'var(--ink)', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+        <Icon name="plus" size={14} /> Add category
+      </button>
+
+      <div style={{ height: 1, background: 'var(--line)', margin: '14px 0 10px' }} />
+
+      {travelOpen ? (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <label style={fieldLabel}>Travel cost ₹</label>
+            <button type="button" onClick={() => setTravelOpen(false)}
+              style={{ background: 'transparent', border: 'none', color: 'var(--ink-soft)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
+              Remove
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginTop: 6 }}>
+            {TRAVEL_FIELDS.map(([k, label]) => (
+              <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ flex: 1, fontSize: 12.5, fontWeight: 600, color: 'var(--ink)' }}>{label}</span>
+                <input type="number" min="0" inputMode="numeric" style={{ ...inputStyle, width: 110, flex: 'none' }}
+                  value={travel[k] || ''} onChange={(e) => setTravel((t) => ({ ...t, [k]: e.target.value }))} placeholder="0" />
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 13, fontWeight: 800 }}>
+            <span style={{ color: 'var(--ink-soft)' }}>Travel total</span>
+            <span>{inr(sumTravel(travel))}</span>
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setTravelOpen(true)}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'transparent', border: '1px dashed var(--line)', borderRadius: 10, padding: '8px 12px', color: 'var(--ink)', fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: 12.5, cursor: 'pointer' }}>
+          <Icon name="bag" size={14} /> Add travel cost
+        </button>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+        <Btn onClick={onCancel} full>Cancel</Btn>
+        <Btn variant="accent" onClick={save} icon="check" full>Done</Btn>
+      </div>
     </Shell>
   );
 }

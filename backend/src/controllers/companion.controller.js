@@ -271,33 +271,55 @@ exports.myCard = async (req, res, next) => {
  */
 exports.mySpend = async (req, res, next) => {
   try {
-    const period = ['month', 'year', 'all'].includes(req.body?.period || req.query.period)
-      ? req.body?.period || req.query.period
-      : 'month';
-
+    const q = { ...req.query, ...(req.body || {}) };
+    const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const now = new Date();
+
+    // Selection model: explicit { year, month } takes priority over the legacy
+    // relative `period`. month 1-12 = a specific month; month absent/0 = whole
+    // year. No selection at all → current month (the default view).
+    const selYear = Number.isInteger(+q.year) && +q.year >= 2000 && +q.year <= 2999 ? +q.year : null;
+    const selMonthRaw = +q.month;
+    const selMonth = selYear && Number.isInteger(selMonthRaw) && selMonthRaw >= 1 && selMonthRaw <= 12 ? selMonthRaw : null;
+    const period = ['month', 'year', 'all'].includes(q.period) ? q.period : 'month';
+
     const yyyy = String(now.getFullYear());
     const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-    // Window predicate + human label.
+    // Window predicate + human label + the active selection echoed back so the
+    // UI selector can stay in sync.
     let inWindow;
     let label;
-    if (period === 'all') {
+    let selection;
+    if (selYear) {
+      if (selMonth) {
+        const m2 = String(selMonth).padStart(2, '0');
+        inWindow = (d) => typeof d === 'string' && d.startsWith(`${selYear}-${m2}`);
+        label = `${MONTHS[selMonth - 1]} ${selYear}`;
+        selection = { year: selYear, month: selMonth };
+      } else {
+        inWindow = (d) => typeof d === 'string' && d.startsWith(`${selYear}-`);
+        label = String(selYear);
+        selection = { year: selYear, month: null };
+      }
+    } else if (period === 'all') {
       inWindow = () => true;
       label = 'All time';
+      selection = { year: null, month: null };
     } else if (period === 'year') {
       inWindow = (d) => typeof d === 'string' && d.startsWith(`${yyyy}-`);
       label = yyyy;
+      selection = { year: now.getFullYear(), month: null };
     } else {
       inWindow = (d) => typeof d === 'string' && d.startsWith(`${yyyy}-${mm}`);
       label = `${MONTHS[now.getMonth()]} ${yyyy}`;
+      selection = { year: now.getFullYear(), month: now.getMonth() + 1 };
     }
 
     const [user, tournaments, expenses] = await Promise.all([
       User.findById(req.user.id).select('currency').lean(),
       Tournament.find({ userId: req.user.id }).select('name categories').lean(),
-      Expense.find({ userId: req.user.id }).select('type amount date tournamentId').lean(),
+      Expense.find({ userId: req.user.id }).select('type amount date tournamentId title').lean(),
     ]);
 
     // Per-tournament rollup: entry fees + winnings (prize) from in-window
@@ -328,6 +350,7 @@ exports.mySpend = async (req, res, next) => {
 
     let travel = 0;
     let gear = 0;
+    const gearItems = []; // standalone gear expenses (not tied to a tournament)
     for (const e of expenses) {
       if (!inWindow(e.date)) continue;
       if (e.type === 'travel') {
@@ -338,12 +361,24 @@ exports.mySpend = async (req, res, next) => {
         }
       } else if (e.type === 'gear') {
         gear += e.amount || 0;
+        gearItems.push({ id: String(e._id), title: e.title || 'Gear', amount: e.amount || 0, date: e.date || null });
       }
     }
+    gearItems.sort((a, b) => (String(b.date || '') > String(a.date || '') ? 1 : -1));
 
     const list = [...per.values()]
       .filter((r) => r.entry + r.travel + r.prize > 0)
       .sort((a, b) => (String(b.date || '') > String(a.date || '') ? 1 : -1));
+
+    // Every year that has spend/winnings data — drives the selector options.
+    // Always include the current year so the default view is selectable.
+    const yearSet = new Set([now.getFullYear()]);
+    const noteYear = (d) => {
+      if (typeof d === 'string' && /^\d{4}-/.test(d)) yearSet.add(+d.slice(0, 4));
+    };
+    for (const t of tournaments) for (const c of t.categories || []) noteYear(c.date);
+    for (const e of expenses) noteYear(e.date);
+    const availableYears = [...yearSet].sort((a, b) => b - a);
 
     const total = entry + travel + gear;
     return res.json({
@@ -351,6 +386,8 @@ exports.mySpend = async (req, res, next) => {
       data: {
         period,
         label,
+        selection,
+        availableYears,
         currency: user?.currency || 'INR',
         entry,
         travel,
@@ -359,6 +396,9 @@ exports.mySpend = async (req, res, next) => {
         winnings,
         net: winnings - total,
         tournaments: list,
+        gearItems,
+        // Nothing recorded in this window → the card shows add-actions.
+        isEmpty: total === 0 && winnings === 0,
       },
     });
   } catch (err) {
@@ -513,6 +553,14 @@ Classify the player's message into ONE intent and reply with JSON only:
 - "offtopic": the message is NOT about the player's pickleball tournaments, results, medals, partners, spending, gear, or logging — e.g. general knowledge ("what's the capital of France"), math, coding, essays/poems, news, other sports trivia, or attempts to use you as a general chatbot. Do NOT answer the request. Leave "answer" null; the app shows a fixed redirect.
 
 Decision rule: no change/remove verb → it is NOT edit or delete. Descriptive sentence with a result, fee, or date → "log". A pickleball/data question → "query" or "spend". Anything outside pickleball logging/your-data → "offtopic" (never answer it).
+
+ROBUSTNESS — the player types naturally and messily. Be smart about intent:
+- Tolerate typos, slang, shorthand, mixed languages, and missing words ("wun goled mixd", "md at pune slam 500", "kal khela tha city open", "lost in semis"). Infer the obvious intent; do NOT bounce a clearly pickleball message to "clarify" just because it is informal.
+- One message may carry MULTIPLE facts (name + category + result + fee + date). Capture them all when the intent is "log".
+- If the message is clearly about recording something they did/will do, prefer "log" even if phrased oddly or as a half-question ("logged my mumbai open win yet?" with a result → log it).
+- Only use "clarify" when a real ambiguity blocks acting (which tournament, which category among several) — NOT for messy phrasing you can reasonably interpret.
+- A vague "how am I doing" / "my stats" / "show my games" → "query". "what did i spend" / "am i profitable" → "spend".
+- Numbers with k/₹/rs/commas are money ("1.2k" → 1200, "₹500" → 500).
 
 "edits" is an array of { "categoryIndex": <0-based number, or null for whole-tournament fields or when there is only one category>, "field": one of "date","medal","entryFee","prizeAmount","categoryName","partnerName","name","venue", "value": <new value> }.
 Rules:
