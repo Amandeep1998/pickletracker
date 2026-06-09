@@ -91,10 +91,18 @@ export default function CommandDeck({ chips = [], onPick, disabled, open, onClos
         <div style={{ padding: '4px 0 8px', cursor: 'grab' }}>
           <div className="erne-grabber" style={{ margin: '0 auto' }} />
         </div>
-        <div className="erne-h" style={{ textAlign: 'center', fontSize: 16, color: 'var(--ink)', padding: '0 0 8px' }}>
-          Menu
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '0 0 10px' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+            padding: '0 4px 10px',
+          }}
+        >
+          <div className="erne-h" style={{ fontSize: 17, color: 'var(--ink)' }}>
+            Menu
+          </div>
           <button
             type="button"
             aria-label="Close"
@@ -104,20 +112,17 @@ export default function CommandDeck({ chips = [], onPick, disabled, open, onClos
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 6,
-              padding: '8px 18px',
+              width: 34,
+              height: 34,
               borderRadius: 999,
-              border: 'none',
-              background: '#E5484D',
-              color: '#fff',
-              fontFamily: 'var(--font-body)',
-              fontSize: 13.5,
-              fontWeight: 800,
+              border: '1px solid var(--line)',
+              background: 'var(--surface2)',
+              color: 'var(--ink-soft)',
               cursor: 'pointer',
+              flexShrink: 0,
             }}
           >
-            <Icon name="close" size={18} color="#fff" />
-            Close
+            <Icon name="close" size={18} />
           </button>
         </div>
 
