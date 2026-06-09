@@ -9,6 +9,8 @@
  */
 
 const CATEGORIES = [
+  // Gender-neutral (open level) — anyone, any gender
+  "Gender Neutral Singles", "Gender Neutral Doubles",
   // Open
   "Men's Singles Open", "Women's Singles", "Men's Doubles Open", "Women's Doubles", "Mixed Doubles",
   // Pro

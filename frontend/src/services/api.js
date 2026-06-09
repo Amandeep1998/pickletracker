@@ -120,8 +120,12 @@ export const getCategoryList = () => api.get('/companion/categories');
 export const getCompanionCard = () => api.get('/companion/me/card');
 export const getCompanionTournaments = () => api.get('/companion/me/tournaments');
 export const getCompanionUpcoming = () => api.get('/companion/me/upcoming');
-export const getCompanionSpend = (period = 'month') =>
-  api.get('/companion/me/spend', { params: { period } });
+// period = 'month'|'year'|'all' (relative). OR pass an explicit { year, month }
+// selection: year + month(1-12) = that month; year only = whole year.
+export const getCompanionSpend = (arg = 'month') => {
+  const params = typeof arg === 'string' ? { period: arg } : arg;
+  return api.get('/companion/me/spend', { params });
+};
 
 // Coaching Income
 export const getCoachingIncomes = () => api.get('/coaching-income');

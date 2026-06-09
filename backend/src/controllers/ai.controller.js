@@ -44,6 +44,9 @@ CATEGORY MERGING:
 
 NAME: Keep existing name unless the user explicitly says a different tournament name.
 
+--- ROBUSTNESS (read first) ---
+The player types naturally and messily — typos, slang, shorthand (md=men's doubles, wd=women's doubles, ms=men's singles, ws=women's singles, mxd=mixed), missing words, casual numbers, and sometimes mixed languages (e.g. Hindi "kal"=yesterday, "khela"=played, "jeeta"=won). Do your best to extract a clean structured result anyway. Never refuse or return empty just because the phrasing is informal — infer the obvious meaning. Only leave a field null when it is genuinely not determinable. Capture EVERY detail present in one message (name, location, category, date, medal, fees, travel).
+
 --- EXTRACTION RULES ---
 
 TOURNAMENT NAME:
@@ -64,6 +67,7 @@ The user may describe one or more categories they played in. For each, extract:
 1. categoryName:
    Map the user's words to ONE exact string from the VALID CATEGORY NAMES list above (case-sensitive). Match on type (singles/doubles/mixed), gender (men's/women's), level (beginner/intermediate/advanced/pro), and age (35/40/45/50/55/60/65/70). Non-obvious rules:
    - "mixed" alone → "Mixed Doubles".
+   - GENDER-NEUTRAL: "Gender Neutral Singles" and "Gender Neutral Doubles" are valid categories. Use them when the user explicitly signals no gender split — "gender neutral singles", "open-to-all doubles", "anyone singles", "mixed-gender doubles" (not the same as Mixed Doubles), or a plain "singles"/"doubles" the user clarifies is gender-neutral. Do NOT default a bare ambiguous "singles"/"doubles" to these — that case is still AMBIGUOUS (see below).
    - Plain "men's singles" / "men's doubles" (no age, no level) → ADD "Open": "Men's Singles Open" / "Men's Doubles Open". ("open singles"/"open doubles" too.)
    - Plain "women's singles" / "women's doubles" (no age, no level) → "Women's Singles" / "Women's Doubles" (NO "Open").
    - Age word order differs by bracket:
@@ -73,8 +77,8 @@ The user may describe one or more categories they played in. For each, extract:
    - When the words point to exactly one valid name, map directly — never ask a follow-up.
 
    AMBIGUITY: set categoryName to null and add an ambiguity entry ONLY when the user's words match MORE THAN ONE valid name and you genuinely cannot tell which. Write a short clarifying "question" and a SHORT "options" list — AT MOST 6 entries, the most likely common variants, NOT every age/level permutation. Examples of words that ARE ambiguous (and good short option sets):
-   - "doubles" alone → ["Men's Doubles Open", "Women's Doubles", "Mixed Doubles", "Beginner Doubles", "Intermediate Doubles", "Advanced Men's Doubles"].
-   - "singles" alone → ["Men's Singles Open", "Women's Singles", "Beginner Singles", "Intermediate Singles", "Advanced Men's Singles"].
+   - "doubles" alone → ["Gender Neutral Doubles", "Men's Doubles Open", "Women's Doubles", "Mixed Doubles", "Beginner Doubles", "Intermediate Doubles"].
+   - "singles" alone → ["Gender Neutral Singles", "Men's Singles Open", "Women's Singles", "Beginner Singles", "Intermediate Singles"].
    - "beginner singles" / "intermediate doubles" (level but no gender) → the men's, women's, and gender-neutral variants (3 options).
    - "beginner" / "intermediate" / "advanced" alone (no type) → that level's main singles/doubles/mixed variants (cap 6).
    - "35" / "40" / ... / "70" alone → that bracket's 5 variants (men's/women's singles, men's/women's doubles, mixed). "35 doubles" / "35 singles" (age, missing gender) → just that bracket+type's gendered variants.

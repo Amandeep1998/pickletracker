@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import posthog from 'posthog-js';
 import { APP_NAME } from '../utils/featureFlags';
 import { useAuth } from '../context/AuthContext';
 import ChatStream from '../components/companion/ChatStream';
@@ -62,6 +63,17 @@ import {
 
 let _id = 0;
 const nextId = () => `m${++_id}`;
+
+// Companion analytics — all events namespaced `companion_*` so the chat funnel
+// is filterable in PostHog. No-op when PostHog isn't configured (posthog-js
+// safely ignores capture calls before init).
+const track = (event, props) => {
+  try {
+    posthog.capture(`companion_${event}`, props || {});
+  } catch {
+    /* analytics must never break the chat */
+  }
+};
 
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAIL || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
 
@@ -222,6 +234,16 @@ function CompanionChat() {
   const [levelOpen, setLevelOpen] = useState(false);
   // Summary for the name + medals stat strip under the header.
   const [cardSummary, setCardSummary] = useState(null);
+  // Canonical category enum for the inline edit-card dropdown (fetched once).
+  const [categoryOptions, setCategoryOptions] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    getCategoryList()
+      .then((res) => { if (active) setCategoryOptions(res.data?.data || []); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (!hasToken) return;
@@ -310,10 +332,81 @@ function CompanionChat() {
     return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
   };
 
+  // Apply an inline manual edit (from the confirm-card form) onto the working
+  // refs. Mirrors the backend buildFromParse mapping so a manual edit and a
+  // parsed/conversational edit converge on the same payload/preview/raw shape.
+  const applyManualEdit = useCallback((edited) => {
+    const cats = edited.categories || [];
+    const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const fmtDate = (iso) => (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso) ? `${MON[+iso.split('-')[1] - 1]} ${+iso.split('-')[2]}` : null);
+    const dateLabels = [...new Set(cats.map((c) => c.date).filter(Boolean))].sort().map(fmtDate).filter(Boolean);
+    const dates = dateLabels.length === 0 ? null : dateLabels.length === 1 ? dateLabels[0] : `${dateLabels[0]}–${dateLabels[dateLabels.length - 1]}`;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const anyResult = cats.some((c) => c.medal && c.medal !== 'None');
+    const hasFuture = cats.some((c) => c.date && c.date > todayStr);
+    const status = anyResult ? 'completed' : hasFuture ? 'upcoming' : 'completed';
+
+    // Preserve sport + existing location object fields the editor doesn't touch.
+    const prevLoc = payloadRef.current?.location;
+    payloadRef.current = {
+      ...(payloadRef.current || {}),
+      name: edited.name || '',
+      sport: payloadRef.current?.sport || 'pickleball',
+      location: edited.locationQuery ? { ...(prevLoc || {}), name: edited.locationQuery } : undefined,
+      categories: cats.map((c) => {
+        const won = c.medal && c.medal !== 'None';
+        return {
+          categoryName: c.categoryName || null,
+          date: c.date || null,
+          medal: c.medal || 'None',
+          entryFee: c.entryFee != null ? c.entryFee : 0,
+          prizeAmount: won ? (c.prizeAmount != null ? c.prizeAmount : null) : 0,
+          partnerName: c.partnerName || '',
+        };
+      }),
+    };
+
+    rawRef.current = {
+      name: edited.name || null,
+      locationQuery: edited.locationQuery || null,
+      categories: cats.map((c) => ({
+        categoryName: c.categoryName || null,
+        date: c.date || null,
+        medal: c.medal || 'None',
+        entryFee: c.entryFee != null ? c.entryFee : null,
+        prizeAmount: c.prizeAmount != null ? c.prizeAmount : null,
+        partnerName: c.partnerName || '',
+      })),
+    };
+
+    previewRef.current = {
+      name: edited.name || null,
+      dates,
+      venue: edited.locationQuery || null,
+      status,
+      travelTotal: edited.travel?.total || 0,
+      travel: edited.travel || null,
+      categories: cats.map((c) => ({
+        format: c.categoryName || '(needs detail)',
+        level: null,
+        partner: c.partnerName || null,
+        date: c.date || null,
+        entryFee: c.entryFee != null ? c.entryFee : null,
+        result: c.medal != null ? { type: 'medal', value: c.medal === 'None' ? null : c.medal } : null,
+      })),
+    };
+
+    travelRef.current = edited.travel || null;
+    // A manual edit resolves all pending gaps + ambiguities.
+    ambQueueRef.current = [];
+    pendingRef.current = null;
+  }, []);
+
   // ---- render the confirm card from the current working preview/payload ----
   const showConfirmCard = useCallback(async () => {
     const preview = previewRef.current;
     const editing = Boolean(editIdRef.current);
+    track('confirm_card_shown', { editing, status: preview?.status, categories: preview?.categories?.length || 0 });
     const confirmLabel = editing ? 'Save changes' : preview?.status === 'upcoming' ? 'Save it' : 'Add to my card';
     await botTurns([
       { text: editing ? "Here's the updated version" : "Here's what I'll save" },
@@ -324,12 +417,28 @@ function CompanionChat() {
             confirmLabel={confirmLabel}
             onConfirm={onConfirm}
             onEdit={onEdit}
+            onSave={onSaveEdit}
+            categoryOptions={categoryOptions}
           />
         ),
       },
     ]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [botTurns]);
+  }, [botTurns, categoryOptions]);
+
+  // Inline manual edit saved → apply onto the working refs and re-render the
+  // confirm card with the updated details (no LLM round-trip).
+  const onSaveEdit = useCallback(async (edited) => {
+    applyManualEdit(edited);
+    track('confirm_card_edited', {
+      categories: edited.categories?.length || 0,
+      has_location: Boolean(edited.locationQuery),
+      has_travel: Boolean(edited.travel),
+    });
+    await botTurns([{ text: 'Updated — take a look' }]);
+    await showConfirmCard();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyManualEdit, botTurns]);
 
   // ---- gap-filler: ask for every required detail the user didn't mention,
   // one at a time, before the confirm card. Detection reads the RAW parse
@@ -473,6 +582,7 @@ function CompanionChat() {
         setTyping(false);
         const rootChips = hasToken ? ROOT_CHIPS : ANON_CHIPS;
         if (!preview.categories || preview.categories.length === 0) {
+          track('parse_failed', { reason: 'no_categories', authed: hasToken });
           await botSay(
             "I couldn't catch a tournament in that. Try: “Played men's doubles at City Open on May 24, won gold, entry 500.”",
             rootChips
@@ -480,11 +590,20 @@ function CompanionChat() {
           resetWork();
           return;
         }
+        track('parse_succeeded', {
+          categories: preview.categories.length,
+          status: preview.status,
+          ambiguities: ambQueueRef.current.length,
+          authed: hasToken,
+        });
+        if (ambQueueRef.current.length) track('ambiguity_shown', { count: ambQueueRef.current.length });
         await askNextAmbiguity();
       } catch (err) {
         setTyping(false);
         const rootChips = hasToken ? ROOT_CHIPS : ANON_CHIPS;
         const status = err.response?.status;
+        track('parse_error', { status: status || 0, authed: hasToken });
+        if (status === 429) track('rate_limited', { surface: 'parse', authed: hasToken });
         if (status === 429) {
           // Anon trial cap reached → push them to sign in; authed → soft limit.
           await botSay(
@@ -516,6 +635,7 @@ function CompanionChat() {
     // Anonymous try-before-auth: stash the ready payload and send them to sign
     // in. CompanionChat replays it on return (see the replay effect below).
     if (!loggedIn) {
+      track('log_stashed_anon', { status: previewRef.current?.status });
       localStorage.setItem(
         PENDING_LOG_KEY,
         JSON.stringify({
@@ -538,12 +658,14 @@ function CompanionChat() {
       setTyping(true);
       try {
         await updateTournament(editIdRef.current, payload);
+        track('log_saved', { kind: 'edit', categories: payload.categories?.length || 0 });
         setTyping(false);
         const subtitle = [previewRef.current?.name, previewRef.current?.dates].filter(Boolean).join(' · ');
         await botTurns([{ card: <SavedCard title="Updated!" subtitle={subtitle || 'Changes saved.'} /> }], ROOT_CHIPS);
         resetWork();
       } catch (err) {
         setTyping(false);
+        track('log_save_failed', { kind: 'edit', status: err.response?.status || 0 });
         const errors = err.response?.data?.errors;
         const first = Array.isArray(errors) && errors.length ? errors[0] : err.response?.data?.message;
         await botSay(`Couldn't save that — ${first || 'something went wrong'}. Tell me and I'll fix it.`, []);
@@ -559,6 +681,13 @@ function CompanionChat() {
     try {
       const res = await createTournament(payload);
       const created = res?.data?.data;
+      track('log_saved', {
+        kind: 'new',
+        status: previewRef.current?.status,
+        categories: payload.categories?.length || 0,
+        medals: (payload.categories || []).filter((c) => c.medal && c.medal !== 'None').length,
+        has_travel: Boolean(travelRef.current && travelRef.current.total > 0),
+      });
 
       // Travel costs go to a linked 'travel' Expense — same two-step the form
       // does. Best-effort: a travel-expense failure must not lose the saved log.
@@ -605,6 +734,7 @@ function CompanionChat() {
       }
     } catch (err) {
       setTyping(false);
+      track('log_save_failed', { kind: 'new', status: err.response?.status || 0 });
       const errors = err.response?.data?.errors;
       const first = Array.isArray(errors) && errors.length ? errors[0] : err.response?.data?.message;
       await botSay(
@@ -724,6 +854,7 @@ function CompanionChat() {
         const { data } = await companionAssist(text);
         const d = data.data || {};
         setTyping(false);
+        track('intent_classified', { intent: d.intent || 'unknown' });
 
         if (d.intent === 'log') {
           await runParse(text);
@@ -758,6 +889,8 @@ function CompanionChat() {
       } catch (err) {
         setTyping(false);
         const status = err.response?.status;
+        track('assist_error', { status: status || 0 });
+        if (status === 429) track('rate_limited', { surface: 'assist', authed: true });
         if (status === 429) await botSay(err.response.data?.message || "You've hit the chat limit — try later.", ROOT_CHIPS);
         else if (status === 401) await botSay(`Sign in first and I'll pull that up`, LOGIN_CHIPS);
         else await botSay("Hmm, I couldn't process that just now. Mind trying again?", ROOT_CHIPS);
@@ -824,20 +957,86 @@ function CompanionChat() {
     [botSay]
   );
 
-  // Step 1: per-tournament spend (entry + travel). Then offer the winnings step.
+  // Add-expense actions surfaced inside the spend card (empty state + the
+  // persistent "+ Add gear expense" button). Routes into the existing flows.
+  const onSpendAction = useCallback(
+    (action) => {
+      if (busy) return;
+      track('chip_tapped', { action, source: 'spend_card' });
+      if (action === 'gear') {
+        pushUser('Add gear expense');
+        resetWork();
+        gearModeRef.current = true;
+        gearPayloadRef.current = null;
+        botSay('What gear did you buy, and how much? e.g. “new paddle for 4500” or “court shoes 3200 on June 1”.', []);
+      } else if (action === 'log') {
+        pushUser('Log a tournament');
+        resetWork();
+        botSay('Adding an upcoming tournament, or logging one you already played?', [
+          { id: 'log-upcoming', action: 'logKind', value: 'upcoming', label: '📅 Upcoming' },
+          { id: 'log-past', action: 'logKind', value: 'past', label: '🏆 Already played' },
+        ]);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [busy, pushUser, botSay]
+  );
+
+  // Re-fetch spend for an explicit { year, month } selection (from the card's
+  // period selector) and render a fresh spend card. month null = whole year.
+  // Defined first so loadSpend can hand it to the card without a TDZ.
+  const reloadSpendSelection = useCallback(
+    async (selection) => {
+      if (busy) return;
+      setBusy(true);
+      setTyping(true);
+      try {
+        const { data } = await getCompanionSpend({
+          year: selection.year,
+          ...(selection.month ? { month: selection.month } : {}),
+        });
+        const d = data.data;
+        spendRef.current = { period: d.selection?.month ? 'month' : 'year', selection: d.selection, data: d };
+        track('surface_viewed', { surface: 'spend', reselect: true });
+        setTyping(false);
+        await botTurns(
+          [
+            { text: `Here's what you spent · ${d.label}` },
+            { card: <ExpenseCard data={d} mode="spend" onSelect={reloadSpendSelection} onAction={onSpendAction} busy={false} /> },
+          ],
+          [
+            { id: 'spend-win', action: 'spendWin', label: `What I won (${d.label})?` },
+            { id: 'spend-skip', action: 'spendSkip', label: 'No thanks' },
+          ]
+        );
+      } catch (err) {
+        setTyping(false);
+        if (err?.response?.status === 401) await botSay(`Sign in and I'll add up your spending`, LOGIN_CHIPS);
+        else await botSay('Could not load your spending right now.', ROOT_CHIPS);
+      } finally {
+        setBusy(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [busy, botTurns, botSay, onSpendAction]
+  );
+
+  // Step 1: per-tournament spend (entry + travel) for the default (current
+  // month) view. The card's selector lets the user pick any year/month, which
+  // routes through reloadSpendSelection. Then offer the winnings step.
   const loadSpend = useCallback(
     async (period = 'month') => {
       try {
         const { data } = await getCompanionSpend(period);
-        spendRef.current = { period, data: data.data };
-        const phrase = periodPhrase(period);
+        const d = data.data;
+        spendRef.current = { period, selection: d.selection, data: d };
         await botTurns(
           [
-            { text: `Here's what you spent ${phrase}` },
-            { card: <ExpenseCard data={data.data} mode="spend" /> },
+            { text: `Here's what you spent · ${d.label}` },
+            { card: <ExpenseCard data={d} mode="spend" onSelect={reloadSpendSelection} onAction={onSpendAction} busy={false} /> },
           ],
           [
-            { id: 'spend-win', action: 'spendWin', label: `What I won ${phrase}?` },
+            { id: 'spend-win', action: 'spendWin', label: `What I won (${d.label})?` },
             { id: 'spend-skip', action: 'spendSkip', label: 'No thanks' },
           ]
         );
@@ -846,7 +1045,7 @@ function CompanionChat() {
         else await botSay('Could not load your spending right now.', ROOT_CHIPS);
       }
     },
-    [botTurns, botSay]
+    [botTurns, botSay, reloadSpendSelection, onSpendAction]
   );
 
   // Step 2: per-tournament winnings for the same period. Then offer the net step.
@@ -856,10 +1055,10 @@ function CompanionChat() {
       await botSay('Ask me about your spending first.', ROOT_CHIPS);
       return;
     }
-    const phrase = periodPhrase(s.period);
+    const phrase = s.data?.label || periodPhrase(s.period);
     await botTurns(
       [
-        { text: `Here's what you won ${phrase}` },
+        { text: `Here's what you won · ${phrase}` },
         { card: <ExpenseCard data={s.data} mode="winnings" /> },
       ],
       [
@@ -925,6 +1124,7 @@ function CompanionChat() {
     setTyping(true);
     try {
       await createExpense(payload);
+      track('gear_saved', { amount: Number(payload.amount) || 0 });
       setTyping(false);
       gearModeRef.current = false;
       gearPayloadRef.current = null;
@@ -1045,6 +1245,11 @@ function CompanionChat() {
         return;
       }
       pushUser(chip.label);
+      track('chip_tapped', { action: chip.action });
+      // Read surfaces double as "view" events for the product funnel.
+      if (['card', 'upcoming', 'spend', 'feed', 'tournaments', 'calendar', 'dashboard', 'coach'].includes(chip.action)) {
+        track('surface_viewed', { surface: chip.action });
+      }
       // Any root action cancels a half-started gear flow (the gear branch
       // re-arms it below).
       gearModeRef.current = false;
@@ -1094,6 +1299,11 @@ function CompanionChat() {
     (text) => {
       if (busy) return;
       pushUser(text);
+      track('message_sent', {
+        length: text.length,
+        authed: hasToken,
+        mode: gearModeRef.current ? 'gear' : pendingRef.current ? 'gapfill' : payloadRef.current ? 'mid_log' : 'free',
+      });
 
       // Gear-logging flow takes priority over the tournament parser/router.
       if (gearModeRef.current) {
@@ -1160,6 +1370,10 @@ function CompanionChat() {
     if (!user || !localStorage.getItem('token')) return;
     authHandledRef.current = true;
     setAuthMode(null);
+    track('authed_in_chat', {
+      kind: signupRef.current || user?.isNewUser ? 'signup' : 'login',
+      had_pending_log: Boolean(localStorage.getItem(PENDING_LOG_KEY)),
+    });
 
     // Fresh sign-up → ask for notification permission straight away. signupRef
     // covers email sign-up (set by AuthSheet); user.isNewUser covers a brand-new
