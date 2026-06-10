@@ -15,11 +15,19 @@ Categories already in form:
 ${currentForm.categories.length === 0
   ? '  (none)'
   : currentForm.categories.map((cat, i) => {
+      // Intent drives which fields are required. A category dated in the future
+      // is an UPCOMING tournament — its result is unknown, so medal/prize must
+      // NOT be demanded. A medal already set, or a past/undated category, is a
+      // PAST entry where the result (and prize, if won) is required.
+      const isUpcoming = cat.date && cat.date > today && !cat.medal;
       const missing = [];
       if (!cat.categoryName) missing.push('category');
       if (!cat.date) missing.push('date');
       if (cat.entryFee === '' || cat.entryFee == null) missing.push('entry fee');
-      if (!cat.medal || cat.medal === 'None') missing.push('medal');
+      if (!isUpcoming) {
+        if (!cat.medal) missing.push('result');
+        else if (cat.medal !== 'None' && (cat.prizeAmount === '' || cat.prizeAmount == null)) missing.push('prize amount');
+      }
       return `  Category ${i + 1}: ${JSON.stringify(cat)}${missing.length ? ` [INCOMPLETE — missing: ${missing.join(', ')}]` : ' [complete]'}`;
     }).join('\n')}
 --- END OF CURRENT FORM STATE ---
@@ -41,11 +49,33 @@ CATEGORY MERGING:
    - ALL existing categories are already complete (none marked [INCOMPLETE])
 3. Your categories array in the output must include ALL existing categories (updated) plus any new ones.
 4. Copy existing field values as-is for fields the user did not mention in this session.
+5. BARE NUMBER REPLY: if this input is just a number (or number with currency words, e.g. "2000", "2k", "₹2000", "two thousand") and an INCOMPLETE category is missing exactly one numeric field (entry fee or prize amount), assign the number to that missing field. The chat asked the user for that specific value, so the bare number is the answer to it — never start a new category or discard it. If both entry fee and prize amount are missing, prefer prize amount when the category has a medal (Gold/Silver/Bronze), else entry fee.
 
 NAME: Keep existing name unless the user explicitly says a different tournament name.
 
 --- ROBUSTNESS (read first) ---
 The player types naturally and messily — typos, slang, shorthand (md=men's doubles, wd=women's doubles, ms=men's singles, ws=women's singles, mxd=mixed), missing words, casual numbers, and sometimes mixed languages (e.g. Hindi "kal"=yesterday, "khela"=played, "jeeta"=won). Do your best to extract a clean structured result anyway. Never refuse or return empty just because the phrasing is informal — infer the obvious meaning. Only leave a field null when it is genuinely not determinable. Capture EVERY detail present in one message (name, location, category, date, medal, fees, travel).
+
+--- INTENT & REQUIRED-FIELD CHECKLIST (read before extracting) ---
+
+Every message is one of three intents. Detect it from tense and keywords, then enforce that intent's required fields. Do NOT save (leave fields null and surface a follow-up) until every required field for the detected intent is filled.
+
+1. UPCOMING tournament — keywords: "playing", "register/registered", "signed up", "entering", "going to play", "next week/month", future dates, "kal" only if future context.
+   REQUIRED: name, location, date, categoryName, entryFee.
+   NOT applicable: medal, prizeAmount — these are unknown for a future event. NEVER ask for them. Leave both null.
+
+2. PAST RESULT — keywords: "played", "lost", "won", "finished", "got Nth", "khela", a past date.
+   REQUIRED: name, date, categoryName, medal (the result), entryFee. If medal is Gold/Silver/Bronze → prizeAmount also required. If medal is "None"/lost → prizeAmount is 0 (do not ask).
+
+3. PAST MEDAL — keywords: "gold/silver/bronze", "won", "1st/2nd/3rd place", "podium", "champion", "runner-up", "jeeta", "medal mila".
+   REQUIRED: name, date, categoryName, medal. If a Gold/Silver/Bronze → prizeAmount required (ask for it). entryFee still required.
+
+FOLLOW-UP ENGINE RULES:
+- Resolve AMBIGUITY before treating a field as missing: bare "singles"/"doubles" (gender unknown), a partial name word ("cup"/"slam"/"open" with no proper name), a bare "medal mila"/"podium" (which medal?), or a city that could be the event name ("Delhi"/"Chennai") → emit an ambiguity entry, not a blank field.
+- Ask ALL still-missing required fields for the intent in ONE natural grouped question, never one-at-a-time interrogation. Re-ask only what is still blank after the user's reply.
+- Per-category: when the user reports multiple categories or multiple medals ("won md lost wd", "gold n silver"), collect result/fee/prize for EACH category separately — never one blanket answer.
+- Date is soft for PAST intents: accept vague month/year, do not block the save on an exact day (still return null per the date rule, but do not treat a vague past date as a hard blocker).
+- A bare-number reply binds to the last-asked numeric field (see BARE NUMBER REPLY rule above).
 
 --- EXTRACTION RULES ---
 

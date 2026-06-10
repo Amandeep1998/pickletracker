@@ -350,7 +350,7 @@ function TournamentEditForm({ data, categoryOptions, onCancel, onSave, showHint 
         medal: c.medal || 'None',
         entryFee: c.entryFee === '' ? null : Math.max(0, Math.round(Number(c.entryFee) || 0)),
         prizeAmount:
-          c.medal === 'None' ? 0 : c.prizeAmount === '' ? null : Math.max(0, Math.round(Number(c.prizeAmount) || 0)),
+          c.medal === 'None' ? 0 : Math.max(0, Math.round(Number(c.prizeAmount) || 0)),
         partnerName: c.partnerName || '',
       })),
       travel:

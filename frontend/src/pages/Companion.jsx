@@ -392,6 +392,7 @@ function CompanionChat() {
         partner: c.partnerName || null,
         date: c.date || null,
         entryFee: c.entryFee != null ? c.entryFee : null,
+        prizeAmount: c.prizeAmount != null ? c.prizeAmount : null,
         result: c.medal != null ? { type: 'medal', value: c.medal === 'None' ? null : c.medal } : null,
       })),
     };
@@ -923,6 +924,9 @@ function CompanionChat() {
     async (nextChips) => {
       try {
         const { data } = await getCompanionCard();
+        // Same endpoint feeds the header medal tally — refresh it so a newly
+        // saved medal shows in the banner without a page reload.
+        setCardSummary(data.data ?? null);
         await botTurns(
           [{
             card: (
@@ -1356,6 +1360,9 @@ function CompanionChat() {
           const field = pending.kind === 'entryFee' ? 'entryFee' : 'prizeAmount';
           if (payloadRef.current?.categories?.[idx]) payloadRef.current.categories[idx][field] = amt;
           if (rawRef.current?.categories?.[idx]) rawRef.current.categories[idx][field] = amt;
+          // The confirm card renders from previewRef — keep it in sync so the
+          // answer shows in the Review & save form (entry fee / prize won).
+          if (previewRef.current?.categories?.[idx]) previewRef.current.categories[idx][field] = amt;
         }
         pendingRef.current = null;
         askNextMissing();
