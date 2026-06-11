@@ -2,8 +2,8 @@ require('./setup');
 const request = require('supertest');
 const app = require('../server');
 
-const userA = { name: 'Friend A', email: 'friend-a@example.com', password: 'password123' };
-const userB = { name: 'Friend B', email: 'friend-b@example.com', password: 'password123' };
+const userA = { name: 'Friend A', email: 'friend-a@example.com', password: 'password123', ageConfirmed: true };
+const userB = { name: 'Friend B', email: 'friend-b@example.com', password: 'password123', ageConfirmed: true };
 
 const getToken = async (user) => {
   await request(app).post('/api/auth/signup').send(user);

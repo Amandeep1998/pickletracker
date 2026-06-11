@@ -17,7 +17,7 @@ export default function Terms() {
       {/* Content */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Terms of Service</h1>
-        <p className="text-sm text-gray-500 mb-10">Last updated: 25 April 2026</p>
+        <p className="text-sm text-gray-500 mb-10">Last updated: 11 June 2026</p>
 
         <div className="space-y-8 text-sm sm:text-base text-gray-700 leading-relaxed">
 
@@ -48,7 +48,6 @@ export default function Terms() {
               <li>Discovering players and viewing profiles according to the visibility rules in the product</li>
               <li>An in-app calendar for tournaments and sessions, with optional email and push reminders based on your settings and time zone</li>
               <li>Optional email reminders and browser (web push) notifications for tournaments and selected alerts</li>
-              <li>Optional WhatsApp reminders where you opt in</li>
               <li>Optional AI Coach chat that processes your messages via our servers</li>
               <li>Installing or using the app as a Progressive Web App (PWA)</li>
             </ul>
@@ -66,7 +65,7 @@ export default function Terms() {
               occurs under your account.
             </p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
-              <li>You must be at least 13 years old to use PickleTracker</li>
+              <li>You must meet the minimum age in your country to use PickleTracker — at least 16 in the European Economic Area (or the lower age your member state allows, not below 13), and at least 13 in the United Kingdom, United States, and elsewhere</li>
               <li>You may only create one account per person</li>
               <li>You must notify us immediately if you suspect unauthorised access to your account</li>
               <li>We are not liable for losses resulting from unauthorised use of your account</li>
@@ -113,18 +112,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">6. WhatsApp Notifications</h2>
-            <p>
-              WhatsApp notifications are entirely optional. By enabling WhatsApp notifications in your
-              profile settings, you consent to receiving messages from PickleTracker via WhatsApp. You can
-              opt out at any time by disabling this feature in your profile settings or by sending STOP
-              in a message to our WhatsApp number. We will not use your WhatsApp number for any purpose
-              other than sending you the notifications you have opted in to receive.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">7. Browser Push &amp; Email Reminders</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">6. Browser Push &amp; Email Reminders</h2>
             <p>
               Browser push notifications and email reminders are optional. If you enable push notifications,
               your browser or operating system may show alerts based on preferences you set in the Service.
@@ -134,7 +122,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">8. AI-Assisted Features</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">7. AI-Assisted Features</h2>
             <p>
               Optional AI Coach chat uses artificial intelligence to respond to your messages. Replies may be inaccurate or
               incomplete. This does not replace qualified coaching, medical advice, or professional judgement. You are
@@ -143,7 +131,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">9. No Financial Advice</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">8. No Financial Advice</h2>
             <p>
               PickleTracker displays financial summaries based on data you enter. This information is
               provided purely for personal tracking and informational purposes. Nothing in the Service
@@ -153,7 +141,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">10. Intellectual Property</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">9. Intellectual Property</h2>
             <p>
               All content, design, code, branding, and materials that form PickleTracker (excluding
               user-entered data) are owned by or licensed to us. You may not copy, reproduce, distribute,
@@ -163,7 +151,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">11. Disclaimers</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">10. Disclaimers</h2>
             <p>
               PickleTracker is provided "as is" and "as available" without warranties of any kind, either
               express or implied. We do not warrant that:
@@ -180,7 +168,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">12. Limitation of Liability</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">11. Limitation of Liability</h2>
             <p>
               To the fullest extent permitted by applicable law, PickleTracker and its operators shall not
               be liable for any indirect, incidental, special, consequential, or punitive damages, including
@@ -192,7 +180,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">13. Indemnification</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">12. Indemnification</h2>
             <p>
               You agree to indemnify and hold harmless PickleTracker and its operators from any claims,
               damages, losses, or expenses (including reasonable legal fees) arising from your use of the
@@ -201,7 +189,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">14. Termination</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">13. Termination</h2>
             <p>
               You may stop using the Service at any time. You may also request deletion of your account and
               all associated data by contacting us at{' '}
@@ -218,7 +206,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">15. Service Modifications</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">14. Service Modifications</h2>
             <p>
               We reserve the right to modify, suspend, or discontinue any part of the Service at any time.
               We will make reasonable efforts to provide advance notice of significant changes. We are not
@@ -227,17 +215,21 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">16. Governing Law</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">15. Governing Law</h2>
             <p>
-              These Terms are governed by and construed in accordance with the laws of India. Any disputes
-              arising under or in connection with these Terms shall be subject to the exclusive jurisdiction
-              of the courts located in India. If any provision of these Terms is found to be unenforceable,
-              the remaining provisions will continue in full force and effect.
+              These Terms are governed by and construed in accordance with the laws of India, and disputes
+              arising under or in connection with them are subject to the courts located in India. However,
+              nothing in these Terms removes or limits any mandatory consumer-protection rights or remedies you
+              have under the laws of your country or state of residence (for example, in the United States,
+              European Union, United Kingdom, Canada, or Australia) that cannot be waived by agreement; where
+              such local law applies, it prevails over this section to the extent of any conflict. If any
+              provision of these Terms is found to be unenforceable, the remaining provisions will continue in
+              full force and effect.
             </p>
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">17. Changes to These Terms</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">16. Changes to These Terms</h2>
             <p>
               We may update these Terms of Service from time to time. When we do, we will update the
               "Last updated" date at the top of this page. For material changes, we will notify you via
@@ -247,7 +239,7 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">18. Contact Us</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">17. Contact Us</h2>
             <p>
               For any questions or concerns about these Terms of Service, please contact us at{' '}
               <a href="mailto:pickletracker.app@gmail.com" className="text-green-600 hover:underline">

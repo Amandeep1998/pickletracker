@@ -9,6 +9,7 @@ import posthog from 'posthog-js';
 import App from './App';
 import './index.css';
 import { registerSW } from 'virtual:pwa-register';
+import { analyticsAllowed } from './utils/cookieConsent';
 
 // Keyed to build fingerprint (vite.config define): git SHA on Vercel/GitHub, else unique per `vite build`.
 const PWA_CACHE_PURGE_VERSION = import.meta.env.VITE_COMMIT || 'dev-build';
@@ -108,7 +109,11 @@ async function bootstrap() {
     setInterval(pingServiceWorkerUpdate, 30 * 60 * 1000);
   }
 
-  if (import.meta.env.VITE_POSTHOG_KEY) {
+  // Non-essential trackers only load with consent (EU/UK opt-in; opt-out elsewhere).
+  // The CookieConsentBanner reloads on grant so this runs again with consent in place.
+  const trackingAllowed = analyticsAllowed();
+
+  if (trackingAllowed && import.meta.env.VITE_POSTHOG_KEY) {
     posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
       api_host: 'https://app.posthog.com',
       autocapture: false,
@@ -116,7 +121,7 @@ async function bootstrap() {
     });
   }
 
-  if (import.meta.env.VITE_SENTRY_DSN) {
+  if (trackingAllowed && import.meta.env.VITE_SENTRY_DSN) {
     Sentry.init({
       dsn: import.meta.env.VITE_SENTRY_DSN,
       integrations: [

@@ -2,8 +2,8 @@ require('./setup');
 const request = require('supertest');
 const app = require('../server');
 
-const userA = { name: 'Player A', email: 'playerA@example.com', password: 'password123' };
-const userB = { name: 'Player B', email: 'playerB@example.com', password: 'password123' };
+const userA = { name: 'Player A', email: 'playerA@example.com', password: 'password123', ageConfirmed: true };
+const userB = { name: 'Player B', email: 'playerB@example.com', password: 'password123', ageConfirmed: true };
 
 const validTournament = {
   name: 'Regional Championship',

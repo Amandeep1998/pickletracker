@@ -3,7 +3,7 @@ const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const app = require('../server');
 
-const userPayload = { name: 'Player One', email: 'player1@example.com', password: 'password123' };
+const userPayload = { name: 'Player One', email: 'player1@example.com', password: 'password123', ageConfirmed: true };
 
 const validTournament = {
   name: 'City Open 2024',

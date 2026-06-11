@@ -1,11 +1,13 @@
 import React from 'react';
 import { Icon } from './erne/Icon';
 import LocationAutocomplete from '../LocationAutocomplete';
+import { formatMoney, getCurrencySymbol, getStoredCurrency } from '../../utils/format';
 
 /* ---------- shared bits (Erne) ---------- */
 
 const MEDAL = { gold: 'Gold', silver: 'Silver', bronze: 'Bronze' };
-const inr = (n) => '₹' + Number(n || 0).toLocaleString('en-IN');
+const inr = (n) => formatMoney(n);
+const curSym = () => getCurrencySymbol(getStoredCurrency());
 
 // result:{type,value} → medal key (gold/silver/bronze) or null
 const resultMedal = (result) => {
@@ -435,12 +437,12 @@ function TournamentEditForm({ data, categoryOptions, onCancel, onSave, showHint 
 
           <div style={{ display: 'flex', gap: 6 }}>
             <div style={{ flex: 1 }}>
-              <label style={fieldLabel}>Entry fee ₹</label>
+              <label style={fieldLabel}>Entry fee {curSym()}</label>
               <input type="number" min="0" inputMode="numeric" style={{ ...inputStyle, marginTop: 3 }} value={c.entryFee} onChange={(e) => setCat(i, { entryFee: e.target.value })} placeholder="0" />
             </div>
             {c.medal !== 'None' && (
               <div style={{ flex: 1 }}>
-                <label style={fieldLabel}>Prize won ₹</label>
+                <label style={fieldLabel}>Prize won {curSym()}</label>
                 <input type="number" min="0" inputMode="numeric" style={{ ...inputStyle, marginTop: 3 }} value={c.prizeAmount} onChange={(e) => setCat(i, { prizeAmount: e.target.value })} placeholder="0" />
               </div>
             )}
@@ -465,7 +467,7 @@ function TournamentEditForm({ data, categoryOptions, onCancel, onSave, showHint 
       {travelOpen ? (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <label style={fieldLabel}>Travel cost ₹</label>
+            <label style={fieldLabel}>Travel cost {curSym()}</label>
             <button type="button" onClick={() => setTravelOpen(false)}
               style={{ background: 'transparent', border: 'none', color: 'var(--ink-soft)', fontSize: 11.5, fontWeight: 700, cursor: 'pointer' }}>
               Remove

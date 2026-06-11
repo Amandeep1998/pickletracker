@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { T } from './theme';
-import { updateProfile, deleteAccount } from '../../services/api';
+import { updateProfile, deleteAccount, exportAccount } from '../../services/api';
+import { CURRENCIES } from '../../utils/format';
 
 /**
  * Account settings popup for the chat companion.
@@ -16,9 +17,58 @@ import { updateProfile, deleteAccount } from '../../services/api';
 export default function SettingsPopup({ user, refreshUser, onClose, onDeleted }) {
   const [share, setShare] = useState(user?.shareTournamentsOnFeed !== false);
   const [savingShare, setSavingShare] = useState(false);
+  const [currency, setCurrency] = useState(user?.currency || 'USD');
+  const [savingCurrency, setSavingCurrency] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [err, setErr] = useState('');
+
+  // Data portability (GDPR Art. 20 / CCPA right to know): download all of the user's
+  // data as a single JSON file.
+  const doExport = async () => {
+    setExporting(true);
+    setErr('');
+    try {
+      const res = await exportAccount();
+      const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pickletracker-data-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setErr('Could not export your data. Try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const changeCurrency = async (next) => {
+    const prev = currency;
+    setCurrency(next);
+    setSavingCurrency(true);
+    setErr('');
+    try {
+      await updateProfile({ currency: next });
+      // Mark as manual so IP/time-zone auto-detection won't overwrite the choice.
+      try {
+        const u = JSON.parse(localStorage.getItem('user') || '{}');
+        const id = u.id || u._id;
+        localStorage.setItem('user', JSON.stringify({ ...u, currency: next }));
+        if (id) localStorage.setItem(`pt_cur_det_${id}`, '1'); // block IP auto-detect
+      } catch {}
+      await refreshUser?.();
+    } catch {
+      setCurrency(prev); // revert on failure
+      setErr('Could not update currency. Try again.');
+    } finally {
+      setSavingCurrency(false);
+    }
+  };
 
   const toggleShare = async () => {
     const next = !share;
@@ -141,7 +191,76 @@ export default function SettingsPopup({ user, refreshUser, onClose, onDeleted })
             </button>
           </div>
 
+          {/* currency selector */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              background: T.navy3,
+              borderRadius: 12,
+              padding: '12px 14px',
+              marginTop: 12,
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>Currency</div>
+              <div style={{ fontSize: 11.5, color: T.muted, marginTop: 2 }}>
+                Used for entry fees, prize money, and spending.
+              </div>
+            </div>
+            <select
+              value={currency}
+              disabled={savingCurrency}
+              onChange={(e) => changeCurrency(e.target.value)}
+              aria-label="Currency"
+              style={{
+                flexShrink: 0,
+                background: T.navy2,
+                color: T.white,
+                border: `1px solid ${T.navy3}`,
+                borderRadius: 10,
+                padding: '8px 10px',
+                fontFamily: T.font,
+                fontSize: 13.5,
+                fontWeight: 700,
+                cursor: savingCurrency ? 'default' : 'pointer',
+                opacity: savingCurrency ? 0.7 : 1,
+              }}
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code} style={{ color: '#000' }}>
+                  {c.flag} {c.code} ({c.symbol})
+                </option>
+              ))}
+            </select>
+          </div>
+
           {err && <div style={{ fontSize: 12, color: '#ff8a8a', marginTop: 12 }}>{err}</div>}
+
+          {/* data portability */}
+          <div style={{ height: 1, background: T.navy3, margin: '18px 0' }} />
+          <button
+            type="button"
+            onClick={doExport}
+            disabled={exporting}
+            style={{
+              width: '100%',
+              background: 'transparent',
+              border: `1px solid ${T.navy3}`,
+              color: T.white,
+              fontFamily: T.font,
+              fontSize: 14,
+              fontWeight: 700,
+              borderRadius: 10,
+              padding: '11px 14px',
+              cursor: exporting ? 'default' : 'pointer',
+              opacity: exporting ? 0.7 : 1,
+            }}
+          >
+            {exporting ? 'Preparing…' : 'Download my data'}
+          </button>
 
           {/* danger zone */}
           <div style={{ height: 1, background: T.navy3, margin: '18px 0' }} />

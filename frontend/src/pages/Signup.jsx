@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import GoogleSignInButton from '../components/GoogleSignInButton';
 import Footer from '../components/Footer';
 import BrandLogo from '../components/BrandLogo';
+import { guessRegion, minAgeForRegion } from '../config/legal';
 
 // Lightweight, dependency-free strength estimator used for the signup meter only.
 // Kept intentionally simple: the backend is the source of truth for validation.
@@ -56,7 +57,10 @@ export default function Signup() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
   const strength = useMemo(() => evaluatePasswordStrength(form.password), [form.password]);
+  const region = useMemo(() => guessRegion(), []);
+  const minAge = useMemo(() => minAgeForRegion(region), [region]);
 
   useEffect(() => {
     if (user) navigate('/', { replace: true });
@@ -72,7 +76,11 @@ export default function Signup() {
     e.preventDefault();
     setError('');
     clearError();
-    const result = await handleSignup(form);
+    if (!ageConfirmed) {
+      setError(`Please confirm you are at least ${minAge} years old.`);
+      return;
+    }
+    const result = await handleSignup({ ...form, region, ageConfirmed: true });
     if (result.success) {
       if (result.autoLoggedIn) {
         // Context has set `user`; the effect above will navigate to /home.
@@ -133,6 +141,11 @@ export default function Signup() {
                 />
               </div>
             </div>
+            <p className="text-[11px] text-gray-400 text-center mt-2">
+              By continuing with Google you confirm you are at least {minAge} years old and agree to our{' '}
+              <Link to="/terms" className="text-gray-500 hover:text-[#91BE4D]">Terms</Link> and{' '}
+              <Link to="/privacy-policy" className="text-gray-500 hover:text-[#91BE4D]">Privacy Policy</Link>.
+            </p>
 
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
@@ -228,9 +241,18 @@ export default function Signup() {
                   </div>
                 )}
               </div>
+              <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer select-none pt-1">
+                <input
+                  type="checkbox"
+                  checked={ageConfirmed}
+                  onChange={(e) => setAgeConfirmed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#91BE4D] focus:ring-[#91BE4D]"
+                />
+                <span>I confirm I am at least {minAge} years old.</span>
+              </label>
               <button
                 type="submit"
-                disabled={loading || !strength.meetsMinimum}
+                disabled={loading || !strength.meetsMinimum || !ageConfirmed}
                 className="w-full disabled:opacity-60 hover:opacity-90 text-white font-bold py-3 rounded text-sm tracking-wide transition-opacity"
                 style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
               >

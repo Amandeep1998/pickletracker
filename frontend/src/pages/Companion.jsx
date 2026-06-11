@@ -31,6 +31,7 @@ import AuthSheet from '../components/companion/AuthSheet';
 import ExpenseCard from '../components/companion/ExpenseCard';
 import FeedPopup from '../components/companion/FeedPopup';
 import { useCompanionInstall, InstallTopBanner, InstallStepsModal } from '../components/companion/InstallPrompt';
+import { formatMoney } from '../utils/format';
 import NotificationBell from '../components/NotificationBell';
 import {
   companionParse,
@@ -1202,7 +1203,7 @@ function CompanionChat() {
       gearModeRef.current = false;
       gearPayloadRef.current = null;
       await botTurns(
-        [{ card: <SavedCard title="Gear added!" subtitle={`${payload.title} · ₹${Number(payload.amount).toLocaleString('en-IN')}`} /> }],
+        [{ card: <SavedCard title="Gear added!" subtitle={`${payload.title} · ${formatMoney(payload.amount)}`} /> }],
         ROOT_CHIPS
       );
     } catch (err) {

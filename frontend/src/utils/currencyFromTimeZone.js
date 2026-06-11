@@ -54,6 +54,32 @@ export function isSupportedCurrency(code) {
   return typeof code === 'string' && SUPPORTED.includes(code);
 }
 
+// region (ISO 3166) → currency, for the locale-based pre-auth guess.
+const REGION_CURRENCY = {
+  IN: 'INR', US: 'USD', AU: 'AUD', GB: 'GBP', CA: 'CAD',
+  SG: 'SGD', MY: 'MYR', PH: 'PHP',
+};
+
+/**
+ * Synchronous best-effort currency from the browser — no network. Used at signup
+ * so a US visitor's first render shows '$', not the '₹' default, before the
+ * async IP detection lands. Order: device time zone → locale region → 'USD'.
+ * @returns {string} a SUPPORTED currency code
+ */
+export function guessCurrencyFromBrowser() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const fromTz = inferCurrencyFromIanaTimeZone(tz);
+    if (fromTz && isSupportedCurrency(fromTz)) return fromTz;
+  } catch {}
+  try {
+    const region = new Intl.Locale(navigator.language || 'en-US').region;
+    const fromRegion = REGION_CURRENCY[region];
+    if (fromRegion && isSupportedCurrency(fromRegion)) return fromRegion;
+  } catch {}
+  return 'USD';
+}
+
 /**
  * If the user is in auto time-zone mode and we can infer a currency, PATCH profile and return new public user.
  * @returns {Promise<object|null>}

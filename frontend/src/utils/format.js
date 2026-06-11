@@ -25,6 +25,25 @@ export const formatCurrency = (amount, currency = 'INR') => {
   return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(amount ?? 0);
 };
 
+/**
+ * Reads the logged-in user's currency from localStorage (sync, no React).
+ * For module-scope helpers / canvas renderers that can't call the useCurrency hook.
+ */
+export const getStoredCurrency = () => {
+  try {
+    const u = JSON.parse(localStorage.getItem('user') || '{}');
+    return CURRENCIES.some((c) => c.code === u.currency) ? u.currency : 'USD';
+  } catch {
+    return 'USD';
+  }
+};
+
+/** "₹1,200" / "$1,200" — symbol + locale-grouped amount in the user's stored currency. */
+export const formatMoney = (amount, currency = getStoredCurrency()) => {
+  const locale = CURRENCY_LOCALE_MAP[currency] || 'en-US';
+  return `${getCurrencySymbol(currency)}${Number(amount || 0).toLocaleString(locale)}`;
+};
+
 /** @deprecated Use formatCurrency(amount, currency) instead */
 export const formatINR = (amount) => formatCurrency(amount, 'INR');
 

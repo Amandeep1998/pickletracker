@@ -17,7 +17,7 @@ export default function PrivacyPolicy() {
       {/* Content */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Privacy Policy</h1>
-        <p className="text-sm text-gray-500 mb-10">Last updated: 25 April 2026</p>
+        <p className="text-sm text-gray-500 mb-10">Last updated: 11 June 2026</p>
 
         <div className="space-y-8 text-sm sm:text-base text-gray-700 leading-relaxed">
 
@@ -75,7 +75,6 @@ export default function PrivacyPolicy() {
 
             <h3 className="font-semibold text-gray-800 mt-4 mb-1">2.5 Social graph &amp; communication</h3>
             <ul className="list-disc pl-5 space-y-1">
-              <li>WhatsApp phone number (optional, only if you choose to enable WhatsApp notifications)</li>
               <li>Friend connections, friend requests sent and received, and request status (pending, accepted, or declined)</li>
             </ul>
 
@@ -135,6 +134,12 @@ export default function PrivacyPolicy() {
               We store authentication tokens (JWT) in your browser’s local storage to keep you signed in between sessions.
               The app may run as a Progressive Web App (PWA) with a service worker for offline shell caching and push handling.
             </p>
+            <p className="mt-2">
+              Authentication and core functionality storage is strictly necessary and always on. The non-essential
+              analytics and error-monitoring tools above (PostHog, Sentry) are governed by your cookie/tracking choice:
+              in the EEA and UK they load only after you accept in our consent banner; elsewhere you can decline them
+              at any time from that banner. You can change your choice by clearing site data or using the banner controls.
+            </p>
           </section>
 
           <section>
@@ -147,7 +152,6 @@ export default function PrivacyPolicy() {
               <li>To power the activity feed, likes, comments, friend requests, and in-app notifications</li>
               <li>To deliver browser push notifications and email reminders you have opted into, using your time zone where relevant</li>
               <li>To enable the friends feature and player discovery so you can connect with other players</li>
-              <li>To send you optional WhatsApp notifications about upcoming tournaments (only if you explicitly opt in)</li>
               <li>To send password reset and other transactional emails when requested</li>
               <li>To run the AI Coach when you use it</li>
               <li>To improve the application based on usage analytics and error reports</li>
@@ -191,11 +195,6 @@ export default function PrivacyPolicy() {
               <li>
                 <span className="font-medium">Resend</span> — Delivers transactional email (including password reset
                 and, when enabled, reminder emails).
-              </li>
-              <li>
-                <span className="font-medium">WhatsApp Business API (via Twilio)</span> — Used only if you
-                opt in to WhatsApp notifications. Your phone number is used solely to send you tournament
-                reminders and will not be shared or used for marketing.
               </li>
               <li>
                 <span className="font-medium">Web Push infrastructure</span> — Push notifications are delivered
@@ -252,8 +251,8 @@ export default function PrivacyPolicy() {
               <li><span className="font-medium">Access</span> — Request a copy of all personal data we hold about you</li>
               <li><span className="font-medium">Correction</span> — Update or correct inaccurate data through your profile settings</li>
               <li><span className="font-medium">Deletion</span> — Request permanent deletion of your account and all associated data</li>
-              <li><span className="font-medium">Portability</span> — Request your data in a portable format</li>
-              <li><span className="font-medium">Opt-out</span> — Disable WhatsApp notifications, browser push, or email reminders from your profile or device settings where applicable</li>
+              <li><span className="font-medium">Portability</span> — Download a machine-readable copy of your data from the in-app export tool, or request one by email</li>
+              <li><span className="font-medium">Opt-out</span> — Disable browser push or email reminders from your profile or device settings where applicable</li>
             </ul>
             <p className="mt-2">
               To exercise any of these rights, email us at{' '}
@@ -285,14 +284,75 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">9. Children's Privacy</h2>
             <p>
-              PickleTracker is not intended for users under the age of 13. We do not knowingly collect
-              personal information from children under 13. If you believe a child under 13 has provided
-              us with personal information, please contact us and we will delete it promptly.
+              PickleTracker is intended for users who meet the minimum age in their country. In the
+              European Economic Area you must be at least 16 (or the lower age your member state sets for
+              data-processing consent, not below 13). In the United Kingdom, United States, and elsewhere you
+              must be at least 13. We do not knowingly collect personal information from anyone below the
+              applicable minimum age. At sign-up we ask you to confirm you meet it; we do not collect a date of
+              birth. If you believe someone under the applicable age has provided us with personal information,
+              please contact us and we will delete it promptly.
             </p>
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">10. Changes to This Policy</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">10. Legal Bases for Processing (EEA / UK)</h2>
+            <p>If you are in the European Economic Area or the United Kingdom, we process your personal data on these legal bases under the GDPR / UK GDPR:</p>
+            <ul className="list-disc pl-5 mt-2 space-y-1">
+              <li><span className="font-medium">Contract (Art. 6(1)(b))</span> — to create and operate your account and provide the core tracking, calendar, feed, and Coach Hub features you use.</li>
+              <li><span className="font-medium">Consent (Art. 6(1)(a))</span> — for optional features you switch on (browser push, email reminders, the AI Coach) and for non-essential analytics and session replay. You may withdraw consent at any time without affecting prior processing.</li>
+              <li><span className="font-medium">Legitimate interests (Art. 6(1)(f))</span> — to keep the Service secure, prevent abuse, diagnose errors, and improve the product, balanced against your rights.</li>
+              <li><span className="font-medium">Legal obligation (Art. 6(1)(c))</span> — where we must retain or disclose data to comply with the law.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">11. International Data Transfers</h2>
+            <p>
+              We operate from India and use service providers (including Render.com and MongoDB Atlas) whose
+              infrastructure may be located in the United States or other countries. When we transfer personal
+              data out of the EEA or UK, we rely on appropriate safeguards such as the European Commission&apos;s
+              Standard Contractual Clauses (and the UK Addendum) or an adequacy decision where one applies. By
+              using PickleTracker you understand your data may be processed in countries other than your own.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">12. Cookies &amp; Tracking Technologies</h2>
+            <p>
+              We use a small amount of strictly necessary browser storage (such as your sign-in token) that is
+              required for the Service to work and cannot be switched off. We also use optional analytics and
+              error-monitoring technologies (PostHog and Sentry, including session replay) that are <span className="font-medium">not</span>{' '}
+              loaded until you allow them via our consent banner in the EEA and UK, and which you can decline at any
+              time elsewhere. We do not use cookies for advertising.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">13. Your California Privacy Rights (CCPA / CPRA)</h2>
+            <p>
+              If you are a California resident, the California Consumer Privacy Act (as amended by the CPRA) gives
+              you the right to know what personal information we collect and how we use it, to request access to or
+              deletion of your personal information, to correct inaccurate information, and not to be discriminated
+              against for exercising these rights. The categories of personal information we collect and our purposes
+              are described in Sections 2 and 3 above.
+            </p>
+            <p className="mt-2 font-medium">We do not sell or share your personal information.</p>
+            <p className="mt-2">
+              We do not sell your personal information for money, and we do not &quot;share&quot; it for cross-context
+              behavioural advertising as those terms are defined under the CPRA. We therefore do not offer a
+              &quot;Do Not Sell or Share My Personal Information&quot; sale opt-out, because there is no such activity to
+              opt out of. To exercise your access, deletion, or correction rights, use the in-app data export and
+              account-deletion controls or email us at{' '}
+              <a href="mailto:pickletracker.app@gmail.com" className="text-green-600 hover:underline">
+                pickletracker.app@gmail.com
+              </a>
+              . You may use an authorised agent to submit a request on your behalf; we will verify your identity
+              before acting and respond within the timeframes the law requires.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">14. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. When we do, we will update the
               "Last updated" date at the top of this page. For significant changes, we will notify you
@@ -302,7 +362,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">11. Contact Us</h2>
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">15. Contact Us</h2>
             <p>
               For any questions, concerns, or requests regarding this Privacy Policy or your personal data,
               please contact us at{' '}

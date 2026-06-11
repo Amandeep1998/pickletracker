@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Icon } from './erne/Icon';
+import { formatMoney } from '../../utils/format';
 
 /**
  * Premium upcoming-tournament cards for the companion. One card per upcoming
@@ -18,7 +19,7 @@ const fmtDate = (iso) => {
   return `${MONTHS[+m - 1]} ${+d}`;
 };
 
-const money = (n) => (n == null ? '' : `₹${Number(n).toLocaleString('en-IN')}`);
+const money = (n) => (n == null ? '' : formatMoney(n));
 
 // Draw one upcoming card to an offscreen canvas → PNG blob for sharing (Volt palette).
 async function buildShareImage(item) {

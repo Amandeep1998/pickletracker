@@ -19,6 +19,33 @@ const FeedLikePushLog = require('../models/FeedLikePushLog');
 const { verifyIdToken } = require('../services/firebaseAdmin.service');
 const { sendPasswordResetEmail } = require('../services/email.service');
 const { isValidIanaTimeZone, shouldAutoUpdateTimeZoneFromDevice } = require('../utils/userTimeZone');
+const { TERMS_VERSION, PRIVACY_VERSION, MIN_AGE_EU, MIN_AGE_DEFAULT } = require('../config/legal');
+
+const VALID_CURRENCIES = ['INR', 'USD', 'AUD', 'EUR', 'GBP', 'CAD', 'SGD', 'MYR', 'PHP'];
+
+/** Coarse region buckets the client may send; anything else is treated as 'other'. */
+const VALID_REGIONS = ['eu', 'uk', 'us', 'other'];
+
+/** Best-effort caller IP for the consent audit trail (behind Render's proxy). */
+function clientIp(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  if (typeof fwd === 'string' && fwd.length) return fwd.split(',')[0].trim().slice(0, 64);
+  return (req.ip || '').slice(0, 64) || null;
+}
+
+/** Builds the consent sub-document from request body, stamping the current doc versions. */
+function buildConsent(req) {
+  const region = VALID_REGIONS.includes(req.body.region) ? req.body.region : 'other';
+  return {
+    acceptedTerms: true,
+    acceptedPrivacy: true,
+    termsVersion: TERMS_VERSION,
+    privacyVersion: PRIVACY_VERSION,
+    acceptedAt: new Date(),
+    ipAtConsent: clientIp(req),
+    region,
+  };
+}
 
 function signUserToken(user) {
   return jwt.sign(
@@ -70,7 +97,17 @@ function publicUser(user) {
 
 const signup = async (req, res, next) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, currency, region, ageConfirmed } = req.body;
+
+    // Age gate (COPPA / GDPR-K). We don't store a DOB — only the affirmation. EU users must
+    // confirm 16+, everyone else 13+. The client shows the right minimum based on `region`.
+    const minAge = region === 'eu' ? MIN_AGE_EU : MIN_AGE_DEFAULT;
+    if (ageConfirmed !== true) {
+      return res.status(400).json({
+        success: false,
+        message: `You must confirm you are at least ${minAge} years old to create an account.`,
+      });
+    }
 
     const existingEmail = await User.findOne({ email });
     if (existingEmail) {
@@ -83,6 +120,11 @@ const signup = async (req, res, next) => {
       email,
       password: hash,
       isGoogleUser: false,
+      // Client sends a browser-derived currency guess so the first session renders
+      // the right symbol; falls back to the schema default when absent/invalid.
+      ...(VALID_CURRENCIES.includes(currency) ? { currency } : {}),
+      consent: buildConsent(req),
+      ageConfirmedMinimum: true,
     });
 
     // Auto-login on signup: issue a token + public user payload so the client
@@ -194,11 +236,15 @@ const googleAuth = async (req, res, next) => {
         await user.save();
       }
     } else {
+      // New Google users consent by clicking "Continue with Google" under the same
+      // clickwrap notice shown on the signup screen. Age affirmation is collected there too.
       user = await User.create({
         name,
         email,
         password: null,
         isGoogleUser: true,
+        consent: buildConsent(req),
+        ageConfirmedMinimum: req.body.ageConfirmed === true,
       });
       isNewUser = true;
     }
@@ -354,7 +400,6 @@ const updateProfile = async (req, res, next) => {
         .filter((a) => a.tournamentName && a.categoryName && ['Gold', 'Silver', 'Bronze'].includes(a.medal));
       update.manualAchievements = cleaned;
     }
-    const VALID_CURRENCIES = ['INR', 'USD', 'AUD', 'EUR', 'GBP', 'CAD', 'SGD', 'MYR', 'PHP'];
     if (req.body.currency !== undefined) {
       if (!VALID_CURRENCIES.includes(req.body.currency)) {
         return res.status(400).json({ success: false, message: 'Invalid currency' });
@@ -474,6 +519,86 @@ const deleteAccount = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/auth/account/export
+ * Right to data portability (GDPR Art. 20) / right to know (CCPA/CPRA). Returns a single
+ * machine-readable JSON file containing everything we hold that is tied to this user.
+ * Sent as a download so the user can keep their own copy.
+ */
+const exportAccount = async (req, res, next) => {
+  try {
+    const id = req.user.id;
+    const user = await User.findById(id).lean();
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    delete user.password;
+    delete user.resetPasswordToken;
+    delete user.resetPasswordExpires;
+
+    const tournaments = await Tournament.find({ userId: id }).lean();
+    const tournamentIds = tournaments.map((t) => t._id);
+
+    const [
+      sessions,
+      expenses,
+      coachingIncome,
+      coachStudents,
+      coachOverhead,
+      coachSchedule,
+      whatsappSessions,
+      pushSubscriptions,
+      friendships,
+      feedLikes,
+      feedComments,
+      feedNotifications,
+    ] = await Promise.all([
+      Session.find({ userId: id }).lean(),
+      Expense.find({ userId: id }).lean(),
+      CoachingIncome.find({ userId: id }).lean(),
+      CoachStudent.find({ userId: id }).lean(),
+      CoachOverheadExpense.find({ userId: id }).lean(),
+      CoachScheduleSlot.find({ userId: id }).lean(),
+      WhatsAppSession.find({ userId: id }).lean(),
+      PushSubscription.find({ userId: id }).lean(),
+      Friendship.find({ $or: [{ requesterId: id }, { recipientId: id }] }).lean(),
+      FeedLike.find({ userId: id }).lean(),
+      FeedComment.find({ userId: id }).lean(),
+      FeedNotification.find({ $or: [{ userId: id }, { actorId: id }] }).lean(),
+    ]);
+
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      account: user,
+      tournaments,
+      sessions,
+      expenses,
+      coaching: {
+        income: coachingIncome,
+        students: coachStudents,
+        overheadExpenses: coachOverhead,
+        scheduleSlots: coachSchedule,
+      },
+      whatsappSessions,
+      pushSubscriptions,
+      friendships,
+      feed: {
+        likes: feedLikes,
+        comments: feedComments,
+        notifications: feedNotifications,
+      },
+    };
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="pickletracker-data-${id}.json"`
+    );
+    res.status(200).send(JSON.stringify(payload, null, 2));
+  } catch (err) {
+    next(err);
+  }
+};
+
 const pingPlatform = async (req, res, next) => {
   try {
     const { platform, timeZone: bodyTz } = req.body;
@@ -517,5 +642,6 @@ module.exports = {
   getProfile,
   updateProfile,
   deleteAccount,
+  exportAccount,
   pingPlatform,
 };

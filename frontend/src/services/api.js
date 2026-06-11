@@ -39,6 +39,7 @@ export const resetPassword = (token, password) => api.post('/auth/reset-password
 export const getProfile = () => api.get('/auth/profile');
 export const updateProfile = (data) => api.put('/auth/profile', data);
 export const deleteAccount = () => api.delete('/auth/account');
+export const exportAccount = () => api.get('/auth/account/export');
 export const pingPlatform = (platform, timeZone) => {
   const body = { platform };
   if (timeZone) body.timeZone = timeZone;

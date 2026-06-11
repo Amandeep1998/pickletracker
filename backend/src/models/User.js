@@ -193,6 +193,30 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    /**
+     * Consent record captured at signup (clickwrap on the Sign Up / Continue with Google
+     * buttons). Stored so we can prove which document versions a user accepted and when —
+     * required for GDPR (Art. 7) and useful for CCPA/CPRA audits. `region` is a coarse hint
+     * derived client-side from the browser time zone, used only to pick the right age gate.
+     */
+    consent: {
+      acceptedTerms: { type: Boolean, default: false },
+      acceptedPrivacy: { type: Boolean, default: false },
+      termsVersion: { type: String, default: null }, // e.g. '2026-04-25'
+      privacyVersion: { type: String, default: null },
+      acceptedAt: { type: Date, default: null },
+      ipAtConsent: { type: String, default: null },
+      region: { type: String, default: null }, // 'eu' | 'uk' | 'us' | 'other'
+    },
+    /**
+     * Age affirmation captured at signup. We do NOT collect a date of birth (keeps us out of
+     * COPPA's "collecting personal info from children" trap); we only record that the user
+     * affirmed they meet the minimum age for their region (16 in EU, 13 elsewhere).
+     */
+    ageConfirmedMinimum: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

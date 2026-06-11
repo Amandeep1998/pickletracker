@@ -24,6 +24,12 @@ const signupSchema = Joi.object({
       'string.pattern.name': 'Password must contain both letters and numbers',
       'any.required': 'Password is required',
     }),
+  // Browser-derived currency guess (validated against the enum in the controller).
+  currency: Joi.string().max(8).optional(),
+  // Coarse region hint used only to pick the right age gate.
+  region: Joi.string().valid('eu', 'uk', 'us', 'other').optional(),
+  // Clickwrap age affirmation — must be true; the controller rejects anything else.
+  ageConfirmed: Joi.boolean().optional(),
 });
 
 const loginSchema = Joi.object({
@@ -43,6 +49,8 @@ const googleAuthSchema = Joi.object({
   }),
   name: Joi.string().max(200).allow('').optional(),
   email: Joi.string().email().optional(),
+  region: Joi.string().valid('eu', 'uk', 'us', 'other').optional(),
+  ageConfirmed: Joi.boolean().optional(),
 });
 
 const validate = (schema) => (req, res, next) => {

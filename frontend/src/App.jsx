@@ -12,12 +12,14 @@ import Terms from './pages/Terms';
 import ResetPassword from './pages/ResetPassword';
 import Companion from './pages/Companion';
 import AchievementUnlockModal from './components/AchievementUnlockModal';
+import CookieConsentBanner from './components/CookieConsentBanner';
 export default function App() {
   return (
     <AuthProvider>
       <SocketProvider>
       <ScrollToTop />
       <AchievementUnlockModal />
+      <CookieConsentBanner />
       <Routes>
         {/* Public routes — the chat companion is the app. */}
         <Route path="/" element={<Companion />} />

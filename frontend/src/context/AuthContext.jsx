@@ -13,7 +13,9 @@ import { getBrowserIanaTimeZone } from '../utils/browserTimeZone';
 import {
   inferCurrencyFromIanaTimeZone,
   tryUpdateCurrencyFromAutoTimeZone,
+  guessCurrencyFromBrowser,
 } from '../utils/currencyFromTimeZone';
+import { guessRegion } from '../config/legal';
 
 const SUPPORTED_CURRENCIES = ['INR', 'USD', 'AUD', 'EUR', 'GBP', 'CAD', 'SGD', 'MYR', 'PHP'];
 
@@ -86,7 +88,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const completeGoogleLogin = async ({ idToken, name, email }) => {
-    const res = await api.loginWithGoogle({ idToken, name, email });
+    // Region + age affirmation: clicking "Continue with Google" sits under the same
+    // clickwrap age notice shown on the auth screens, so we record consent for new users.
+    const res = await api.loginWithGoogle({ idToken, name, email, region: guessRegion(), ageConfirmed: true });
     const { token, user: userData } = res.data;
     localStorage.setItem('token', token);
     localStorage.setItem('user', JSON.stringify(userData));
@@ -261,7 +265,10 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.signup(data);
+      // Synchronous browser guess so a US signup is stored as USD from the first
+      // write — avoids a ₹→$ flash before the async IP detection lands. Caller can
+      // still override; IP/TZ detection refines this right after auth.
+      const res = await api.signup({ currency: guessCurrencyFromBrowser(), ...data });
       const { token, user: userData } = res.data || {};
       // Backend now auto-logs in on signup. If for any reason the token/user
       // aren't returned (older backend), fall back to a non-authed success so

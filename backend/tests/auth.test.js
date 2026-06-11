@@ -7,6 +7,7 @@ const validUser = {
   name: 'Test User',
   email: 'test@example.com',
   password: 'password123',
+  ageConfirmed: true,
 };
 
 describe('Auth - Signup', () => {
@@ -64,6 +65,26 @@ describe('Auth - Signup', () => {
       .post('/api/auth/signup')
       .send({ ...validUser, email: 'not-an-email' });
     expect(res.status).toBe(400);
+  });
+
+  it('should return 400 when age is not confirmed', async () => {
+    const { ageConfirmed, ...noAge } = validUser;
+    const res = await request(app).post('/api/auth/signup').send(noAge);
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/years old/i);
+  });
+
+  it('should record consent and age affirmation on the created user', async () => {
+    await request(app)
+      .post('/api/auth/signup')
+      .send({ ...validUser, region: 'us' });
+    const user = await User.findOne({ email: validUser.email }).lean();
+    expect(user.ageConfirmedMinimum).toBe(true);
+    expect(user.consent.acceptedTerms).toBe(true);
+    expect(user.consent.acceptedPrivacy).toBe(true);
+    expect(user.consent.termsVersion).toBeTruthy();
+    expect(user.consent.region).toBe('us');
+    expect(user.consent.acceptedAt).toBeTruthy();
   });
 });
 
