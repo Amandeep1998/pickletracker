@@ -634,3 +634,152 @@ export function SavedCard({ title = 'Saved!', subtitle, celebrate }) {
     </Shell>
   );
 }
+
+// Shot/skill self-assessment tags — mirrors SKILL_TAGS in TournamentForm so the
+// chat review and the form review write the same vocabulary.
+const SKILL_TAGS = [
+  'Serve', 'Return of serve', 'Third shot drop', 'Third shot drive',
+  'Dinking', 'Backhand', 'Forehand', 'Volleys', 'Lob', 'Reset',
+  'Poaching', 'Speed-up', 'Erne', 'Drop shot', 'Kitchen play',
+  'Transition zone', 'Movement', 'Stamina', 'Communication',
+  'Patience', 'Aggression', 'Mental focus', 'Stacking',
+];
+
+function TagChips({ tags, selected, conflict, onToggle, tone }) {
+  const palette =
+    tone === 'good'
+      ? { on: '#91BE4D', onBd: '#91BE4D', onText: '#fff', hoverBd: '#91BE4D' }
+      : { on: '#fb923c', onBd: '#fb923c', onText: '#fff', hoverBd: '#fdba74' };
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+      {tags.map((tag) => {
+        const isOn = selected.includes(tag);
+        const isBlocked = conflict.includes(tag);
+        return (
+          <button
+            key={tag}
+            type="button"
+            disabled={isBlocked}
+            onClick={() => onToggle(tag)}
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              padding: '6px 11px',
+              borderRadius: 999,
+              cursor: isBlocked ? 'not-allowed' : 'pointer',
+              border: `1px solid ${isOn ? palette.onBd : 'var(--line)'}`,
+              background: isOn ? palette.on : isBlocked ? 'var(--surface-2, #f3f3f0)' : 'var(--surface)',
+              color: isOn ? palette.onText : isBlocked ? 'var(--ink-soft)' : 'var(--ink)',
+              opacity: isBlocked ? 0.45 : 1,
+              transition: 'all 0.12s',
+            }}
+          >
+            {isOn && (tone === 'good' ? '✓ ' : '✗ ')}{tag}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Post-log review card. After a past result is saved, the player taps the shots
+ * that went well and the ones that need work, then saves. Writes to the
+ * tournament's wentWell/wentWrong via onSave({ wentWell, wentWrong }).
+ *
+ * onSave(patch) — persist and advance. onSkip() — dismiss without saving.
+ * initial: { wentWell:[], wentWrong:[] } to prefill (e.g. re-review).
+ */
+export function FeedbackCard({ tournamentName, initial, onSave, onSkip, saving }) {
+  const [wentWell, setWentWell] = React.useState(initial?.wentWell || []);
+  const [wentWrong, setWentWrong] = React.useState(initial?.wentWrong || []);
+  const [done, setDone] = React.useState(false);
+
+  const toggle = (bucket) => (tag) => {
+    const [list, setList] = bucket === 'well' ? [wentWell, setWentWell] : [wentWrong, setWentWrong];
+    setList(list.includes(tag) ? list.filter((t) => t !== tag) : [...list, tag]);
+  };
+
+  const handleSave = async () => {
+    await onSave?.({ wentWell, wentWrong });
+    setDone(true);
+  };
+
+  const hasAny = wentWell.length > 0 || wentWrong.length > 0;
+
+  return (
+    <Shell>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <Icon name="medal" size={18} color="var(--accent)" />
+        <div className="erne-h" style={{ fontSize: 15 }}>Quick review</div>
+      </div>
+      <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', fontWeight: 600, marginBottom: 12 }}>
+        {tournamentName ? `How did ${tournamentName} go?` : 'How did it go?'} Tap the shots — I'll remember them.
+      </div>
+
+      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ink-soft)', marginBottom: 7 }}>
+        What went well
+      </div>
+      <TagChips
+        tags={SKILL_TAGS}
+        selected={wentWell}
+        conflict={wentWrong}
+        onToggle={toggle('well')}
+        tone="good"
+      />
+
+      <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--ink-soft)', margin: '14px 0 7px' }}>
+        What needs work
+      </div>
+      <TagChips
+        tags={SKILL_TAGS}
+        selected={wentWrong}
+        conflict={wentWell}
+        onToggle={toggle('bad')}
+        tone="bad"
+      />
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || done || !hasAny}
+          className="erne-btn"
+          style={{
+            flex: 1,
+            padding: '11px',
+            borderRadius: 13,
+            border: 'none',
+            background: 'var(--accent)',
+            color: 'var(--accent-text)',
+            fontWeight: 800,
+            fontSize: 14,
+            cursor: saving || done || !hasAny ? 'default' : 'pointer',
+            opacity: saving || done || !hasAny ? 0.55 : 1,
+          }}
+        >
+          {done ? 'Saved ✓' : saving ? 'Saving…' : 'Save review'}
+        </button>
+        {!done && (
+          <button
+            type="button"
+            onClick={onSkip}
+            disabled={saving}
+            style={{
+              padding: '11px 16px',
+              borderRadius: 13,
+              border: '1px solid var(--line)',
+              background: 'transparent',
+              color: 'var(--ink-soft)',
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: 'pointer',
+            }}
+          >
+            Skip
+          </button>
+        )}
+      </div>
+    </Shell>
+  );
+}

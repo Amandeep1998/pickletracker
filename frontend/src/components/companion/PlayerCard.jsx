@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { updateProfile } from '../../services/api';
+import { updateProfile, updateCompanionMedal, getCategoryList } from '../../services/api';
 import { Icon } from './erne/Icon';
 import { MedalDot } from './Cards';
 
@@ -15,6 +15,27 @@ import { MedalDot } from './Cards';
  * onUpdated(patch) — bubble saved {name|profilePhoto} so parent can refresh.
  * grew — triggers grow+shine animation (new medal landed).
  */
+
+// Shared styling for the inline per-row medal editor fields.
+const rowFieldLabel = {
+  fontSize: 10,
+  fontWeight: 800,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+  color: 'var(--on-dark-soft)',
+};
+const rowFieldInput = {
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: '8px 10px',
+  borderRadius: 10,
+  border: '1px solid var(--dark-line)',
+  background: 'rgba(0,0,0,0.18)',
+  color: 'var(--on-dark)',
+  fontSize: 13,
+  fontWeight: 600,
+  fontFamily: 'var(--font-body)',
+};
 
 // Square-crop + downscale to a data URL.
 const resizeImage = (file) =>
@@ -194,7 +215,7 @@ function MedalTile({ medal, n, label }) {
   );
 }
 
-export default function PlayerCard({ card, onUpdated, grew, onEditWin }) {
+export default function PlayerCard({ card, onUpdated, grew, onEditWin, onSavedMedal }) {
   const c = card || {};
   const m = c.medals || {};
   const history = c.history || [];
@@ -207,6 +228,71 @@ export default function PlayerCard({ card, onUpdated, grew, onEditWin }) {
   const [nameDraft, setNameDraft] = useState(name);
   const [savingPhoto, setSavingPhoto] = useState(false);
   const [shareMsg, setShareMsg] = useState('');
+
+  // Per-row inline medal editor. `editRow` is the history index being edited;
+  // `draft` holds its in-progress values; `savingRow` guards double-submit.
+  const [editRow, setEditRow] = useState(null);
+  const [draft, setDraft] = useState(null);
+  const [savingRow, setSavingRow] = useState(false);
+  const [rowError, setRowError] = useState('');
+  const [categoryOpts, setCategoryOpts] = useState([]);
+
+  // Lazy-load the canonical category list the first time a row opens its editor.
+  const openRowEditor = async (i, h) => {
+    setRowError('');
+    setEditRow(i);
+    setDraft({
+      medal: h.medal || 'Gold',
+      category: h.category || '',
+      date: h.date || '',
+    });
+    if (categoryOpts.length === 0) {
+      try {
+        const res = await getCategoryList();
+        setCategoryOpts(res.data?.data || []);
+      } catch {
+        /* dropdown falls back to a free-text input */
+      }
+    }
+  };
+
+  const cancelRowEditor = () => {
+    setEditRow(null);
+    setDraft(null);
+    setRowError('');
+  };
+
+  const saveRow = async (h) => {
+    if (!draft) return;
+    setSavingRow(true);
+    setRowError('');
+    try {
+      const patch =
+        h.source === 'tournament'
+          ? {
+              source: 'tournament',
+              tournamentId: h.tournamentId,
+              categoryIndex: h.categoryIndex,
+              medal: draft.medal,
+              categoryName: draft.category || undefined,
+              date: draft.date || undefined,
+            }
+          : {
+              source: 'manual',
+              manualIndex: h.manualIndex,
+              medal: draft.medal,
+              categoryName: draft.category || undefined,
+              date: draft.date || undefined,
+            };
+      await updateCompanionMedal(patch);
+      cancelRowEditor();
+      await onSavedMedal?.();
+    } catch (err) {
+      setRowError(err?.response?.data?.message || 'Could not save. Try again.');
+    } finally {
+      setSavingRow(false);
+    }
+  };
 
   // Trigger grow+shine when grew prop arrives.
   React.useEffect(() => {
@@ -457,15 +543,123 @@ export default function PlayerCard({ card, onUpdated, grew, onEditWin }) {
             </div>
           ) : (
             history.map((h, i) => {
-              const editable = h.source === 'tournament' && h.tournamentId && onEditWin;
+              // Every win is editable in place. Tournament rows write back to the
+              // tournament's category; manual rows write to the user achievement.
+              const editing = editRow === i;
+              const allowNone = h.source === 'tournament'; // manual medals are podium-only
+              const medalChoices = allowNone
+                ? ['Gold', 'Silver', 'Bronze', 'None']
+                : ['Gold', 'Silver', 'Bronze'];
+
+              if (editing) {
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 9,
+                      background: 'rgba(255,255,255,0.07)',
+                      borderRadius: 12,
+                      padding: '11px 12px',
+                      border: '1px solid var(--accent)',
+                    }}
+                  >
+                    <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--on-dark)' }}>
+                      {h.tournament}
+                    </div>
+
+                    <label style={rowFieldLabel}>Medal</label>
+                    <select
+                      value={draft?.medal || 'Gold'}
+                      onChange={(e) => setDraft((d) => ({ ...d, medal: e.target.value }))}
+                      style={rowFieldInput}
+                    >
+                      {medalChoices.map((mv) => (
+                        <option key={mv} value={mv}>{mv}</option>
+                      ))}
+                    </select>
+
+                    <label style={rowFieldLabel}>Category</label>
+                    {categoryOpts.length > 0 ? (
+                      <select
+                        value={draft?.category || ''}
+                        onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
+                        style={rowFieldInput}
+                      >
+                        <option value="">—</option>
+                        {categoryOpts.map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={draft?.category || ''}
+                        onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
+                        placeholder="Category"
+                        style={rowFieldInput}
+                      />
+                    )}
+
+                    <label style={rowFieldLabel}>Date</label>
+                    <input
+                      type="date"
+                      value={draft?.date || ''}
+                      onChange={(e) => setDraft((d) => ({ ...d, date: e.target.value }))}
+                      style={rowFieldInput}
+                    />
+
+                    {rowError && (
+                      <div style={{ fontSize: 11.5, color: '#ff9b9b', fontWeight: 600 }}>{rowError}</div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+                      <button
+                        type="button"
+                        onClick={() => saveRow(h)}
+                        disabled={savingRow}
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          borderRadius: 10,
+                          border: 'none',
+                          background: 'var(--accent)',
+                          color: 'var(--accent-text)',
+                          fontWeight: 800,
+                          fontSize: 12.5,
+                          cursor: savingRow ? 'default' : 'pointer',
+                          opacity: savingRow ? 0.6 : 1,
+                        }}
+                      >
+                        {savingRow ? 'Saving…' : 'Save'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelRowEditor}
+                        disabled={savingRow}
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          borderRadius: 10,
+                          border: '1px solid var(--dark-line)',
+                          background: 'transparent',
+                          color: 'var(--on-dark)',
+                          fontWeight: 700,
+                          fontSize: 12.5,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={i}
-                  role={editable ? 'button' : undefined}
-                  tabIndex={editable ? 0 : undefined}
-                  onClick={editable ? () => onEditWin(h) : undefined}
-                  onKeyDown={editable ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onEditWin(h); } } : undefined}
-                  title={editable ? 'Tap to fix the result' : undefined}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -474,7 +668,6 @@ export default function PlayerCard({ card, onUpdated, grew, onEditWin }) {
                     borderRadius: 12,
                     padding: '9px 11px',
                     border: '1px solid var(--dark-line)',
-                    cursor: editable ? 'pointer' : 'default',
                   }}
                 >
                   <MedalDot medal={String(h.medal || '').toLowerCase()} size={24} />
@@ -495,7 +688,21 @@ export default function PlayerCard({ card, onUpdated, grew, onEditWin }) {
                       {[h.category, fmtDate(h.date)].filter(Boolean).join(' · ')}
                     </div>
                   </div>
-                  {editable && <Icon name="edit" size={14} color="var(--on-dark-soft)" />}
+                  <button
+                    type="button"
+                    onClick={() => openRowEditor(i, h)}
+                    title="Edit this medal"
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      padding: 4,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Icon name="edit" size={15} color="var(--on-dark-soft)" />
+                  </button>
                 </div>
               );
             })

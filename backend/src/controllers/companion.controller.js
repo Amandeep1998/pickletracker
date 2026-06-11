@@ -222,7 +222,7 @@ exports.myCard = async (req, res, next) => {
     // medal-winning category, newest first. Manual achievements fold in too.
     const history = [];
     for (const t of tournaments) {
-      for (const c of t.categories || []) {
+      (t.categories || []).forEach((c, categoryIndex) => {
         if (c.medal && c.medal !== 'None') {
           bump(c.medal);
           history.push({
@@ -233,9 +233,10 @@ exports.myCard = async (req, res, next) => {
             venue: t.location?.name || null,
             source: 'tournament',
             tournamentId: String(t._id),
+            categoryIndex,
           });
         }
-      }
+      });
     }
     (user.manualAchievements || []).forEach((a, manualIndex) => {
       bump(a.medal);
@@ -261,6 +262,130 @@ exports.myCard = async (req, res, next) => {
       history,
     };
     return res.json({ success: true, data: player });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const MEDAL_VALUES = ['None', 'Gold', 'Silver', 'Bronze'];
+const isISODate = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
+
+/**
+ * PATCH /api/companion/me/medals
+ * Update a single medal entry from the player card, in place. The card history
+ * mixes two sources, so the body must name which one:
+ *
+ *   { source: 'tournament', tournamentId, categoryIndex, medal?, categoryName?, date? }
+ *   { source: 'manual', manualIndex, medal?, categoryName?, tournamentName?, date? }
+ *
+ * Only the provided fields are changed. Setting a tournament category's medal to
+ * 'None' drops it from the card (it's no longer a win) but keeps the category.
+ * Manual achievements have no 'None' — clearing one means deleting the row, which
+ * this endpoint does not do (use the manual-achievement delete path for that).
+ */
+exports.updateMedal = async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const source = b.source;
+
+    if (b.medal != null && !MEDAL_VALUES.includes(b.medal)) {
+      return res.status(400).json({ success: false, message: 'Invalid medal' });
+    }
+    if (b.date != null && b.date !== '' && !isISODate(b.date)) {
+      return res.status(400).json({ success: false, message: 'Date must be YYYY-MM-DD' });
+    }
+
+    if (source === 'tournament') {
+      const idx = Number(b.categoryIndex);
+      if (!b.tournamentId || !Number.isInteger(idx) || idx < 0) {
+        return res.status(400).json({ success: false, message: 'tournamentId and categoryIndex are required' });
+      }
+      const t = await Tournament.findOne({ _id: b.tournamentId, userId: req.user.id });
+      if (!t) return res.status(404).json({ success: false, message: 'Tournament not found' });
+      const cat = t.categories?.[idx];
+      if (!cat) return res.status(404).json({ success: false, message: 'Category not found' });
+
+      if (b.medal != null) cat.medal = b.medal;
+      if (b.date != null && b.date !== '') cat.date = b.date;
+      if (b.categoryName != null) {
+        if (!CATEGORIES.includes(b.categoryName)) {
+          return res.status(400).json({ success: false, message: 'Invalid category' });
+        }
+        cat.categoryName = b.categoryName;
+      }
+      await t.save();
+      return res.json({ success: true });
+    }
+
+    if (source === 'manual') {
+      const idx = Number(b.manualIndex);
+      if (!Number.isInteger(idx) || idx < 0) {
+        return res.status(400).json({ success: false, message: 'manualIndex is required' });
+      }
+      const user = await User.findById(req.user.id);
+      if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+      const a = user.manualAchievements?.[idx];
+      if (!a) return res.status(404).json({ success: false, message: 'Achievement not found' });
+
+      // Manual medals are strictly podium — 'None' is not a valid value here.
+      if (b.medal != null) {
+        if (b.medal === 'None') {
+          return res.status(400).json({ success: false, message: 'Manual achievement medal cannot be None' });
+        }
+        a.medal = b.medal;
+      }
+      if (b.date != null && b.date !== '') a.date = b.date;
+      if (b.categoryName != null) a.categoryName = b.categoryName;
+      if (b.tournamentName != null) a.tournamentName = b.tournamentName;
+      await user.save();
+      return res.json({ success: true });
+    }
+
+    return res.status(400).json({ success: false, message: "source must be 'tournament' or 'manual'" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Canonical shot/skill tags — mirrors SKILL_TAGS in the frontend forms + card.
+const SKILL_TAGS = [
+  'Serve', 'Return of serve', 'Third shot drop', 'Third shot drive',
+  'Dinking', 'Backhand', 'Forehand', 'Volleys', 'Lob', 'Reset',
+  'Poaching', 'Speed-up', 'Erne', 'Drop shot', 'Kitchen play',
+  'Transition zone', 'Movement', 'Stamina', 'Communication',
+  'Patience', 'Aggression', 'Mental focus', 'Stacking',
+];
+const SKILL_TAG_SET = new Set(SKILL_TAGS);
+
+/**
+ * PATCH /api/companion/me/tournaments/:id/feedback  { wentWell:[], wentWrong:[] }
+ * Save the post-result shot review for one tournament. Scoped + validated for
+ * just these two arrays — the main PUT /tournaments validator requires a full
+ * tournament body and strips unknown fields, so feedback can't go through it.
+ */
+exports.updateTournamentFeedback = async (req, res, next) => {
+  try {
+    const clean = (arr) =>
+      Array.isArray(arr) ? [...new Set(arr.filter((t) => SKILL_TAG_SET.has(t)))] : null;
+
+    const wentWell = clean(req.body?.wentWell);
+    const wentWrong = clean(req.body?.wentWrong);
+    if (wentWell === null && wentWrong === null) {
+      return res.status(400).json({ success: false, message: 'wentWell or wentWrong is required' });
+    }
+
+    const update = {};
+    if (wentWell !== null) update.wentWell = wentWell;
+    if (wentWrong !== null) update.wentWrong = wentWrong;
+
+    const t = await Tournament.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user.id },
+      update,
+      { new: true }
+    );
+    if (!t) return res.status(404).json({ success: false, message: 'Tournament not found' });
+
+    return res.json({ success: true, data: { wentWell: t.wentWell, wentWrong: t.wentWrong } });
   } catch (err) {
     next(err);
   }
@@ -539,7 +664,9 @@ const buildAssistPrompt = (today, tournaments) => `
 You are Rallyora, a warm, concise pickleball assistant chatting with a player about THEIR OWN data.
 Today is ${today}.
 
-The player's tournaments (JSON; dates are YYYY-MM-DD, medal is one of None/Gold/Silver/Bronze):
+The player's tournaments (JSON; dates are YYYY-MM-DD, medal is one of None/Gold/Silver/Bronze).
+Each tournament may carry self-assessment tags: "wentWell" (shots/skills that went well) and
+"wentWrong" (shots/skills that need work), plus an optional 1-5 "rating":
 ${JSON.stringify(tournaments)}
 
 VALID CATEGORY NAMES (use these EXACT strings when setting a category):
@@ -547,7 +674,7 @@ ${CATEGORIES.map((c) => `"${c}"`).join(', ')}
 
 Classify the player's message into ONE intent and reply with JSON only:
 
-- "query": they are ASKING about their data — upcoming dates/venues, results, medals, partners, counts, "when is my X", "how did I do at Y", "how many golds". Put a short, direct, friendly reply in "answer", using ONLY the data above. If the data does not contain it, say so honestly. Never invent tournaments or results.
+- "query": they are ASKING about their data — upcoming dates/venues, results, medals, partners, counts, "when is my X", "how did I do at Y", "how many golds". This INCLUDES questions about their game/skills: "what shots need improvement", "what should I work on", "what's my weakness", "what am I good at". Answer those from the "wentWrong" (needs work) and "wentWell" tags across their tournaments — aggregate the most frequent tags and name them. Put a short, direct, friendly reply in "answer", using ONLY the data above. If there are no feedback tags yet, say so honestly and suggest they add a quick review after logging a result. Never invent tournaments or results.
 - "spend": they are asking about MONEY — spending, entry fees, travel cost, winnings, prize money, or net. Set "period" to "month", "year", or "all" (default "month"). Do NOT compute totals; the app renders the breakdown.
 - "edit": they want to CHANGE a detail of an EXISTING tournament. Choose this ONLY when the message uses a change verb (change, update, correct, fix, set, rename, move, reschedule, "make it"). Set target.id to that tournament's id and list the change(s) in "edits".
 - "delete": they want to REMOVE an existing tournament. Choose this ONLY when the message uses a remove verb (delete, remove, drop, cancel, "get rid of"). Set target.id (and target.name).
@@ -652,14 +779,19 @@ exports.assist = async (req, res, next) => {
     const tournaments = await Tournament.find({ userId: req.user.id })
       .sort({ createdAt: -1 })
       .limit(80)
-      .select('name location categories')
+      .select('name location categories wentWell wentWrong rating')
       .lean();
 
     // Compact context the model reasons over (and matches edit/delete targets in).
+    // wentWell/wentWrong are the per-tournament shot/skill self-assessment tags so
+    // the model can answer "what shots need improvement" from real data.
     const ctx = tournaments.map((t) => ({
       id: String(t._id),
       name: t.name || 'Tournament',
       venue: t.location?.name || null,
+      rating: t.rating != null ? t.rating : null,
+      wentWell: Array.isArray(t.wentWell) ? t.wentWell : [],
+      wentWrong: Array.isArray(t.wentWrong) ? t.wentWrong : [],
       categories: (t.categories || []).map((c) => ({
         categoryName: c.categoryName || null,
         date: c.date || null,

@@ -17,6 +17,7 @@ import {
   GearPreviewCard,
   ReminderPrompt,
   SavedCard,
+  FeedbackCard,
   MedalDot,
 } from '../components/companion/Cards';
 import { usePushNotifications } from '../hooks/usePushNotifications';
@@ -39,6 +40,7 @@ import {
   getCategoryList,
   createTournament,
   updateTournament,
+  saveTournamentFeedback,
   deleteTournament,
   createExpense,
   getCompanionCard,
@@ -408,7 +410,20 @@ function CompanionChat() {
     const preview = previewRef.current;
     const editing = Boolean(editIdRef.current);
     track('confirm_card_shown', { editing, status: preview?.status, categories: preview?.categories?.length || 0 });
-    const confirmLabel = editing ? 'Save changes' : preview?.status === 'upcoming' ? 'Save it' : 'Add to my card';
+    // "Add to my card" only when a medal was actually won — the card is the medal
+    // showcase. A played-but-no-medal result (or upcoming) just saves the record.
+    const wonMedal = (preview?.categories || []).some((c) => {
+      if (c?.result?.type !== 'medal') return false;
+      const v = String(c.result.value || '').toLowerCase();
+      return v === 'gold' || v === 'silver' || v === 'bronze';
+    });
+    const confirmLabel = editing
+      ? 'Save changes'
+      : preview?.status === 'upcoming'
+      ? 'Save it'
+      : wonMedal
+      ? 'Add to my card'
+      : 'Save';
     await botTurns([
       { text: editing ? "Here's the updated version" : "Here's what I'll save" },
       {
@@ -733,6 +748,9 @@ function CompanionChat() {
       } else {
         await botSay('Your card just grew', []);
         await loadCard(ROOT_CHIPS);
+        // Past result → ask the quick shot review so we capture what went
+        // well / needs work. Best-effort: errors here never lose the saved log.
+        if (created?._id) await askFeedback(created._id, savedName);
       }
     } catch (err) {
       setTyping(false);
@@ -934,6 +952,7 @@ function CompanionChat() {
                 card={data.data}
                 onUpdated={(patch) => refreshUser?.(patch)}
                 onEditWin={(win) => openManager('all', win.tournamentId)}
+                onSavedMedal={() => loadCard(nextChips)}
               />
             ),
           }],
@@ -944,7 +963,42 @@ function CompanionChat() {
         else await botSay('Could not load your card right now.', nextChips);
       }
     },
+    // loadCard references itself for the onSavedMedal refresh; deps stay on the
+    // stable callbacks to avoid redefining loadCard on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [botTurns, botSay, refreshUser, openManager]
+  );
+
+  // After a past result lands, ask the quick shot review and persist the
+  // selected wentWell/wentWrong tags onto the tournament. Best-effort; a save
+  // failure is surfaced but never blocks the already-saved log.
+  const askFeedback = useCallback(
+    async (tournamentId, tournamentName) => {
+      const saveReview = async ({ wentWell, wentWrong }) => {
+        try {
+          await saveTournamentFeedback(tournamentId, { wentWell, wentWrong });
+          track('feedback_saved', {
+            well: wentWell.length,
+            wrong: wentWrong.length,
+          });
+        } catch {
+          await botSay("Couldn't save that review, but your result is safe.", ROOT_CHIPS);
+        }
+      };
+      await botTurns(
+        [{
+          card: (
+            <FeedbackCard
+              tournamentName={tournamentName}
+              onSave={saveReview}
+              onSkip={() => {}}
+            />
+          ),
+        }],
+        ROOT_CHIPS
+      );
+    },
+    [botTurns, botSay]
   );
 
   // Open the premium profile popup for a feed author.

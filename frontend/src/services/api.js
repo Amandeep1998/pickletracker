@@ -118,6 +118,13 @@ export const getCategoryOptions = (facets) =>
   api.post('/companion/category-options', { facets });
 export const getCategoryList = () => api.get('/companion/categories');
 export const getCompanionCard = () => api.get('/companion/me/card');
+// Update one medal row in place. `patch` names the source + target:
+//  { source:'tournament', tournamentId, categoryIndex, medal?, categoryName?, date? }
+//  { source:'manual', manualIndex, medal?, categoryName?, tournamentName?, date? }
+export const updateCompanionMedal = (patch) => api.patch('/companion/me/medals', patch);
+// Save the post-result shot review for one tournament: { wentWell:[], wentWrong:[] }.
+export const saveTournamentFeedback = (id, feedback) =>
+  api.patch(`/companion/me/tournaments/${id}/feedback`, feedback);
 export const getCompanionTournaments = () => api.get('/companion/me/tournaments');
 export const getCompanionUpcoming = () => api.get('/companion/me/upcoming');
 // period = 'month'|'year'|'all' (relative). OR pass an explicit { year, month }
