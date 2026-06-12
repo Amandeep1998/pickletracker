@@ -2,6 +2,9 @@ import React, { useMemo } from 'react';
 
 const MEDAL_EMOJI = { Gold: '🥇', Silver: '🥈', Bronze: '🥉' };
 
+// Icon-free medal indicators for the share/export card (no emoji).
+const MEDAL_DOT = { Gold: '#d4a017', Silver: '#a8a8a8', Bronze: '#b06a32' };
+
 export const ADD_FRIEND_BENEFIT =
   'Friends see each other\'s tournament & session calendar so plans stay in sync. Entry fees, expenses, and earnings stay private.';
 
@@ -88,7 +91,7 @@ export default function PlayerProfileCardContent({
       <div
         className={
           forExport
-            ? 'relative shrink-0 bg-[#1e3a5f] text-white text-center py-1.5 px-6 shadow-md'
+            ? 'relative shrink-0 bg-[#eef8c8] text-[#16180f] text-center py-1.5 px-6 border-b border-[#e2e0d4]'
             : 'relative shrink-0 bg-[#1e3a5f] text-white text-center py-2.5 sm:py-3.5 px-10 sm:px-12 shadow-md'
         }
       >
@@ -145,7 +148,7 @@ export default function PlayerProfileCardContent({
                   <div
                     className={
                       forExport
-                        ? 'w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1e3a5f] to-[#2d5a87] text-white text-sm font-black'
+                        ? 'w-full h-full flex items-center justify-center bg-gradient-to-br from-[#16180f] to-[#2c2e22] text-[#c7f23a] text-sm font-black'
                         : 'w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1e3a5f] to-[#2d5a87] text-white text-lg sm:text-2xl font-black'
                     }
                   >
@@ -217,12 +220,12 @@ export default function PlayerProfileCardContent({
                         }
                       >
                         <p className="m-0">
-                          <span className="font-bold text-[#1e3a5f]">DUPR</span>
+                          <span className={forExport ? 'font-bold text-[#16180f]' : 'font-bold text-[#1e3a5f]'}>DUPR</span>
                           <span className="text-gray-500 font-medium"> — Singles </span>
                           <span className="tabular-nums font-semibold text-gray-900">{s}</span>
                         </p>
                         <p className="m-0">
-                          <span className="font-bold text-[#1e3a5f]">DUPR</span>
+                          <span className={forExport ? 'font-bold text-[#16180f]' : 'font-bold text-[#1e3a5f]'}>DUPR</span>
                           <span className="text-gray-500 font-medium"> — Doubles </span>
                           <span className="tabular-nums font-semibold text-gray-900">{d}</span>
                         </p>
@@ -283,18 +286,19 @@ export default function PlayerProfileCardContent({
                         : 'bg-slate-50 py-1 sm:py-1.5 px-0.5 sm:px-1 flex flex-col items-center justify-center min-w-0 leading-none'
                     }
                   >
-                    <div className="flex items-center justify-center gap-0.5">
-                      <span
-                        className={
-                          forExport ? 'text-[10px] leading-none' : 'text-[11px] sm:text-sm leading-none'
-                        }
-                      >
-                        {MEDAL_EMOJI[m]}
-                      </span>
+                    <div className="flex items-center justify-center gap-1">
+                      {forExport ? (
+                        <span
+                          className="inline-block w-2 h-2 rounded-full shrink-0"
+                          style={{ background: MEDAL_DOT[m] }}
+                        />
+                      ) : (
+                        <span className="text-[11px] sm:text-sm leading-none">{MEDAL_EMOJI[m]}</span>
+                      )}
                       <span
                         className={
                           forExport
-                            ? 'text-[10px] font-black text-gray-900 tabular-nums'
+                            ? 'text-[11px] font-black text-[#16180f] tabular-nums'
                             : 'text-xs sm:text-sm font-black text-gray-900 tabular-nums'
                         }
                       >
@@ -315,14 +319,14 @@ export default function PlayerProfileCardContent({
                 <div
                   className={
                     forExport
-                      ? 'bg-[#1e3a5f]/[0.07] py-0.5 px-0.5 flex flex-col items-center justify-center min-w-0 border-l border-[#1e3a5f]/10'
+                      ? 'bg-[#16180f] py-0.5 px-0.5 flex flex-col items-center justify-center min-w-0'
                       : 'bg-[#1e3a5f]/[0.07] py-1 sm:py-1.5 px-0.5 sm:px-1 flex flex-col items-center justify-center min-w-0 border-l border-[#1e3a5f]/10'
                   }
                 >
                   <span
                     className={
                       forExport
-                        ? 'text-[6px] font-bold text-[#1e3a5f] uppercase tracking-wide leading-none'
+                        ? 'text-[6px] font-bold text-[#9da08c] uppercase tracking-wide leading-none'
                         : 'text-[7px] sm:text-[8px] font-bold text-[#1e3a5f] uppercase tracking-wide leading-none'
                     }
                   >
@@ -331,7 +335,7 @@ export default function PlayerProfileCardContent({
                   <span
                     className={
                       forExport
-                        ? 'text-[10px] font-black text-[#1e3a5f] tabular-nums leading-none mt-0.5'
+                        ? 'text-[11px] font-black text-[#c7f23a] tabular-nums leading-none mt-0.5'
                         : 'text-xs sm:text-sm font-black text-[#1e3a5f] tabular-nums leading-none mt-0.5'
                     }
                   >
@@ -431,14 +435,14 @@ export default function PlayerProfileCardContent({
             <div
               className={
                 forExport
-                  ? 'bg-gray-100 px-2 py-1 text-center border-b border-gray-200'
+                  ? 'bg-[#16180f] px-2 py-1.5 text-center'
                   : 'bg-gray-100 px-3 py-1.5 sm:py-2.5 text-center border-b border-gray-200'
               }
             >
               <span
                 className={
                   forExport
-                    ? 'text-[10px] font-bold text-[#1e3a5f] uppercase tracking-[0.12em]'
+                    ? 'text-[10px] font-bold text-[#c7f23a] uppercase tracking-[0.16em]'
                     : 'text-xs font-bold text-[#1e3a5f] uppercase tracking-[0.12em]'
                 }
               >
@@ -582,7 +586,7 @@ export default function PlayerProfileCardContent({
                   key={c.name}
                   className={
                     forExport
-                      ? 'text-[9px] font-semibold bg-white text-[#1e3a5f] px-2 py-0.5 rounded border border-slate-200 shadow-sm'
+                      ? 'text-[9px] font-semibold bg-[#eef8c8] text-[#16180f] px-2 py-0.5 rounded border border-[#e2e0d4]'
                       : 'text-xs font-semibold bg-white text-[#1e3a5f] px-2.5 py-1 rounded-md border border-slate-200 shadow-sm'
                   }
                 >

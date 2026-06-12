@@ -85,87 +85,94 @@ export default function PlayerProfileShareModal({ player, userId, onClose }) {
         className="relative bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl z-10 overflow-hidden max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100 shrink-0">
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-[#e2e0d4] shrink-0">
           <div>
-            <p className="text-base font-bold text-gray-900">Share player card</p>
-            <p className="text-xs text-gray-400 mt-0.5">PickleTracker branding · share or download</p>
+            <p className="text-base font-extrabold text-[#16180f] tracking-tight">Share player card</p>
+            <p className="text-xs text-[#8a8c7c] mt-0.5">PickleTracker · share or download</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 transition"
+            className="text-sm font-bold text-[#8a8c7c] hover:text-[#16180f] px-2 py-1 rounded-lg hover:bg-[#f1f0e8] transition"
             aria-label="Close"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            Close
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 min-h-0 bg-gray-50 flex justify-center py-4 px-3">
+        <div className="overflow-y-auto flex-1 min-h-0 bg-[#f1f0e8] flex justify-center py-5 px-4">
           <div
             ref={cardRef}
-            className="w-full max-w-[360px] rounded-2xl overflow-hidden shadow-lg border border-gray-200/80 bg-white"
+            className="relative w-full max-w-[360px] rounded-[20px] overflow-hidden bg-[#fbfaf4]"
+            style={{ boxShadow: '0 18px 50px -12px rgba(22,24,15,0.35), 0 0 0 1px rgba(22,24,15,0.06)' }}
           >
-            <div
-              className="flex items-center gap-2 px-3 py-2"
-              style={{
-                background: 'linear-gradient(145deg, #1c350a 0%, #2d6e05 45%, #1a4a08 80%)',
-              }}
-            >
+            {/* Premium header — dark ink band with Volt wordmark */}
+            <div className="relative px-4 pt-3.5 pb-3 bg-[#16180f] overflow-hidden">
               <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border border-[#91BE4D]/40"
-                style={{ background: 'rgba(145,190,77,0.15)' }}
-              >
-                <span className="text-[#c8e875] text-xs font-black tracking-tight leading-none">PT</span>
-              </div>
-              <div>
-                <p className="text-[10px] font-extrabold tracking-[0.18em] uppercase text-[#91BE4D] leading-tight">
-                  PickleTracker
+                className="absolute inset-0 opacity-[0.06]"
+                style={{
+                  background:
+                    'radial-gradient(120% 80% at 100% 0%, #c7f23a 0%, transparent 55%)',
+                }}
+              />
+              <div className="relative flex items-baseline justify-between">
+                <p className="text-[15px] font-black tracking-tight leading-none text-[#fbfaf4]">
+                  Pickle<span className="text-[#c7f23a]">Tracker</span>
                 </p>
-                <p className="text-[9px] text-white/60 mt-0.5">Community player card</p>
+                <p className="text-[8px] font-bold tracking-[0.22em] uppercase text-[#9da08c]">
+                  Player Card
+                </p>
               </div>
             </div>
+
             <PlayerProfileCardContent
               player={player}
               currentUserId={userId}
               isOwnProfile={isOwnProfile}
               forExport
             />
-            <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-gray-100 bg-gray-50">
-              <span className="text-[9px] font-bold text-gray-400 tracking-wide">pickletracker.in</span>
-              <span className="text-[8px] text-gray-400 text-right leading-tight">Track your game. Own your stats.</span>
+
+            {/* Footer + corner watermark */}
+            <div className="relative flex items-center justify-between gap-2 px-4 py-2.5 border-t border-[#e2e0d4] bg-[#f1f0e8]">
+              <span className="text-[9px] font-bold text-[#16180f] tracking-wide">pickletracker.in</span>
+              <span className="text-[8px] text-[#8a8c7c] text-right leading-tight">
+                Track your game. Own your stats.
+              </span>
+            </div>
+
+            {/* Diagonal corner watermark */}
+            <div className="pointer-events-none absolute top-0 right-0 w-[120px] h-[120px] overflow-hidden">
+              <div
+                className="absolute top-[18px] -right-[34px] w-[150px] text-center rotate-45 bg-[#c7f23a] py-[3px] shadow-sm"
+              >
+                <span className="text-[8px] font-black tracking-[0.18em] uppercase text-[#16180f]">
+                  PickleTracker
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="px-4 py-3 grid grid-cols-2 gap-2 border-t border-gray-100 shrink-0">
+        <div className="px-4 py-3 grid grid-cols-2 gap-2.5 border-t border-[#e2e0d4] shrink-0">
           <button
             type="button"
             onClick={handleDownload}
             disabled={status === 'generating'}
-            className="flex items-center justify-center gap-2 border-2 border-gray-200 hover:border-gray-300 bg-white text-gray-700 font-semibold text-sm py-2.5 rounded-xl transition-colors disabled:opacity-50"
+            className="border border-[#e2e0d4] hover:border-[#16180f] bg-[#fbfaf4] text-[#16180f] font-bold text-sm py-3 rounded-xl transition-colors disabled:opacity-50"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
-            </svg>
             {status === 'generating' ? 'Wait…' : 'Download'}
           </button>
           <button
             type="button"
             onClick={handleShare}
             disabled={status === 'generating'}
-            className="flex items-center justify-center gap-2 text-white font-semibold text-sm py-2.5 rounded-xl transition-opacity disabled:opacity-50 hover:opacity-90"
-            style={{ background: 'linear-gradient(to right, #2d7005, #91BE4D 45%, #ec9937)' }}
+            className="bg-[#c7f23a] hover:bg-[#a9d62b] text-[#16180f] font-extrabold text-sm py-3 rounded-xl transition-colors disabled:opacity-50"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
             {status === 'generating' ? 'Generating…' : 'Share image'}
           </button>
         </div>
 
-        <p className="text-center text-xs text-gray-400 pb-4 px-4 pt-1">
+        <p className="text-center text-xs text-[#8a8c7c] pb-4 px-4 pt-1">
           On mobile, Share image opens your share sheet (e.g. Instagram Stories). On desktop, download the PNG and upload.
         </p>
       </div>
