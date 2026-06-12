@@ -441,7 +441,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading, o
               value={form.name}
               onChange={handleChange}
               className={inputClass}
-              placeholder="e.g. City Open 2024"
+              placeholder="e.g. Grand Slam 2024"
               autoFocus
             />
             {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}

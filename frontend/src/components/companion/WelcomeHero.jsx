@@ -16,17 +16,17 @@ const EXAMPLES = [
   {
     icon: 'trophy',
     title: 'Log a result',
-    text: 'Won gold in mixed doubles at Mumbai Open on May 24, entry 500',
+    text: 'Won gold in mixed doubles at Grand Slam on May 24, entry 40',
   },
   {
     icon: 'calendar',
     title: 'Log an upcoming one',
-    text: 'Playing men’s doubles at City Open next Saturday, entry 800',
+    text: 'Playing men’s doubles at Global Sports next Saturday, entry 50',
   },
   {
     icon: 'medal',
     title: 'Add a past medal',
-    text: 'Got bronze in singles at Pune Slam last month, entry 400',
+    text: 'Got bronze in singles at Picklebay last month, entry 35',
   },
   {
     icon: 'wallet',

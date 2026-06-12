@@ -1,5 +1,6 @@
 import React from 'react';
 import { Icon } from './erne/Icon';
+import { formatMoney, getCurrencySymbol } from '../../utils/format';
 
 /**
  * Premium spending card for the companion. Three modes drive a 3-step flow:
@@ -11,7 +12,6 @@ import { Icon } from './erne/Icon';
  *         tournaments:[{name,entry,travel,prize,date}] }
  */
 
-const SYMBOLS = { INR: '₹', USD: '$', AUD: 'A$', EUR: '€', GBP: '£', CAD: 'C$', SGD: 'S$', MYR: 'RM', PHP: '₱' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const fmtDate = (iso) => {
   if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return '';
@@ -180,8 +180,9 @@ function PeriodSelector({ selection, availableYears, onSelect, busy }) {
 
 export default function ExpenseCard({ data, mode = 'spend', onSelect, onAction, busy }) {
   const d = data || {};
-  const sym = SYMBOLS[d.currency] || '₹';
-  const money = (n) => `${sym}${Number(n || 0).toLocaleString('en-IN')}`;
+  const cur = d.currency || 'USD';
+  const sym = getCurrencySymbol(cur);
+  const money = (n) => formatMoney(n, cur);
   const LABEL = String(d.label || '').toUpperCase();
   const list = d.tournaments || [];
 

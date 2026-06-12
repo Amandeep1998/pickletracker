@@ -602,7 +602,7 @@ function CompanionChat() {
         if (!preview.categories || preview.categories.length === 0) {
           track('parse_failed', { reason: 'no_categories', authed: hasToken });
           await botSay(
-            "I couldn't catch a tournament in that. Try: “Played men's doubles at City Open on May 24, won gold, entry 500.”",
+            "I couldn't catch a tournament in that. Try: “Played men's doubles at Grand Slam on May 24, won gold, entry 500.”",
             rootChips
           );
           resetWork();

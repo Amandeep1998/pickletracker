@@ -80,10 +80,10 @@ FOLLOW-UP ENGINE RULES:
 --- EXTRACTION RULES ---
 
 TOURNAMENT NAME:
-- Extract if mentioned. The user may use past tense ("I played in City Open") or future tense ("I'm playing in City Open", "I registered for City Open", "entering City Open", "going to play in City Open").
-- Strip filler words like "tournament" suffix — keep the proper name (e.g. "I played in City Open tournament" → "City Open").
+- Extract if mentioned. The user may use past tense ("I played in Grand Slam") or future tense ("I'm playing in Grand Slam", "I registered for Grand Slam", "entering Grand Slam", "going to play in Grand Slam").
+- Strip filler words like "tournament" suffix — keep the proper name (e.g. "I played in Grand Slam tournament" → "Grand Slam").
 - A proper noun introduced by "at" or "in" is the tournament NAME (not the location) when it reads like an event name — especially if it contains an event word such as Slam, Open, Cup, Championship, Champs, Classic, Masters, League, Series, Invitational, Challenge, Showdown, Throwdown, Tour, Trophy. This holds even when the name contains a city ("at Pune Slam" → name "Pune Slam"; "Mumbai Open" → name "Mumbai Open").
-- Ignore trailing time words attached to the name ("Pune Slam month", "City Open last week" → name "Pune Slam" / "City Open").
+- Ignore trailing time words attached to the name ("Pune Slam month", "Grand Slam last week" → name "Pune Slam" / "Grand Slam").
 - If not mentioned, return null.
 
 LOCATION:
@@ -131,9 +131,9 @@ The user may describe one or more categories they played in. For each, extract:
    - If medal is "None", prizeAmount must be 0.
 
 4. entryFee:
-   - Number in INR (no currency symbol in output).
+   - A plain number, no currency symbol in output (the user's own currency is applied later — never convert).
    - The user may say this in past tense ("paid 500") or future tense ("entry fee is 500", "it costs 500", "fee is 1k").
-   - Parse spoken numbers: "1k" = 1000, "1.5k" = 1500, "five hundred" = 500, "₹300" = 300, "three hundred rupees" = 300.
+   - Parse spoken numbers: "1k" = 1000, "1.5k" = 1500, "five hundred" = 500, "$40" = 40, "£35" = 35, "₹300" = 300, "forty dollars" = 40. Strip any currency symbol/word and keep the bare number.
    - If not mentioned, return null.
 
 5. prizeAmount:
@@ -144,7 +144,7 @@ The user may describe one or more categories they played in. For each, extract:
 
 6. travelExpense (OPTIONAL — only if the user mentions any travel/trip cost):
    - ONE object for the whole tournament trip (not per category).
-   - Map spoken costs to fields (all numbers in INR, no currency symbol):
+   - Map spoken costs to fields (all bare numbers, no currency symbol — strip any symbol/word):
      * flight / train / bus / cab fare to reach the event → "transport"
      * local taxi / auto / metro / commute at the venue → "localCommute"
      * hotel / stay / lodging / Airbnb → "accommodation"
@@ -153,7 +153,7 @@ The user may describe one or more categories they played in. For each, extract:
      * visa / passport / document fees → "visaDocs"
      * travel insurance → "travelInsurance"
      * any other travel cost → "others"
-   - fromCity / toCity: city names if mentioned ("from Delhi to Mumbai").
+   - fromCity / toCity: city names if mentioned ("from Denver to Austin").
    - isInternational: true only if clearly a foreign trip.
    - Same number parsing as entryFee ("2k" = 2000, "five hundred" = 500).
    - If NO travel cost is mentioned at all, set travelExpense to null.

@@ -139,7 +139,7 @@ Return JSON:
 
 Rules:
 - "title": the item bought, short and human (e.g. "Selkirk paddle", "court shoes"). If none stated, null.
-- "amount": price in INR as a number, no symbols ("4.5k" → 4500, "₹4,500" → 4500). If none stated, null.
+- "amount": price as a bare number, no symbols, no conversion ("4.5k" → 4500, "$120" → 120, "£90" → 90, "₹4,500" → 4500). If none stated, null.
 - "date": resolve relative dates against today; if none stated, null.
 - "category": the closest match from the valid list, else "Other"; null only if no item at all.
 - Never invent a price. Output JSON only.
@@ -690,14 +690,14 @@ ROBUSTNESS — the player types naturally and messily. Be smart about intent:
 - If the message is clearly about recording something they did/will do, prefer "log" even if phrased oddly or as a half-question ("logged my mumbai open win yet?" with a result → log it).
 - Only use "clarify" when a real ambiguity blocks acting (which tournament, which category among several) — NOT for messy phrasing you can reasonably interpret.
 - A vague "how am I doing" / "my stats" / "show my games" → "query". "what did i spend" / "am i profitable" → "spend".
-- Numbers with k/₹/rs/commas are money ("1.2k" → 1200, "₹500" → 500).
+- Numbers with k/currency symbols/commas are money ("1.2k" → 1200, "$500" → 500, "£90" → 90, "₹500" → 500); keep the bare number, never convert.
 
 "edits" is an array of { "categoryIndex": <0-based number, or null for whole-tournament fields or when there is only one category>, "field": one of "date","medal","entryFee","prizeAmount","categoryName","partnerName","name","venue", "value": <new value> }.
 Rules:
 - date → "YYYY-MM-DD" (resolve relative dates against today).
 - medal → exactly one of None/Gold/Silver/Bronze.
 - categoryName → an EXACT string from the valid list. If the player's words are ambiguous (e.g. just "doubles"), use intent "clarify" instead.
-- entryFee/prizeAmount → a number in INR, no symbols ("1k" → 1000).
+- entryFee/prizeAmount → a bare number, no symbols, no conversion ("1k" → 1000, "$40" → 40).
 - "name"/"venue" are whole-tournament fields → categoryIndex must be null.
 - If a category-level change is requested, the tournament has MORE THAN ONE category, and the player did not say which, use intent "clarify".
 
