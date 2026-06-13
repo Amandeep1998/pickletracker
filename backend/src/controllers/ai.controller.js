@@ -71,7 +71,8 @@ Every message is one of three intents. Detect it from tense and keywords, then e
    REQUIRED: name, date, categoryName, medal. If a Gold/Silver/Bronze → prizeAmount required (ask for it). entryFee still required.
 
 FOLLOW-UP ENGINE RULES:
-- Resolve AMBIGUITY before treating a field as missing: bare "singles"/"doubles" (gender unknown), a partial name word ("cup"/"slam"/"open" with no proper name), a bare "medal mila"/"podium" (which medal?), or a city that could be the event name ("Delhi"/"Chennai") → emit an ambiguity entry, not a blank field.
+- Resolve AMBIGUITY before treating a field as missing: bare "singles"/"doubles" (gender unknown), "split doubles" with no age bracket, a partial name word ("cup"/"slam"/"open" with no proper name), a bare "medal mila"/"podium" (which medal?), or a city that could be the event name ("Delhi"/"Chennai") → emit an ambiguity entry, not a blank field.
+- NEVER invent an unspecified facet to force a match. If the user did not state gender, do NOT pick a gendered name (Men's/Women's/Mixed); if they did not state age, do NOT pick an age bracket. When a facet is missing AND it changes which valid name applies, emit an ambiguity and ask — silently guessing the closest valid string is a bug.
 - Ask ALL still-missing required fields for the intent in ONE natural grouped question, never one-at-a-time interrogation. Re-ask only what is still blank after the user's reply.
 - Per-category: when the user reports multiple categories or multiple medals ("won md lost wd", "gold n silver"), collect result/fee/prize for EACH category separately — never one blanket answer.
 - Date is soft for PAST intents: accept vague month/year, do not block the save on an exact day (still return null per the date rule, but do not treat a vague past date as a hard blocker).
@@ -104,6 +105,7 @@ The user may describe one or more categories they played in. For each, extract:
        * 35, 40, 45, 50, 55 → age is a PREFIX with "+": "35 mixed" → "35+ Mixed Doubles", "40 men's doubles" → "40+ Men's Doubles", "50 women's singles" → "50+ Women's Singles".
        * 60, 65, 70 → age is a SUFFIX with "+": "60 singles" → "Men's Singles 60+", "65 mixed" → "Mixed Doubles 65+", "70 women's doubles" → "Women's Doubles 70+". (Bare "60 singles"/"60 doubles" default to men's.)
    - "split 35" / "split age 35" → "Split Age 35+" (also 40, 50). "team" / "team event" → "Team Event".
+   - SPLIT DOUBLES (age-split partner doubles, gender-neutral — NOT mixed/men's/women's): "50 split doubles" / "50+ split doubles" → "50+ Split Doubles" (also 35, 40, 45, 55). NEVER map "split doubles" to a Mixed/Men's/Women's Doubles name — it has no gender. If the user gives an age with "split doubles", map to that exact "<age>+ Split Doubles".
    - When the words point to exactly one valid name, map directly — never ask a follow-up.
 
    AMBIGUITY: set categoryName to null and add an ambiguity entry ONLY when the user's words match MORE THAN ONE valid name and you genuinely cannot tell which. Write a short clarifying "question" and a SHORT "options" list — AT MOST 6 entries, the most likely common variants, NOT every age/level permutation. Examples of words that ARE ambiguous (and good short option sets):
@@ -112,7 +114,8 @@ The user may describe one or more categories they played in. For each, extract:
    - "beginner singles" / "intermediate doubles" (level but no gender) → the men's, women's, and gender-neutral variants (3 options).
    - "beginner" / "intermediate" / "advanced" alone (no type) → that level's main singles/doubles/mixed variants (cap 6).
    - "35" / "40" / ... / "70" alone → that bracket's 5 variants (men's/women's singles, men's/women's doubles, mixed). "35 doubles" / "35 singles" (age, missing gender) → just that bracket+type's gendered variants.
-   - "open" alone → ["Men's Singles Open", "Men's Doubles Open"]. "split" alone → ["Split Age 35+", "Split Age 40+", "Split Age 50+"].
+   - "open" alone → ["Men's Singles Open", "Men's Doubles Open"]. "split" / "split age" alone → ["Split Age 35+", "Split Age 40+", "Split Age 50+"].
+   - "split doubles" with NO age → ["35+ Split Doubles", "40+ Split Doubles", "45+ Split Doubles", "50+ Split Doubles", "55+ Split Doubles"] (ask which bracket — do NOT guess or fall back to Mixed Doubles).
    Never ask when the words already map to exactly one name.
 
 2. date:

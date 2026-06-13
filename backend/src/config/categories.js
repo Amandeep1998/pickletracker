@@ -42,7 +42,7 @@ const CATEGORIES = [
   // Split Age
   "Split Age 35+", "Split Age 40+", "Split Age 50+",
   // Split Doubles (age-split partner doubles)
-  "45+ Split Doubles",
+  "35+ Split Doubles", "40+ Split Doubles", "45+ Split Doubles", "50+ Split Doubles", "55+ Split Doubles",
   // Team
   "Team Event",
 ];
@@ -54,7 +54,7 @@ const AGES = ['35+', '40+', '45+', '50+', '55+', '60+', '65+', '70+'];
  *   type      'singles' | 'doubles' | 'special'
  *   division  'men' | 'women' | 'mixed' | 'neutral' | null
  *   qualifier 'open' | 'pro' | 'beginner' | 'intermediate' | 'advanced' | '<age>+' | null
- *   special   'split' | 'team' | null
+ *   special   'split' | 'splitdoubles' | 'team' | null
  * (Mixed is modelled as doubles with division 'mixed'. Plain women's/mixed
  *  names with no level/age word are treated as the 'open' qualifier.)
  */
@@ -64,7 +64,7 @@ const deriveFacets = (name) => {
   }
   if (/split doubles/i.test(name)) {
     const m = name.match(/\b(35|40|45|50|55|60|65|70)\+/);
-    return { type: 'special', division: null, qualifier: m ? `${m[1]}+` : null, special: 'split' };
+    return { type: 'special', division: null, qualifier: m ? `${m[1]}+` : null, special: 'splitdoubles' };
   }
   if (/^team/i.test(name)) {
     return { type: 'special', division: null, qualifier: null, special: 'team' };
@@ -100,7 +100,12 @@ const parsePhraseToFacets = (text) => {
   const t = ` ${String(text || '').toLowerCase()} `;
   const f = { type: null, division: null, qualifier: null, special: null };
 
-  if (/\bsplit\b/.test(t)) { f.special = 'split'; f.type = null; }
+  if (/\bsplit\b/.test(t)) {
+    // "split doubles" = age-split partner doubles (its own family); a bare
+    // "split" / "split age" = the Split Age special. Keep the two from mixing.
+    f.special = /\bdoubles?\b|\bdubs?\b/.test(t) ? 'splitdoubles' : 'split';
+    f.type = null;
+  }
   if (/\bteam\b/.test(t)) f.special = 'team';
 
   if (/\bmixed?\b|\bmix\b|\bmxd\b/.test(t)) { f.type = 'doubles'; f.division = 'mixed'; }
@@ -132,7 +137,12 @@ const parsePhraseToFacets = (text) => {
 const matchCategories = (facets = {}) =>
   CATEGORIES.filter((name) => {
     const cf = FACETS[name];
-    if (facets.special) return cf.special === facets.special;
+    if (facets.special) {
+      if (cf.special !== facets.special) return false;
+      // Within a special family (e.g. split doubles) an explicit age still narrows.
+      if (facets.qualifier && cf.qualifier !== facets.qualifier) return false;
+      return true;
+    }
     if (cf.special) return false; // hide split/team unless explicitly asked
     if (facets.type && cf.type !== facets.type) return false;
     if (facets.division && cf.division !== facets.division) return false;

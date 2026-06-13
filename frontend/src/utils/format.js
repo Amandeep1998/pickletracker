@@ -153,7 +153,11 @@ export const CATEGORIES = [
   "Split Age 50+",
 
   // ── Split Doubles (age-split partner doubles) ───────────────────────────────
+  "35+ Split Doubles",
+  "40+ Split Doubles",
   "45+ Split Doubles",
+  "50+ Split Doubles",
+  "55+ Split Doubles",
 
   // ── Team ──────────────────────────────────────────────────────────────────
   "Team Event",
