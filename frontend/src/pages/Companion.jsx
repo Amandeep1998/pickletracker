@@ -585,11 +585,16 @@ function CompanionChat() {
 
   // ---- parse free text → preview (+ ambiguities) ----
   const runParse = useCallback(
-    async (text) => {
+    async (text, { merge = true } = {}) => {
       setBusy(true);
       setTyping(true);
       try {
-        const { data } = await companionParse(text, rawRef.current || undefined);
+        // Merge against the in-flight draft only for follow-ups / mid-log
+        // corrections. A fresh log starts clean — otherwise a stale draft from
+        // an abandoned earlier flow (e.g. a half-filled "Team Event") leaks its
+        // category/medal into the new message.
+        if (!merge) resetWork();
+        const { data } = await companionParse(text, merge ? rawRef.current || undefined : undefined);
         const { preview, payload, travel, ambiguities, raw } = data.data;
         payloadRef.current = payload;
         rawRef.current = raw;
@@ -892,7 +897,8 @@ function CompanionChat() {
         track('intent_classified', { intent: d.intent || 'unknown' });
 
         if (d.intent === 'log') {
-          await runParse(text);
+          // Fresh log → don't merge against any abandoned in-flight draft.
+          await runParse(text, { merge: false });
           return;
         }
         if (d.intent === 'spend') {
@@ -1425,10 +1431,14 @@ function CompanionChat() {
       }
 
       // Mid-log: a correction to the in-flight draft MERGES via the parser.
-      // Anonymous visitors stay on the try-before-auth log path (assist is
-      // authed-only). Everyone else routes through the conversational router.
-      if (payloadRef.current || !hasToken) {
+      if (payloadRef.current) {
         runParse(text);
+        return;
+      }
+      // Anonymous visitors stay on the try-before-auth log path (assist is
+      // authed-only) — a fresh log, so no merge against stale drafts.
+      if (!hasToken) {
+        runParse(text, { merge: false });
         return;
       }
       runAssist(text);
