@@ -752,11 +752,15 @@ function CompanionChat() {
         // Offer a day-before push reminder (only while permission is undecided).
         await maybeOfferPush(savedName);
       } else {
-        await botSay('Your card just grew', []);
-        await loadCard(ROOT_CHIPS);
-        // Past result → ask the quick shot review so we capture what went
-        // well / needs work. Best-effort: errors here never lose the saved log.
-        if (created?._id) await askFeedback(created._id, savedName);
+        // Past result → ask the quick shot review FIRST. The grown player card
+        // only appears once the user fills or skips it (askFeedback's onDone),
+        // so we don't show the card before the review.
+        if (created?._id) {
+          await askFeedback(created._id, savedName);
+        } else {
+          await botSay('Your card just grew', []);
+          await loadCard(ROOT_CHIPS);
+        }
       }
     } catch (err) {
       setTyping(false);
@@ -981,6 +985,11 @@ function CompanionChat() {
   // failure is surfaced but never blocks the already-saved log.
   const askFeedback = useCallback(
     async (tournamentId, tournamentName) => {
+      // Show the grown player card only after the review is filled or skipped.
+      const showGrownCard = async () => {
+        await botSay('Your card just grew', []);
+        await loadCard(ROOT_CHIPS);
+      };
       const saveReview = async ({ wentWell, wentWrong }) => {
         try {
           await saveTournamentFeedback(tournamentId, { wentWell, wentWrong });
@@ -991,6 +1000,7 @@ function CompanionChat() {
         } catch {
           await botSay("Couldn't save that review, but your result is safe.", ROOT_CHIPS);
         }
+        await showGrownCard();
       };
       await botTurns(
         [{
@@ -998,14 +1008,15 @@ function CompanionChat() {
             <FeedbackCard
               tournamentName={tournamentName}
               onSave={saveReview}
-              onSkip={() => {}}
+              onSkip={showGrownCard}
             />
           ),
         }],
         ROOT_CHIPS
       );
     },
-    [botTurns, botSay]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [botTurns, botSay, loadCard]
   );
 
   // Open the premium profile popup for a feed author.
