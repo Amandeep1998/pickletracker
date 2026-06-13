@@ -266,7 +266,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading, o
       form.categories.forEach((cat, idx) => {
         const prizeNum = Number(cat.prizeAmount);
         if (cat.medal !== 'None') {
-          if (cat.prizeAmount === '' || !Number.isFinite(prizeNum) || prizeNum <= 0 || !Number.isInteger(prizeNum)) {
+          if (cat.prizeAmount === '' || !Number.isFinite(prizeNum) || prizeNum < 0 || !Number.isInteger(prizeNum)) {
             errs[`cat_${idx}_prizeAmount`] = 'Enter the prize money you won, or 0 if there was no prize';
           }
         }

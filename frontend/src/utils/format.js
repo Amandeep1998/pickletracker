@@ -48,6 +48,10 @@ export const formatMoney = (amount, currency = getStoredCurrency()) => {
 export const formatINR = (amount) => formatCurrency(amount, 'INR');
 
 export const CATEGORIES = [
+  // ── Gender-neutral (open level) — anyone, any gender ────────────────────────
+  "Gender Neutral Singles",
+  "Gender Neutral Doubles",
+
   // ── Open ──────────────────────────────────────────────────────────────────
   "Men's Singles Open",
   "Women's Singles",
@@ -147,6 +151,9 @@ export const CATEGORIES = [
   "Split Age 35+",
   "Split Age 40+",
   "Split Age 50+",
+
+  // ── Split Doubles (age-split partner doubles) ───────────────────────────────
+  "45+ Split Doubles",
 
   // ── Team ──────────────────────────────────────────────────────────────────
   "Team Event",

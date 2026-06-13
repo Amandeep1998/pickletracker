@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 
 const CATEGORIES = [
+  // Gender-neutral (open level) — anyone, any gender
+  "Gender Neutral Singles", "Gender Neutral Doubles",
   // Open
   "Men's Singles Open", "Women's Singles", "Men's Doubles Open", "Women's Doubles", "Mixed Doubles",
   // Pro
@@ -31,6 +33,8 @@ const CATEGORIES = [
   "Men's Singles 70+", "Men's Doubles 70+", "Women's Singles 70+", "Women's Doubles 70+", "Mixed Doubles 70+",
   // Split Age
   "Split Age 35+", "Split Age 40+", "Split Age 50+",
+  // Split Doubles (age-split partner doubles)
+  "45+ Split Doubles",
   // Team
   "Team Event",
 ];

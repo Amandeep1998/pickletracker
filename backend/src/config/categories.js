@@ -41,6 +41,8 @@ const CATEGORIES = [
   "Men's Singles 70+", "Men's Doubles 70+", "Women's Singles 70+", "Women's Doubles 70+", "Mixed Doubles 70+",
   // Split Age
   "Split Age 35+", "Split Age 40+", "Split Age 50+",
+  // Split Doubles (age-split partner doubles)
+  "45+ Split Doubles",
   // Team
   "Team Event",
 ];
@@ -59,6 +61,10 @@ const AGES = ['35+', '40+', '45+', '50+', '55+', '60+', '65+', '70+'];
 const deriveFacets = (name) => {
   if (/^split age/i.test(name)) {
     return { type: 'special', division: null, qualifier: name.replace(/split age\s*/i, '').trim(), special: 'split' };
+  }
+  if (/split doubles/i.test(name)) {
+    const m = name.match(/\b(35|40|45|50|55|60|65|70)\+/);
+    return { type: 'special', division: null, qualifier: m ? `${m[1]}+` : null, special: 'split' };
   }
   if (/^team/i.test(name)) {
     return { type: 'special', division: null, qualifier: null, special: 'team' };
@@ -94,12 +100,15 @@ const parsePhraseToFacets = (text) => {
   const t = ` ${String(text || '').toLowerCase()} `;
   const f = { type: null, division: null, qualifier: null, special: null };
 
-  if (/\bsplit\b/.test(t)) f.special = 'split';
+  if (/\bsplit\b/.test(t)) { f.special = 'split'; f.type = null; }
   if (/\bteam\b/.test(t)) f.special = 'team';
 
   if (/\bmixed?\b|\bmix\b|\bmxd\b/.test(t)) { f.type = 'doubles'; f.division = 'mixed'; }
   if (/\bsingles?\b|\bms\b|\bws\b/.test(t)) f.type = 'singles';
   if (/\bdoubles?\b|\bdubs?\b|\bmd\b|\bwd\b/.test(t)) f.type = 'doubles';
+
+  const neutral = /\bgender[\s-]?neutral\b|\bneutral\b|\bany gender\b|\bopen gender\b/.test(t);
+  if (neutral) f.division = 'neutral';
 
   if (!f.division) {
     if (/\bwomen'?s?\b|\bwomens\b|\bladies\b|\bfemale\b|\bwd\b|\bws\b/.test(t)) f.division = 'women';
@@ -114,6 +123,7 @@ const parsePhraseToFacets = (text) => {
   else {
     const age = t.match(/\b(35|40|45|50|55|60|65|70)\s*\+?\b/);
     if (age) f.qualifier = `${age[1]}+`;
+    else if (neutral) f.qualifier = 'open'; // "gender neutral" = open level, not beginner/intermediate
   }
   return f;
 };

@@ -1,5 +1,6 @@
 import React from 'react';
 import { APP_NAME } from '../../utils/featureFlags';
+import { getCurrencySymbol, getStoredCurrency } from '../../utils/format';
 import { Icon, BallMark } from './erne/Icon';
 
 /**
@@ -12,21 +13,23 @@ import { Icon, BallMark } from './erne/Icon';
  */
 
 // Concrete sentences a real player would say — entry fee + travel costs included.
+// Entry-fee amounts carry the user's stored currency symbol (e.g. "entry ₹40").
+const CUR = getCurrencySymbol(getStoredCurrency());
 const EXAMPLES = [
   {
     icon: 'trophy',
     title: 'Log a result',
-    text: 'Won gold in mixed doubles at Grand Slam on May 24, entry 40',
+    text: `Won gold in mixed doubles at Grand Slam on May 24, entry ${CUR}40`,
   },
   {
     icon: 'calendar',
     title: 'Log an upcoming one',
-    text: 'Playing men’s doubles at Global Sports next Saturday, entry 50',
+    text: `Playing men’s doubles at Global Sports next Saturday, entry ${CUR}50`,
   },
   {
     icon: 'medal',
     title: 'Add a past medal',
-    text: 'Got bronze in singles at Picklebay last month, entry 35',
+    text: `Got bronze in singles at Picklebay last month, entry ${CUR}35`,
   },
   {
     icon: 'wallet',
