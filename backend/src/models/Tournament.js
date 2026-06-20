@@ -35,6 +35,8 @@ const CATEGORIES = [
   "Split Age 35+", "Split Age 40+", "Split Age 50+",
   // Split Doubles (age-split partner doubles)
   "35+ Split Doubles", "40+ Split Doubles", "45+ Split Doubles", "50+ Split Doubles", "55+ Split Doubles",
+  // Mystery / Combined-age doubles
+  "Mystery Partner Doubles", "100+ Combined Age",
   // Team
   "Team Event",
 ];

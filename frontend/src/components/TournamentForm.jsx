@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CATEGORIES, MEDALS, formatCurrency, getCurrencySymbol } from '../utils/format';
+import { CATEGORIES, MEDALS, formatCurrency, getCurrencySymbol, isPartnerCategory } from '../utils/format';
 import useCurrency from '../hooks/useCurrency';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import SearchableSelect from './SearchableSelect';
@@ -524,7 +524,7 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading, o
                   className={inputClass}
                   placeholder="0"
                 />
-                {/doubles|mixed/i.test(cat.categoryName) && (
+                {isPartnerCategory(cat.categoryName) && (
                   <p className="text-xs text-amber-600 mt-1">Enter your share only — not the combined total for both partners.</p>
                 )}
                 {errors[`cat_${idx}_entryFee`] && (
@@ -532,8 +532,8 @@ export default function TournamentForm({ initial, onSubmit, onCancel, loading, o
                 )}
               </div>
 
-              {/* Partner name — only for doubles / mixed categories */}
-              {/doubles|mixed/i.test(cat.categoryName) && (
+              {/* Partner name — only for partner-based (doubles) categories */}
+              {isPartnerCategory(cat.categoryName) && (
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">
                     Partner Name <span className="text-gray-400 font-normal">(optional)</span>

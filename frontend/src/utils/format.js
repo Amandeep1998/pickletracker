@@ -159,9 +159,22 @@ export const CATEGORIES = [
   "50+ Split Doubles",
   "55+ Split Doubles",
 
+  // ── Mystery / Combined-age doubles ──────────────────────────────────────────
+  "Mystery Partner Doubles",
+  "100+ Combined Age",
+
   // ── Team ──────────────────────────────────────────────────────────────────
   "Team Event",
 ];
+
+/**
+ * True when a category is partner-based (doubles) and should collect a
+ * partner name. Covers mixed, gender-neutral doubles, all the age-split
+ * formats, mystery-partner draws and combined-age doubles. Keep this in sync
+ * with any new doubles-style entry added to CATEGORIES above.
+ */
+export const isPartnerCategory = (name = '') =>
+  /doubles|mixed|split|combined|mystery|team/i.test(name);
 
 export const MEDALS = ['None', 'Gold', 'Silver', 'Bronze'];
 

@@ -43,6 +43,8 @@ const CATEGORIES = [
   "Split Age 35+", "Split Age 40+", "Split Age 50+",
   // Split Doubles (age-split partner doubles)
   "35+ Split Doubles", "40+ Split Doubles", "45+ Split Doubles", "50+ Split Doubles", "55+ Split Doubles",
+  // Mystery / Combined-age doubles
+  "Mystery Partner Doubles", "100+ Combined Age",
   // Team
   "Team Event",
 ];
@@ -54,7 +56,7 @@ const AGES = ['35+', '40+', '45+', '50+', '55+', '60+', '65+', '70+'];
  *   type      'singles' | 'doubles' | 'special'
  *   division  'men' | 'women' | 'mixed' | 'neutral' | null
  *   qualifier 'open' | 'pro' | 'beginner' | 'intermediate' | 'advanced' | '<age>+' | null
- *   special   'split' | 'splitdoubles' | 'team' | null
+ *   special   'split' | 'splitdoubles' | 'mystery' | 'combined' | 'team' | null
  * (Mixed is modelled as doubles with division 'mixed'. Plain women's/mixed
  *  names with no level/age word are treated as the 'open' qualifier.)
  */
@@ -65,6 +67,12 @@ const deriveFacets = (name) => {
   if (/split doubles/i.test(name)) {
     const m = name.match(/\b(35|40|45|50|55|60|65|70)\+/);
     return { type: 'special', division: null, qualifier: m ? `${m[1]}+` : null, special: 'splitdoubles' };
+  }
+  if (/mystery/i.test(name)) {
+    return { type: 'special', division: null, qualifier: null, special: 'mystery' };
+  }
+  if (/combined age/i.test(name)) {
+    return { type: 'special', division: null, qualifier: null, special: 'combined' };
   }
   if (/^team/i.test(name)) {
     return { type: 'special', division: null, qualifier: null, special: 'team' };
@@ -107,6 +115,8 @@ const parsePhraseToFacets = (text) => {
     f.type = null;
   }
   if (/\bteam\b/.test(t)) f.special = 'team';
+  if (/\bmystery\b/.test(t)) { f.special = 'mystery'; f.type = null; }
+  if (/\bcombined\b/.test(t)) { f.special = 'combined'; f.type = null; }
 
   if (/\bmixed?\b|\bmix\b|\bmxd\b/.test(t)) { f.type = 'doubles'; f.division = 'mixed'; }
   if (/\bsingles?\b|\bms\b|\bws\b/.test(t)) f.type = 'singles';
